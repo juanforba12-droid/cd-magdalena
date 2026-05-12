@@ -4,6 +4,6 @@ const firebaseConfig = { apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ", auth
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export async function loadData() { try { const snap = await getDoc(doc(db,"cdmagdalena","main")); return snap.exists() ? snap.data().state : null; } catch(e) { return null; } }
-export async function saveData(data) { try { await setDoc(doc(db,"cdmagdalena","main"), { state: data }); } catch(e) { console.error(e); } }
+export async function saveData(data) { try { const clean = JSON.parse(JSON.stringify(data)); await setDoc(doc(db,"cdmagdalena","main"), { state: clean }); } catch(e) { console.error("Save error", e); } }
 export async function loadSeasons() { try { const snap = await getDoc(doc(db,"cdmagdalena","seasons")); return snap.exists() ? snap.data().seasons : []; } catch(e) { return []; } }
 export async function saveSeasons(seasons) { try { await setDoc(doc(db,"cdmagdalena","seasons"), { seasons }); } catch(e) { console.error(e); } }
