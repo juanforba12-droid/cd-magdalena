@@ -4,6 +4,8 @@ import * as React from "react";
 
 // ── Initial state ────────────────────────────────────────────────────────────
 const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Transición", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
+const COORDINATORS = ["Lalo", "Patri", "Jose", "Juan", "Xuso", "Fer", "Oscar"];
+
 const POSITIONS = [
   "Portero","Lateral Derecho","Central","Lateral Izquierdo",
   "Carrilero Derecho","Carrilero Izquierdo","Mediocentro",
@@ -2558,6 +2560,8 @@ export default function App() {
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
+  const [coordProfile, setCoordProfile] = useState("");
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
   const [teamInput, setTeamInput] = useState("Coordinador");
   const [loginError, setLoginError] = useState("");
 
@@ -2709,6 +2713,28 @@ export default function App() {
             <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
           </div>
         </Card>
+      </div>
+    </div>
+  );
+
+  if (showProfilePicker) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-700 mb-4">
+            <span className="text-2xl">⚽</span>
+          </div>
+          <h1 className="text-xl font-black text-white">¿Quién eres?</h1>
+          <p className="text-zinc-500 text-sm mt-1">Selecciona tu perfil de coordinador</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {COORDINATORS.map(name => (
+            <button key={name} onClick={() => { setCoordProfile(name); setShowProfilePicker(false); setAuthState("app"); }}
+              className="bg-zinc-800 hover:bg-red-900/60 border border-zinc-700 hover:border-red-700 rounded-xl p-4 text-white font-semibold text-sm transition-all">
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
