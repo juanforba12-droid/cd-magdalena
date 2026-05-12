@@ -24,8 +24,20 @@ export async function loadData() {
 
 export async function saveData(data) {
   try {
-    const json = JSON.stringify(data);
+    let json;
+    try {
+      json = JSON.stringify(data);
+    } catch(jsonErr) {
+      console.error("JSON.stringify failed:", jsonErr.message);
+      // Try to identify which key causes the issue
+      for (const team of Object.keys(data)) {
+        try { JSON.stringify(data[team]); }
+        catch(e2) { console.error("Problem in team:", team, e2.message); }
+      }
+      return;
+    }
     await setDoc(doc(db, "cdmagdalena", "main"), { json });
+    console.log("Saved OK, size:", json.length);
   } catch(e) { console.error("Save error", e); }
 }
 
