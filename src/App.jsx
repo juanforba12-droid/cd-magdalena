@@ -2191,7 +2191,7 @@ function EntrenadoresSection({ db, onSaveTeam }) {
       .filter(m => m.coachValuations?.find(v => v.coachId === coachId && v.nota !== "" && v.nota !== undefined))
       .map(m => {
         const v = m.coachValuations.find(v => v.coachId === coachId);
-        return { rival: m.rival, fecha: m.fecha, nota: parseFloat(v.nota), comentario: v.comentario || "" };
+        return { rival: m.rival, fecha: m.fecha, nota: parseFloat(v.nota), comentario: v.comentario || "", coordinador: v.coordinador || "" };
       });
   };
 
@@ -2310,6 +2310,11 @@ function EntrenadoresSection({ db, onSaveTeam }) {
                   return (
                     <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
                       <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
+                      <Input label="Tu nombre (coordinador)" 
+                        value={val.coordinador || ""}
+                        onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)}
+                        placeholder="¿Quién hace esta valoración?"
+                      />
                       <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10"
                         value={val.nota || ""}
                         onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)}
@@ -2441,6 +2446,7 @@ function EntrenadoresSection({ db, onSaveTeam }) {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-white text-sm font-semibold">vs {h.rival}</span>
                         <span className="text-zinc-400 text-xs">📅 {h.fecha}</span>
+                        {h.coordinador && <Badge color="blue">👤 {h.coordinador}</Badge>}
                       </div>
                       {h.comentario && <p className="text-zinc-400 text-xs">{h.comentario}</p>}
                     </div>
