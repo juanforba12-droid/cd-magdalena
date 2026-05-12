@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -21,17 +21,22 @@ export async function loadData() {
   try {
     const snap = await getDoc(doc(db, "cdmagdalena", "main"));
     return snap.exists() ? snap.data().state : null;
-  } catch(e) {
-    console.error("Load error", e);
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
 export async function saveData(data) {
   try {
-    await setDoc(doc(db, "cdmagdalena", "main"), { state: clean(data) });
+    const batch = writeBatch(db);
+    batch.set(doc(db, "cdmagdalena", "main"), { state: clean(data) }, { merge: false });
+    await batch.commit();
   } catch(e) {
-    console.error("Save error", e);
+    try {
+      const teams = Object.keys(data);
+      for (const team of teams) {
+        await setDoc(doc(db, "cdmagdalena_teams", team), { data: clean(data[team]) });
+      }
+      await setDoc(doc(db, "cdmagdalena", "index"), { teams });
+    } catch(e2) { console.error("Save error", e2); }
   }
 }
 
@@ -39,15 +44,11 @@ export async function loadSeasons() {
   try {
     const snap = await getDoc(doc(db, "cdmagdalena", "seasons"));
     return snap.exists() ? snap.data().seasons : [];
-  } catch(e) {
-    return [];
-  }
+  } catch(e) { return []; }
 }
 
 export async function saveSeasons(seasons) {
   try {
     await setDoc(doc(db, "cdmagdalena", "seasons"), { seasons: clean(seasons) });
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
