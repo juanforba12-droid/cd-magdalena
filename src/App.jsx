@@ -1,36 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 
-// ── Storage helpers ──────────────────────────────────────────────────────────
-const STORAGE_KEY = "cdmagdalena_v1";
-const SEASONS_KEY = "cdmagdalena_seasons";
-
-async function loadData() {
-  try {
-    const res = await loadData();
-    return res ? JSON.parse(res.value) : null;
-  } catch { return null; }
-}
-
-async function saveData(data) {
-  try {
-    await saveData(data);
-  } catch (e) { console.error("Save error", e); }
-}
-
-async function loadSeasons() {
-  try {
-    const res = await loadSeasons();
-    return res ? JSON.parse(res.value) : [];
-  } catch { return []; }
-}
-
-async function saveSeasons(seasons) {
-  try {
-    await saveSeasons(seasons);
-  } catch (e) { console.error("Save seasons error", e); }
-}
-
 // ── Initial state ────────────────────────────────────────────────────────────
 const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Transición", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
 const POSITIONS = [
