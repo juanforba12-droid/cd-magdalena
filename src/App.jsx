@@ -2616,7 +2616,7 @@ export default function App() {
       setTeamAccess(null);
       setActiveTeam(TEAMS[0]);
       setActiveSection("resumen");
-      setAuthState("app");
+      setShowProfilePicker(true);
     } else if (teamInput !== "Coordinador" && TEAM_PASSWORDS[teamInput] === password) {
       setRole("trainer");
       setTeamAccess(teamInput);
