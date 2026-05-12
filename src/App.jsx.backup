@@ -7,27 +7,27 @@ const SEASONS_KEY = "cdmagdalena_seasons";
 
 async function loadData() {
   try {
-    const res = await loadData();
+    const res = await window.storage.get(STORAGE_KEY);
     return res ? JSON.parse(res.value) : null;
   } catch { return null; }
 }
 
 async function saveData(data) {
   try {
-    await saveData(data);
+    await window.storage.set(STORAGE_KEY, JSON.stringify(data));
   } catch (e) { console.error("Save error", e); }
 }
 
 async function loadSeasons() {
   try {
-    const res = await loadSeasons();
+    const res = await window.storage.get(SEASONS_KEY);
     return res ? JSON.parse(res.value) : [];
   } catch { return []; }
 }
 
 async function saveSeasons(seasons) {
   try {
-    await saveSeasons(seasons);
+    await window.storage.set(SEASONS_KEY, JSON.stringify(seasons));
   } catch (e) { console.error("Save seasons error", e); }
 }
 
