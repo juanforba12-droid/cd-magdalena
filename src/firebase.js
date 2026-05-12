@@ -13,13 +13,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-function clean(obj) {
-  return JSON.parse(JSON.stringify(obj, (key, value) => {
-    if (value && typeof value === 'object' && value.current !== undefined) return undefined;
-    if (typeof value === 'function') return undefined;
-    if (value instanceof Element) return undefined;
-    return value;
-  }));
+function clean(obj, seen = new WeakSet()) {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object' && typeof obj !== 'function') return obj;
+  if (typeof obj === 'function') return undefined;
+  if (obj instanceof Element || obj instanceof Node) return undefined;
+  if (obj && 'current' in obj && Object.keys(obj).length === 1) return undefined;
+  if (seen.has(obj)) return undefined;
+  seen.add(obj);
+  if (Array.isArray(obj)) return obj.map(v => clean(v, seen)).filter(v => v !== undefined);
+  const result = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const cleaned = clean(v, seen);
+    if (cleaned !== undefined) result[k] = cleaned;
+  }
+  return result;
 }
 
 export async function loadData() {
