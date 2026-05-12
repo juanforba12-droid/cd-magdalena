@@ -1,10 +1,38 @@
 import { useState, useEffect, useRef } from "react";
-import { loadData, saveData, loadSeasons, saveSeasons } from "./firebase";
 import * as React from "react";
 
+// ── Storage helpers ──────────────────────────────────────────────────────────
+const STORAGE_KEY = "cdmagdalena_v1";
+const SEASONS_KEY = "cdmagdalena_seasons";
+
+async function loadData() {
+  try {
+    const res = await window.storage.get(STORAGE_KEY);
+    return res ? JSON.parse(res.value) : null;
+  } catch { return null; }
+}
+
+async function saveData(data) {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) { console.error("Save error", e); }
+}
+
+async function loadSeasons() {
+  try {
+    const res = await window.storage.get(SEASONS_KEY);
+    return res ? JSON.parse(res.value) : [];
+  } catch { return []; }
+}
+
+async function saveSeasons(seasons) {
+  try {
+    await window.storage.set(SEASONS_KEY, JSON.stringify(seasons));
+  } catch (e) { console.error("Save seasons error", e); }
+}
 
 // ── Initial state ────────────────────────────────────────────────────────────
-const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
+const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Transición", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
 const POSITIONS = [
   "Portero","Lateral Derecho","Central","Lateral Izquierdo",
   "Carrilero Derecho","Carrilero Izquierdo","Mediocentro",
@@ -2594,6 +2622,7 @@ export default function App() {
     "Benjamín A": "DJV",
     "Alevín B": "WCQ",
     "Alevín A": "NYS",
+    "Transición": "HQV",
     "Infantil B": "RGK",
     "Infantil A": "BTP",
     "Cadete": "XMJ",
