@@ -2677,6 +2677,26 @@ export default function App() {
     </div>
   );
 
+  if (showProfilePicker) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-700 mb-4"><span className="text-2xl">⚽</span></div>
+          <h1 className="text-xl font-black text-white">¿Quién eres?</h1>
+          <p className="text-zinc-500 text-sm mt-1">Selecciona tu perfil de coordinador</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {COORDINATORS.map(name => (
+            <button key={name} onClick={() => { setCoordProfile(name); setShowProfilePicker(false); setAuthState("app"); }}
+              className="bg-zinc-800 hover:bg-red-900/60 border border-zinc-700 hover:border-red-700 rounded-xl p-4 text-white font-semibold text-sm transition-all">
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   if (authState === "login") return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
