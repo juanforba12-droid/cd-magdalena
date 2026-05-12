@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -14,7 +14,12 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 function clean(obj) {
-  return JSON.parse(JSON.stringify(obj));
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (value && typeof value === 'object' && value.current !== undefined) return undefined;
+    if (typeof value === 'function') return undefined;
+    if (value instanceof Element) return undefined;
+    return value;
+  }));
 }
 
 export async function loadData() {
@@ -26,18 +31,8 @@ export async function loadData() {
 
 export async function saveData(data) {
   try {
-    const batch = writeBatch(db);
-    batch.set(doc(db, "cdmagdalena", "main"), { state: clean(data) }, { merge: false });
-    await batch.commit();
-  } catch(e) {
-    try {
-      const teams = Object.keys(data);
-      for (const team of teams) {
-        await setDoc(doc(db, "cdmagdalena_teams", team), { data: clean(data[team]) });
-      }
-      await setDoc(doc(db, "cdmagdalena", "index"), { teams });
-    } catch(e2) { console.error("Save error", e2); }
-  }
+    await setDoc(doc(db, "cdmagdalena", "main"), { state: clean(data) });
+  } catch(e) { console.error("Save error", e); }
 }
 
 export async function loadSeasons() {
