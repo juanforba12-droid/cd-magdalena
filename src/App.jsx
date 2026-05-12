@@ -2118,7 +2118,7 @@ function GestionSection({ db, onArchive, onRestore }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenadores (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
-function EntrenadoresSection({ db, onSaveTeam }) {
+function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
   const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
   const [newCoachName, setNewCoachName] = useState("");
   const [statsCoach, setStatsCoach] = useState(null);
@@ -2284,7 +2284,7 @@ function EntrenadoresSection({ db, onSaveTeam }) {
                     <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
                       <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
                       <Input label="Tu nombre (coordinador)" 
-                        value={val.coordinador || ""}
+                        value={val.coordinador || coordProfile || ""}
                         onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)}
                         placeholder="¿Quién hace esta valoración?"
                       />
@@ -2843,7 +2843,7 @@ export default function App() {
               <ResumenSection db={db} />
             )}
             {activeSection === "entrenadores" && isCoord && (
-              <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} />
+              <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} />
             )}
             {activeSection === "gestion" && isCoord && (
               <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} />
