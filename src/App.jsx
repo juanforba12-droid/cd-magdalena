@@ -2653,7 +2653,25 @@ export default function App() {
   };
 
   const updateTeamData = async (team, newData) => {
-    const newDb = { ...db, [team]: newData };
+    const cleanTeam = (d) => ({
+      ...d,
+      trainings: (d.trainings || []).map(t => ({
+        ...t,
+        tasks: (t.tasks || []).map(task => ({
+          ...task,
+          pizarra: (task.pizarra || []).map(el => ({
+            type: el.type, x: el.x, y: el.y, color: el.color, number: el.number, material: el.material
+          }))
+        }))
+      })),
+      tasks: (d.tasks || []).map(task => ({
+        ...task,
+        pizarra: (task.pizarra || []).map(el => ({
+          type: el.type, x: el.x, y: el.y, color: el.color, number: el.number, material: el.material
+        }))
+      }))
+    });
+    const newDb = { ...db, [team]: cleanTeam(newData) };
     setDb(newDb);
     await saveData(newDb);
   };
