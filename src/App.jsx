@@ -1012,7 +1012,8 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
           return `<circle cx="${cx}" cy="${cy}" r="14" fill="${PLAYER_COLOR_HEX[color]}" stroke="white" stroke-width="1.5"/><text x="${cx}" y="${cy+4}" text-anchor="middle" fill="white" font-size="11" font-weight="bold">${item.num ?? ""}</text>`;
         }
         const icons = {cono:"🔶",chino:"🔺",porteria_grande:"⬛","porteria_pequeña":"▪",escalera:"🪜",pesa:"🏋",pica:"🚩",aro:"⭕"};
-        return `<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="18">${icons[item.type]||"●"}</text>`;
+        if (iconSVG) return iconSVG;
+return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
       }).join("");
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="100%" height="100%" fill="#1a6b2e"/>${markings}${itemsSVG}</svg>`;
     };
