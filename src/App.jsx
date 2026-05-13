@@ -1776,26 +1776,49 @@ function PartidosSection({ team, data, onSave, isCoord }) {
               </div>
               <Btn small variant="secondary" onClick={() => setCoachAttMatch(null)}>✕</Btn>
             </div>
-            <div className="p-5 space-y-2">
+            <div className="p-5 space-y-3">
               {(data.coaches || []).length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
-              {(data.coaches || []).map(c => {
+              {(() => {
                 const sessionId = `m_${coachAttMatch.id}`;
-                const rec = (data.coachAttendance || []).find(a => a.sessionId === sessionId && a.coachId === c.id);
-                return (
-                  <div key={c.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-4 py-3">
-                    <span className="text-white text-sm font-semibold flex-1">{c.name}</span>
-                    <div className="flex gap-1">
-                      {coachAttStatusOpts.map(opt => (
-                        <button key={opt.val}
-                          onClick={() => setCoachAttRecord(sessionId, c.id, opt.val, coachAttMatch.fecha)}
-                          className={`text-xs px-2 py-1 rounded border transition-all ${coachAttBtnClass(rec?.status, opt.val, opt.color)}`}
-                        >{opt.label}</button>
-                      ))}
-                      {rec && <Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</Btn>}
+                const valorados = (data.coachAttendance || []).filter(a => a.sessionId === sessionId);
+                const coachesConVal = (data.coaches || []).filter(c => valorados.find(a => a.coachId === c.id));
+                const coachesSinVal = (data.coaches || []).filter(c => !valorados.find(a => a.coachId === c.id));
+                return <>
+                  {coachesConVal.map(c => {
+                    const rec = valorados.find(a => a.coachId === c.id);
+                    return (
+                      <div key={c.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-4 py-3">
+                        <span className="text-white text-sm font-semibold flex-1">{c.name}</span>
+                        <div className="flex gap-1">
+                          {coachAttStatusOpts.map(opt => (
+                            <button key={opt.val}
+                              onClick={() => setCoachAttRecord(sessionId, c.id, opt.val, coachAttMatch.fecha)}
+                              className={`text-xs px-2 py-1 rounded border transition-all ${coachAttBtnClass(rec?.status, opt.val, opt.color)}`}
+                            >{opt.label}</button>
+                          ))}
+                          <Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</Btn>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {coachesSinVal.length > 0 && (
+                    <div className="border-t border-zinc-700 pt-3">
+                      <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Añadir valoración</p>
+                      <div className="flex flex-wrap gap-2">
+                        {coachesSinVal.map(c => (
+                          <button key={c.id}
+                            onClick={() => setCoachAttRecord(sessionId, c.id, "present", coachAttMatch.fecha)}
+                            className="px-3 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-300 text-xs rounded hover:border-zinc-400 transition-all"
+                          >➕ {c.name}</button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                  {coachesConVal.length === 0 && coachesSinVal.length > 0 && (
+                    <p className="text-zinc-500 text-sm">Ninguna valoración añadida. Usa los botones de abajo para añadir.</p>
+                  )}
+                </>;
+              })()}
             </div>
           </div>
         </div>
