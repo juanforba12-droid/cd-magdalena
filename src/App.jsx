@@ -785,7 +785,7 @@ function TareasSection({ team, data, onSave }) {
       <p className="text-zinc-500 text-sm">Aquí guardas tareas reutilizables que puedes añadir a cualquier entrenamiento.</p>
 
       <div className="space-y-3">
-        {tasks.map(t => (
+        {(tasks || []).filter(t => t != null).map(t => (
           <Card key={t.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
               <div className="flex-1 cursor-pointer" onClick={() => setPreview({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) })}>
