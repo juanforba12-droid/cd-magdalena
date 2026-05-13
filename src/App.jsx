@@ -2140,6 +2140,17 @@ function MejoresRivalesSection({ db }) {
     });
   });
 
+  const CATEGORIAS = ["Escoleta","Prebenjamín","Benjamín","Alevín","Infantil","Cadete","Juvenil"];
+  const teamToCategoria = (team) => {
+    if (team.toLowerCase().includes("escoleta")) return "Escoleta";
+    if (team.toLowerCase().includes("prebenjam")) return "Prebenjamín";
+    if (team.toLowerCase().includes("benjam")) return "Benjamín";
+    if (team.toLowerCase().includes("alevín")||team.toLowerCase().includes("alevin")) return "Alevín";
+    if (team.toLowerCase().includes("infantil")) return "Infantil";
+    if (team.toLowerCase().includes("cadete")) return "Cadete";
+    if (team.toLowerCase().includes("juvenil")) return "Juvenil";
+    return "Otros";
+  };
   const filtered = filterTeam === "all" ? allRivales : allRivales.filter(r => r.equipo === filterTeam);
   const teams = [...new Set(allRivales.map(r => r.equipo))];
 
@@ -2158,22 +2169,48 @@ function MejoresRivalesSection({ db }) {
 
       {filtered.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores rivales registrados todavía.</p>}
 
-      <div className="space-y-2">
-        {filtered.map((r, i) => (
-          <Card key={i} className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
-              <span className="text-white font-semibold">{r.nombre}</span>
+      {filterTeam === "all" ? (
+        CATEGORIAS.map(cat => {
+          const catRivales = filtered.filter(r => teamToCategoria(r.equipo) === cat);
+          if (catRivales.length === 0) return null;
+          return (
+            <div key={cat} className="space-y-2">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider">{cat}</p>
+              {catRivales.map((r,i) => (
+                <Card key={i} className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
+                    <span className="text-white font-semibold">{r.nombre}</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-auto flex-wrap">
+                    <Badge color="red">{r.equipo}</Badge>
+                    <span className="text-zinc-400 text-xs">vs {r.rival}</span>
+                    <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
+                    {r.resultado && <Badge color="green">{r.resultado}</Badge>}
+                  </div>
+                </Card>
+              ))}
             </div>
-            <div className="flex items-center gap-2 ml-auto flex-wrap">
-              <Badge color="red">{r.equipo}</Badge>
-              <span className="text-zinc-400 text-xs">vs {r.rival}</span>
-              <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
-              {r.resultado && <Badge color="green">{r.resultado}</Badge>}
-            </div>
-          </Card>
-        ))}
-      </div>
+          );
+        })
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((r,i) => (
+            <Card key={i} className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
+                <span className="text-white font-semibold">{r.nombre}</span>
+              </div>
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <Badge color="red">{r.equipo}</Badge>
+                <span className="text-zinc-400 text-xs">vs {r.rival}</span>
+                <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
+                {r.resultado && <Badge color="green">{r.resultado}</Badge>}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
