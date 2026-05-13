@@ -2153,15 +2153,24 @@ function MejoresRivalesSection({ db }) {
     });
   });
 
-  const CATEGORIAS = ["Escoleta","Prebenjamín","Benjamín","Alevín","Infantil","Cadete","Juvenil"];
+  const CATEGORIAS = [
+    { id: "Escoleta", color: "bg-pink-900 border-pink-700 text-pink-200" },
+    { id: "Prebenjamín", color: "bg-orange-900 border-orange-700 text-orange-200" },
+    { id: "Benjamín", color: "bg-yellow-900 border-yellow-700 text-yellow-200" },
+    { id: "Alevín", color: "bg-green-900 border-green-700 text-green-200" },
+    { id: "Infantil", color: "bg-blue-900 border-blue-700 text-blue-200" },
+    { id: "Cadete", color: "bg-purple-900 border-purple-700 text-purple-200" },
+    { id: "Juvenil", color: "bg-red-900 border-red-700 text-red-200" },
+  ];
   const teamToCategoria = (team) => {
-    if (team.toLowerCase().includes("escoleta")) return "Escoleta";
-    if (team.toLowerCase().includes("prebenjam")) return "Prebenjamín";
-    if (team.toLowerCase().includes("benjam")) return "Benjamín";
-    if (team.toLowerCase().includes("alevín")||team.toLowerCase().includes("alevin")) return "Alevín";
-    if (team.toLowerCase().includes("infantil")) return "Infantil";
-    if (team.toLowerCase().includes("cadete")) return "Cadete";
-    if (team.toLowerCase().includes("juvenil")) return "Juvenil";
+    const t = team.toLowerCase();
+    if (t.includes("escoleta")) return "Escoleta";
+    if (t.includes("prebenjam")) return "Prebenjamín";
+    if (t.includes("benjam")) return "Benjamín";
+    if (t.includes("alevín")||t.includes("alevin")) return "Alevín";
+    if (t.includes("infantil")) return "Infantil";
+    if (t.includes("cadete")) return "Cadete";
+    if (t.includes("juvenil")) return "Juvenil";
     return "Otros";
   };
   const filtered = filterTeam === "all" ? allRivales : allRivales.filter(r => r.equipo === filterTeam);
@@ -2182,48 +2191,38 @@ function MejoresRivalesSection({ db }) {
 
       {filtered.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores rivales registrados todavía.</p>}
 
-      {filterTeam === "all" ? (
-        CATEGORIAS.map(cat => {
-          const catRivales = filtered.filter(r => teamToCategoria(r.equipo) === cat);
+      {(() => {
+        const renderRival = (r, i, colorClass) => (
+          <div key={i} className={`border rounded-xl p-4 flex items-center gap-3 flex-wrap ${colorClass}`}>
+            <div className="flex items-center gap-2">
+              {r.num && <span className="font-mono text-sm bg-black/20 px-2 py-0.5 rounded">#{r.num}</span>}
+              <span className="font-semibold">{r.nombre}</span>
+            </div>
+            <div className="flex items-center gap-2 ml-auto flex-wrap text-xs opacity-80">
+              <span>{r.equipo}</span>
+              <span>vs {r.rival}</span>
+              <span>📅 {r.fecha}</span>
+              {r.resultado && <span className="bg-black/20 px-1.5 py-0.5 rounded">{r.resultado}</span>}
+            </div>
+          </div>
+        );
+
+        if (filterTeam !== "all") {
+          const cat = CATEGORIAS.find(c => teamToCategoria(filterTeam) === c.id) || {color:"bg-zinc-800 border-zinc-700 text-white"};
+          return <div className="space-y-2">{filtered.map((r,i) => renderRival(r,i,cat.color))}</div>;
+        }
+
+        return CATEGORIAS.map(cat => {
+          const catRivales = filtered.filter(r => teamToCategoria(r.equipo) === cat.id);
           if (catRivales.length === 0) return null;
           return (
-            <div key={cat} className="space-y-2">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider">{cat}</p>
-              {catRivales.map((r,i) => (
-                <Card key={i} className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
-                    <span className="text-white font-semibold">{r.nombre}</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-auto flex-wrap">
-                    <Badge color="red">{r.equipo}</Badge>
-                    <span className="text-zinc-400 text-xs">vs {r.rival}</span>
-                    <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
-                    {r.resultado && <Badge color="green">{r.resultado}</Badge>}
-                  </div>
-                </Card>
-              ))}
+            <div key={cat.id} className="space-y-2">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${cat.color}`}>{cat.id}</div>
+              {catRivales.map((r,i) => renderRival(r,i,cat.color))}
             </div>
           );
-        })
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((r,i) => (
-            <Card key={i} className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
-                <span className="text-white font-semibold">{r.nombre}</span>
-              </div>
-              <div className="flex items-center gap-2 ml-auto flex-wrap">
-                <Badge color="red">{r.equipo}</Badge>
-                <span className="text-zinc-400 text-xs">vs {r.rival}</span>
-                <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
-                {r.resultado && <Badge color="green">{r.resultado}</Badge>}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+        });
+      })()}
     </div>
   );
 }
