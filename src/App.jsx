@@ -715,7 +715,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   const [nombre, setNombre] = useState(task?.nombre || "");
   const [minutos, setMinutos] = useState(task?.minutos || 10);
   const [descripcion, setDescripcion] = useState(task?.descripcion || "");
-  const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map(el => ({ type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' })));
+  const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map(el => ({ type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' })));
 
   const handleSave = (toLib = false) => {
     if (!nombre.trim()) return;
