@@ -1008,7 +1008,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         const icons = {cono:"🔶",chino:"🔺",porteria_grande:"⬛","porteria_pequeña":"▪",escalera:"🪜",pesa:"🏋",pica:"🚩",aro:"⭕"};
         return `<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="18">${icons[item.type]||"●"}</text>`;
       }).join("");
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto">${markings}${itemsSVG}</svg>`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="100%" height="100%" fill="#1a6b2e"/>${markings}${itemsSVG}</svg>`;
     };
 
     const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
