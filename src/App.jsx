@@ -996,7 +996,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         <rect x="420" y="90" width="70" height="145" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <rect x="460" y="115" width="30" height="85" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
       `;
-      const itemsSVG = (items || []).filter(item => item != null).map(item => {
+      const itemsSVG = (items || []).filter(item => item != null && item.type).map(item => {
         const cx = (item.x / 100) * W;
         const cy = (item.y / 100) * H;
         if (item.type.startsWith("player_")) {
