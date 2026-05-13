@@ -2584,8 +2584,8 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
         >📋 Asistencia</button>
       </div>
 
-      {/* Add coach - always visible */}
-      <Card>
+      {/* Add coach - only visible in asistencia tab or no tab */}
+      {tab !== "valoraciones" && <Card>
         <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Entrenadores de {selectedTeam}</p>
         <div className="flex gap-2">
           <input
