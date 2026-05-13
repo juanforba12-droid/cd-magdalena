@@ -781,7 +781,7 @@ function TareasSection({ team, data, onSave }) {
         {tasks.map(t => (
           <Card key={t.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
-              <div className="flex-1 cursor-pointer" onClick={() => setPreview(t)}>
+              <div className="flex-1 cursor-pointer" onClick={() => setPreview({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) })}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-white font-semibold">{t.nombre}</span>
                   <Badge color="blue">⏱ {t.minutos} min</Badge>
