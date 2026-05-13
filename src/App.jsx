@@ -572,7 +572,7 @@ function Pizarra({ value, onChange }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [editingItem, setEditingItem] = useState(null);
   const fieldRef = useRef(null);
-  const items = value || [];
+  const items = (value || []).filter(i => i != null && typeof i === 'object');
 
   const addItem = (e) => {
     if (dragging !== null) return;
