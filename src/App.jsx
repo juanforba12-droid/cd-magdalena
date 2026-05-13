@@ -722,11 +722,12 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   const [nombre, setNombre] = useState(task?.nombre || "");
   const [minutos, setMinutos] = useState(task?.minutos || 10);
   const [descripcion, setDescripcion] = useState(task?.descripcion || "");
+  const [categoria, setCategoria] = useState(task?.categoria || "");
   const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map((el, idx) => ({ id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' })));
 
   const handleSave = (toLib = false) => {
     if (!nombre.trim()) return;
-    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra };
+    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra, categoria };
     onSave(t, toLib);
   };
 
@@ -743,6 +744,15 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
             <Input label="Duración (minutos)" type="number" min="1" value={minutos} onChange={e => setMinutos(Number(e.target.value))} />
           </div>
           <Textarea label="Descripción" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} />
+          <div>
+            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Categoría</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button onClick={()=>setCategoria("")} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===""?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Sin categoría</button>
+              {TASK_CATEGORIES.map(c=>(
+                <button key={c.id} onClick={()=>setCategoria(c.id)} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
+              ))}
+            </div>
+          </div>
           <div>
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra táctica</label>
             <Pizarra value={pizarra} onChange={setPizarra} />
@@ -761,10 +771,25 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Tareas (biblioteca)
 // ══════════════════════════════════════════════════════════════════════════════
-function TareasSection({ team, data, onSave }) {
+const TASK_CATEGORIES = [
+  { id: "activacion", label: "🏃 Activación", color: "orange" },
+  { id: "tecnica", label: "⚽ Técnica", color: "blue" },
+  { id: "tactica", label: "🧠 Táctica", color: "purple" },
+  { id: "fisico", label: "💪 Físico", color: "red" },
+  { id: "pliometria", label: "🦘 Pliometría/Potencia", color: "yellow" },
+  { id: "transiciones", label: "🔄 Transiciones/Juego Real", color: "green" },
+  { id: "finalizacion", label: "🎯 Finalización", color: "pink" },
+  { id: "porteria", label: "🧤 Portería", color: "cyan" },
+];
+
+function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord }) {
   const [showEditor, setShowEditor] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [libTab, setLibTab] = useState("equipo");
+  const [filterCat, setFilterCat] = useState("all");
+  const [showGlobalEditor, setShowGlobalEditor] = useState(false);
+  const [editingGlobal, setEditingGlobal] = useState(null);
 
   const openEdit = (t) => { setEditing({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) }); setShowEditor(true); };
 
@@ -783,34 +808,76 @@ function TareasSection({ team, data, onSave }) {
     onSave({ ...data, tasks: tasks.filter(t => t.id !== id) });
   };
 
+  const saveGlobalTask = (t) => {
+    const existing = (globalTasks||[]).findIndex(x => x.id === t.id);
+    const updated = existing >= 0 ? globalTasks.map(x => x.id === t.id ? t : x) : [...(globalTasks||[]), t];
+    onSaveGlobal(updated);
+    setShowGlobalEditor(false);
+    setEditingGlobal(null);
+  };
+
+  const delGlobalTask = (id) => {
+    if (!window.confirm("¿Eliminar tarea de la biblioteca global?")) return;
+    onSaveGlobal((globalTasks||[]).filter(t => t.id !== id));
+  };
+
+  const catColor = (catId) => {
+    const c = TASK_CATEGORIES.find(c=>c.id===catId);
+    return c ? c.color : "zinc";
+  };
+  const catLabel = (catId) => {
+    const c = TASK_CATEGORIES.find(c=>c.id===catId);
+    return c ? c.label : "Sin categoría";
+  };
+
+  const activeTasks = libTab === "equipo" ? (tasks||[]).filter(t=>t!=null) : (globalTasks||[]).filter(t=>t!=null);
+  const filteredTasks = filterCat === "all" ? activeTasks : activeTasks.filter(t=>t.categoria===filterCat);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-white">Biblioteca de tareas — {team}</h2>
-        <Btn onClick={() => { setEditing(null); setShowEditor(true); }}>+ Nueva tarea</Btn>
+        <h2 className="text-xl font-bold text-white">Biblioteca de tareas</h2>
+        <Btn onClick={() => { if(libTab==="equipo"){setEditing(null);setShowEditor(true);}else{setEditingGlobal(null);setShowGlobalEditor(true);} }}>+ Nueva tarea</Btn>
       </div>
-      <p className="text-zinc-500 text-sm">Aquí guardas tareas reutilizables que puedes añadir a cualquier entrenamiento.</p>
+
+      {/* Tabs equipo / global */}
+      <div className="flex gap-2 border-b border-zinc-700 pb-2">
+        <button onClick={()=>setLibTab("equipo")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${libTab==="equipo"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>👤 Mi equipo ({(tasks||[]).length})</button>
+        <button onClick={()=>setLibTab("global")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${libTab==="global"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>🌐 Todos los equipos ({(globalTasks||[]).length})</button>
+      </div>
+
+      {/* Filtro por categoría */}
+      <div className="flex flex-wrap gap-1.5">
+        <button onClick={()=>setFilterCat("all")} className={`px-2 py-1 rounded text-xs border transition-all ${filterCat==="all"?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Todas</button>
+        {TASK_CATEGORIES.map(c=>(
+          <button key={c.id} onClick={()=>setFilterCat(c.id)} className={`px-2 py-1 rounded text-xs border transition-all ${filterCat===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
+        ))}
+      </div>
 
       <div className="space-y-3">
-        {(tasks || []).filter(t => t != null).map(t => (
+        {filteredTasks.map(t => (
           <Card key={t.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
               <div className="flex-1 cursor-pointer" onClick={() => setPreview({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) })}>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-white font-semibold">{t.nombre}</span>
                   <Badge color="blue">⏱ {t.minutos} min</Badge>
+                  {t.categoria && <Badge color={catColor(t.categoria)}>{catLabel(t.categoria)}</Badge>}
+                  {libTab==="global" && t.equipo && <Badge color="zinc">👤 {t.equipo}</Badge>}
                 </div>
                 {t.descripcion && <p className="text-zinc-400 text-sm line-clamp-2">{t.descripcion}</p>}
                 {t.pizarra?.length > 0 && <p className="text-zinc-600 text-xs mt-1">🎨 Pizarra con {t.pizarra.length} elementos</p>}
               </div>
               <div className="flex gap-1 ml-3 shrink-0">
-                <Btn small variant="secondary" onClick={() => { openEdit(t); }}>✏️</Btn>
-                <Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</Btn>
+                {libTab==="equipo" && <Btn small variant="secondary" onClick={() => openEdit(t)}>✏️</Btn>}
+                {libTab==="equipo" && <Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</Btn>}
+                {libTab==="global" && isCoord && <Btn small variant="secondary" onClick={() => {setEditingGlobal(t);setShowGlobalEditor(true);}}>✏️</Btn>}
+                {libTab==="global" && isCoord && <Btn small variant="danger" onClick={() => delGlobalTask(t.id)}>🗑️</Btn>}
               </div>
             </div>
           </Card>
         ))}
-        {tasks.length === 0 && <p className="text-zinc-500 text-sm">No hay tareas en la biblioteca todavía.</p>}
+        {filteredTasks.length === 0 && <p className="text-zinc-500 text-sm">No hay tareas{filterCat!=="all"?" en esta categoría":""} todavía.</p>}
       </div>
 
       {showEditor && (
@@ -818,6 +885,15 @@ function TareasSection({ team, data, onSave }) {
           task={editing}
           onSave={(t) => saveTask(t)}
           onClose={() => { setShowEditor(false); setEditing(null); }}
+          saveToLibrary={false}
+        />
+      )}
+
+      {showGlobalEditor && (
+        <TaskEditorModal
+          task={editingGlobal}
+          onSave={(t) => saveGlobalTask({...t, equipo: team})}
+          onClose={() => { setShowGlobalEditor(false); setEditingGlobal(null); }}
           saveToLibrary={false}
         />
       )}
@@ -1520,124 +1596,8 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           </div>
         </Card>
 
-        {/* Tabs convocatoria / formación */}
-        {(() => {
-          const [matchTab, setMatchTab] = window._useMatchTab ? window._useMatchTab(match.id) : [activeMatch?._tab||"conv", (v)=>setActiveMatch(prev=>({...prev,_tab:v}))];
-          const tab = activeMatch?._tab || "conv";
-          const titulares = (match.convocatoria||[]).filter(c=>c.status==="titular");
-          const suplentes = (match.convocatoria||[]).filter(c=>c.status==="suplente");
-          const noConv = (match.convocatoria||[]).filter(c=>c.status==="no_conv");
+        <div className="space-y-2">
 
-          const setTab = (v) => setActiveMatch(prev=>({...prev, _tab:v}));
-
-          return <>
-            <div className="flex gap-2 border-b border-zinc-700 pb-2">
-              <button onClick={()=>setTab("conv")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${tab==="conv"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>👥 Convocatoria</button>
-              <button onClick={()=>setTab("form")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${tab==="form"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>🟢 Formación</button>
-            </div>
-
-            {tab === "form" && (
-              <div className="space-y-3">
-                <p className="text-zinc-400 text-sm">Arrastra los jugadores titulares al campo. Haz clic en un jugador de la lista para colocarlo.</p>
-                {(() => {
-                  const formacion = match.formacion || [];
-                  const W = 400, H = 320;
-                  const placed = formacion.map(f=>f.playerId);
-                  const unplaced = titulares.filter(t=>!placed.includes(t.playerId));
-
-                  const placePlayer = (pid, pname, x, y) => {
-                    const newForm = formacion.filter(f=>f.playerId!==pid);
-                    newForm.push({playerId:pid, playerName:pname, x, y});
-                    const matches2 = (data.matches||[]).map(m2=>m2.id!==match.id?m2:{...m2,formacion:newForm});
-                    const upd = matches2.find(m2=>m2.id===match.id);
-                    setActiveMatch({...upd, _tab:"form"});
-                    onSave({...data, matches:matches2});
-                  };
-
-                  const removePlayer = (pid) => {
-                    const newForm = formacion.filter(f=>f.playerId!==pid);
-                    const matches2 = (data.matches||[]).map(m2=>m2.id!==match.id?m2:{...m2,formacion:newForm});
-                    const upd = matches2.find(m2=>m2.id===match.id);
-                    setActiveMatch({...upd, _tab:"form"});
-                    onSave({...data, matches:matches2});
-                  };
-
-                  return (
-                    <div className="space-y-3">
-                      {/* Campo SVG */}
-                      <div className="relative w-full overflow-x-auto">
-                        <svg
-                          viewBox={`0 0 ${W} ${H}`}
-                          className="w-full rounded-lg border border-zinc-700"
-                          style={{background:"#1a6b2e", maxHeight:360}}
-                          onClick={(e) => {
-                            if (!window._placingPlayer) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const x = ((e.clientX - rect.left) / rect.width * W);
-                            const y = ((e.clientY - rect.top) / rect.height * H);
-                            const {pid, pname} = window._placingPlayer;
-                            window._placingPlayer = null;
-                            placePlayer(pid, pname, Math.round(x/W*100), Math.round(y/H*100));
-                          }}
-                        >
-                          {/* Campo medio */}
-                          <rect width={W} height={H} fill="#1a6b2e"/>
-                          {/* Línea de fondo */}
-                          <rect x="10" y="10" width={W-20} height={H-20} fill="none" stroke="white" strokeWidth="2" opacity="0.7"/>
-                          {/* Portería */}
-                          <rect x="10" y={H/2-40} width="18" height="80" fill="none" stroke="white" strokeWidth="2" opacity="0.7"/>
-                          {/* Área grande */}
-                          <rect x="10" y={H/2-80} width="70" height="160" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7"/>
-                          {/* Área pequeña */}
-                          <rect x="10" y={H/2-40} width="35" height="80" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7"/>
-                          {/* Línea central vertical */}
-                          <line x1={W/2} y1="10" x2={W/2} y2={H-10} stroke="white" strokeWidth="1.5" opacity="0.5" strokeDasharray="6,4"/>
-                          {/* Punto penal */}
-                          <circle cx="90" cy={H/2} r="3" fill="white" opacity="0.7"/>
-                          {/* Jugadores colocados */}
-                          {formacion.map(f => {
-                            const cx = f.x/100*W;
-                            const cy = f.y/100*H;
-                            const isCap = match.capitan === f.playerId;
-                            return (
-                              <g key={f.playerId} style={{cursor:"pointer"}} onClick={(e)=>{e.stopPropagation(); removePlayer(f.playerId);}}>
-                                <circle cx={cx} cy={cy} r="16" fill="#16a34a" stroke={isCap?"#fbbf24":"white"} strokeWidth={isCap?3:2}/>
-                                {isCap && <text x={cx+12} y={cy-12} fontSize="10" fill="#fbbf24">⭐</text>}
-                                <text x={cx} y={cy+4} textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">
-                                  {f.playerName.split(" ")[0].substring(0,8)}
-                                </text>
-                              </g>
-                            );
-                          })}
-                        </svg>
-                        <p className="text-xs text-zinc-500 mt-1">Haz clic en el campo para colocar · Clic en jugador para quitar</p>
-                      </div>
-
-                      {/* Jugadores titulares sin colocar */}
-                      {unplaced.length > 0 && (
-                        <div>
-                          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Titulares sin colocar — clic para seleccionar, luego clic en el campo</p>
-                          <div className="flex flex-wrap gap-2">
-                            {unplaced.map(t => (
-                              <button
-                                key={t.playerId}
-                                onClick={() => { window._placingPlayer = {pid: t.playerId, pname: t.playerName}; }}
-                                className="px-2 py-1 bg-green-900 border border-green-700 text-green-200 text-xs rounded hover:bg-green-800 transition-all"
-                              >{t.playerName} {match.capitan===t.playerId?"⭐":""}</button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {titulares.length === 0 && <p className="text-zinc-500 text-sm">No hay titulares asignados. Ve a Convocatoria y marca jugadores como Titular.</p>}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-          </>;
-        })()}
-
-        {(activeMatch?._tab||"conv") === "conv" && <div className="space-y-2">
           {(match.convocatoria || []).map(c => (
             <Card key={c.playerId} className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -1674,7 +1634,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
               </div>
             </Card>
           ))}
-        </div>}
+        </div>
       </div>
     );
   }
@@ -2773,6 +2733,7 @@ export default function App() {
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
   const [teamPasswords, setTeamPasswords] = useState({});
+  const [globalTasks, setGlobalTasks] = useState([]);
   const [coordProfile, setCoordProfile] = useState("");
   const [showProfilePicker, setShowProfilePicker] = useState(false);
   const [teamInput, setTeamInput] = useState("Coordinador");
@@ -2804,6 +2765,7 @@ export default function App() {
     Promise.all([loadData(), loadSeasons()]).then(([d, s]) => {
       // load passwords
       try { const raw = localStorage.getItem("cdmag_passwords"); if(raw) setTeamPasswords(JSON.parse(raw)); } catch(e) {}
+      try { const raw2 = localStorage.getItem("cdmag_global_tasks"); if(raw2) setGlobalTasks(JSON.parse(raw2)); } catch(e) {}
       setDb(d || initState());
       setSeasons(s || []);
       setLoading(false);
@@ -2864,6 +2826,11 @@ export default function App() {
     const newDb = { ...db, [team]: cleanTeam(newData) };
     setDb(newDb);
     await saveData(newDb);
+  };
+
+  const saveGlobalTasks = async (tasks) => {
+    setGlobalTasks(tasks);
+    localStorage.setItem("cdmag_global_tasks", JSON.stringify(tasks));
   };
 
   const savePasswords = async (newPwds) => {
@@ -3075,7 +3042,7 @@ export default function App() {
               <EntrenamientosSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
             )}
             {activeSection === "tareas" && (
-              <TareasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
+              <TareasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} globalTasks={globalTasks} onSaveGlobal={saveGlobalTasks} isCoord={isCoord} />
             )}
             {activeSection === "partidos" && (
               <PartidosSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
