@@ -2117,6 +2117,65 @@ function ClasificacionSection({ team, data }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Gestión de temporadas (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
+function MejoresRivalesSection({ db }) {
+  const TEAMS_LIST = Object.keys(db);
+  const [filterTeam, setFilterTeam] = useState("all");
+
+  // Recopilar todos los mejores rivales de todos los equipos
+  const allRivales = [];
+  TEAMS_LIST.forEach(team => {
+    const matches = db[team]?.matches || [];
+    matches.forEach(m => {
+      (m.mejoresRivales || []).filter(r => r.nombre).forEach(r => {
+        allRivales.push({
+          ...r,
+          equipo: team,
+          rival: m.rival,
+          fecha: m.fecha,
+          resultado: m.resultado,
+        });
+      });
+    });
+  });
+
+  const filtered = filterTeam === "all" ? allRivales : allRivales.filter(r => r.equipo === filterTeam);
+  const teams = [...new Set(allRivales.map(r => r.equipo))];
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-white">⭐ Mejores Jugadores Rivales</h2>
+      <p className="text-zinc-400 text-sm">Jugadores rivales destacados registrados por los entrenadores en cada partido.</p>
+
+      {/* Filtro por equipo */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setFilterTeam("all")} className={`px-2 py-1 rounded text-xs border transition-all ${filterTeam==="all"?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Todos</button>
+        {teams.map(t => (
+          <button key={t} onClick={() => setFilterTeam(t)} className={`px-2 py-1 rounded text-xs border transition-all ${filterTeam===t?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{t}</button>
+        ))}
+      </div>
+
+      {filtered.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores rivales registrados todavía.</p>}
+
+      <div className="space-y-2">
+        {filtered.map((r, i) => (
+          <Card key={i} className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              {r.num && <span className="text-zinc-400 font-mono text-sm bg-zinc-800 px-2 py-0.5 rounded">#{r.num}</span>}
+              <span className="text-white font-semibold">{r.nombre}</span>
+            </div>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <Badge color="red">{r.equipo}</Badge>
+              <span className="text-zinc-400 text-xs">vs {r.rival}</span>
+              <span className="text-zinc-500 text-xs">📅 {r.fecha}</span>
+              {r.resultado && <Badge color="green">{r.resultado}</Badge>}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }) {
   const [seasons, setSeasons] = useState([]);
   const [seasonName, setSeasonName] = useState("");
@@ -2959,6 +3018,7 @@ export default function App() {
     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
+    ...(isCoord ? [{ id: "mejoresrivales", label: "Mejores Rivales", icon: "⭐" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
@@ -3238,7 +3298,10 @@ export default function App() {
             {activeSection === "entrenadores" && isCoord && (
               <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} />
             )}
-            {activeSection === "gestion" && isCoord && (
+            {activeSection === "mejoresrivales" && isCoord && (
+        <MejoresRivalesSection db={db} />
+      )}
+      {activeSection === "gestion" && isCoord && (
               <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
             )}
             {activeSection === "plantilla" && (
