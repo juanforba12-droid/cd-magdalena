@@ -2002,7 +2002,7 @@ function ClasificacionSection({ team, data }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Gestión de temporadas (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
-function GestionSection({ db, onArchive, onRestore }) {
+function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }) {
   const [seasons, setSeasons] = useState([]);
   const [seasonName, setSeasonName] = useState("");
   const [viewingSeason, setViewingSeason] = useState(null);
@@ -2010,6 +2010,9 @@ function GestionSection({ db, onArchive, onRestore }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmingRestore, setConfirmingRestore] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ajustesTab, setAjustesTab] = useState("temporadas");
+  const [editPwd, setEditPwd] = useState({});
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   useEffect(() => {
     loadSeasons().then(s => { setSeasons(s); setLoading(false); });
@@ -2101,10 +2104,52 @@ function GestionSection({ db, onArchive, onRestore }) {
     );
   }
 
+  const savePwd = async (team) => {
+    const val = (editPwd[team] || "").trim().toUpperCase();
+    if (!val) return;
+    const newPwds = { ...passwords, [team]: val };
+    setPwdSaving(true);
+    await onSavePasswords(newPwds);
+    setEditPwd(prev => { const n = {...prev}; delete n[team]; return n; });
+    setPwdSaving(false);
+  };
+
   return (
     <div className="space-y-5">
-      <h2 className="text-xl font-bold text-white">⚙️ Gestión de temporadas</h2>
+      <h2 className="text-xl font-bold text-white">⚙️ Ajustes</h2>
+      <div className="flex gap-2 border-b border-zinc-700 pb-2">
+        <button onClick={() => setAjustesTab("temporadas")} className={`px-4 py-1.5 rounded-t text-sm font-medium transition-all ${ajustesTab==="temporadas"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>📦 Temporadas</button>
+        <button onClick={() => setAjustesTab("entrenadores")} className={`px-4 py-1.5 rounded-t text-sm font-medium transition-all ${ajustesTab==="entrenadores"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>🔑 Contraseñas entrenadores</button>
+      </div>
 
+      {ajustesTab === "entrenadores" && (
+        <div className="space-y-3">
+          <p className="text-zinc-400 text-sm">Gestiona las contraseñas de acceso de cada entrenador. Cada entrenador inicia sesión con el nombre de su equipo y su contraseña.</p>
+          {TEAMS.map(team => (
+            <Card key={team} className="flex items-center gap-3 flex-wrap">
+              <span className="text-white font-semibold w-32">{team}</span>
+              <span className="text-zinc-500 text-sm font-mono bg-zinc-800 px-2 py-1 rounded">{passwords[team] || "—"}</span>
+              {editPwd[team] !== undefined ? (
+                <div className="flex gap-2 items-center ml-auto">
+                  <input
+                    className="bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-white text-sm font-mono w-28 uppercase"
+                    value={editPwd[team]}
+                    onChange={e => setEditPwd(prev => ({...prev, [team]: e.target.value.toUpperCase()}))}
+                    placeholder="Nueva clave"
+                    maxLength={10}
+                  />
+                  <Btn small onClick={() => savePwd(team)} disabled={pwdSaving}>Guardar</Btn>
+                  <Btn small variant="secondary" onClick={() => setEditPwd(prev => { const n={...prev}; delete n[team]; return n; })}>✕</Btn>
+                </div>
+              ) : (
+                <Btn small variant="secondary" className="ml-auto" onClick={() => setEditPwd(prev => ({...prev, [team]: passwords[team] || ""}))}>✏️ Editar</Btn>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {ajustesTab === "temporadas" && <>
       {/* Archive current season */}
       <Card className="border-red-900/50">
         <p className="text-white font-semibold mb-1">Archivar temporada actual</p>
@@ -2146,6 +2191,7 @@ function GestionSection({ db, onArchive, onRestore }) {
           </Card>
         ))}
       </div>
+      </>}
     </div>
   );
 }
@@ -2595,6 +2641,7 @@ export default function App() {
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
+  const [teamPasswords, setTeamPasswords] = useState({});
   const [coordProfile, setCoordProfile] = useState("");
   const [showProfilePicker, setShowProfilePicker] = useState(false);
   const [teamInput, setTeamInput] = useState("Coordinador");
@@ -2613,7 +2660,7 @@ export default function App() {
   const sections = [
     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
-    ...(isCoord ? [{ id: "gestion", label: "Gestión", icon: "⚙️" }] : []),
+    ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
@@ -2624,6 +2671,8 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([loadData(), loadSeasons()]).then(([d, s]) => {
+      // load passwords
+      try { const raw = localStorage.getItem("cdmag_passwords"); if(raw) setTeamPasswords(JSON.parse(raw)); } catch(e) {}
       setDb(d || initState());
       setSeasons(s || []);
       setLoading(false);
@@ -2652,7 +2701,7 @@ export default function App() {
       setActiveTeam(TEAMS[0]);
       setActiveSection("resumen");
       setShowProfilePicker(true);
-    } else if (teamInput !== "Coordinador" && TEAM_PASSWORDS[teamInput] === password) {
+    } else if (teamInput !== "Coordinador" && ({...TEAM_PASSWORDS, ...teamPasswords})[teamInput] === password) {
       setRole("trainer");
       setTeamAccess(teamInput);
       setActiveTeam(teamInput);
@@ -2684,6 +2733,11 @@ export default function App() {
     const newDb = { ...db, [team]: cleanTeam(newData) };
     setDb(newDb);
     await saveData(newDb);
+  };
+
+  const savePasswords = async (newPwds) => {
+    setTeamPasswords(newPwds);
+    localStorage.setItem("cdmag_passwords", JSON.stringify(newPwds));
   };
 
   const archiveSeason = async () => {
@@ -2881,7 +2935,7 @@ export default function App() {
               <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} />
             )}
             {activeSection === "gestion" && isCoord && (
-              <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} />
+              <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
             )}
             {activeSection === "plantilla" && (
               <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} />
