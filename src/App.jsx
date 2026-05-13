@@ -1418,7 +1418,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
         playerId: p.id, playerName: p.name,
         status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
       }));
-      matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria });
+      matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria, capitan: null, formacion: [] });
     }
     onSave({ ...data, matches: matches.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
     setView("list");
@@ -1516,9 +1516,128 @@ function PartidosSection({ team, data, onSave, isCoord }) {
             <span>📅 {match.fecha}</span>
             <span>📍 {match.lugar}</span>
             {match.resultado && <span className="text-white font-bold">⚽ {match.resultado}</span>}
+            {match.capitan && (() => { const cap = (match.convocatoria||[]).find(c=>c.playerId===match.capitan); return cap ? <span className="text-yellow-400">⭐ {cap.playerName}</span> : null; })()}
           </div>
         </Card>
-        <div className="space-y-2">
+
+        {/* Tabs convocatoria / formación */}
+        {(() => {
+          const [matchTab, setMatchTab] = window._useMatchTab ? window._useMatchTab(match.id) : [activeMatch?._tab||"conv", (v)=>setActiveMatch(prev=>({...prev,_tab:v}))];
+          const tab = activeMatch?._tab || "conv";
+          const titulares = (match.convocatoria||[]).filter(c=>c.status==="titular");
+          const suplentes = (match.convocatoria||[]).filter(c=>c.status==="suplente");
+          const noConv = (match.convocatoria||[]).filter(c=>c.status==="no_conv");
+
+          const setTab = (v) => setActiveMatch(prev=>({...prev, _tab:v}));
+
+          return <>
+            <div className="flex gap-2 border-b border-zinc-700 pb-2">
+              <button onClick={()=>setTab("conv")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${tab==="conv"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>👥 Convocatoria</button>
+              <button onClick={()=>setTab("form")} className={`px-3 py-1.5 rounded-t text-sm font-medium transition-all ${tab==="form"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>🟢 Formación</button>
+            </div>
+
+            {tab === "form" && (
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">Arrastra los jugadores titulares al campo. Haz clic en un jugador de la lista para colocarlo.</p>
+                {(() => {
+                  const formacion = match.formacion || [];
+                  const W = 400, H = 320;
+                  const placed = formacion.map(f=>f.playerId);
+                  const unplaced = titulares.filter(t=>!placed.includes(t.playerId));
+
+                  const placePlayer = (pid, pname, x, y) => {
+                    const newForm = formacion.filter(f=>f.playerId!==pid);
+                    newForm.push({playerId:pid, playerName:pname, x, y});
+                    const matches2 = (data.matches||[]).map(m2=>m2.id!==match.id?m2:{...m2,formacion:newForm});
+                    const upd = matches2.find(m2=>m2.id===match.id);
+                    setActiveMatch({...upd, _tab:"form"});
+                    onSave({...data, matches:matches2});
+                  };
+
+                  const removePlayer = (pid) => {
+                    const newForm = formacion.filter(f=>f.playerId!==pid);
+                    const matches2 = (data.matches||[]).map(m2=>m2.id!==match.id?m2:{...m2,formacion:newForm});
+                    const upd = matches2.find(m2=>m2.id===match.id);
+                    setActiveMatch({...upd, _tab:"form"});
+                    onSave({...data, matches:matches2});
+                  };
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Campo SVG */}
+                      <div className="relative w-full overflow-x-auto">
+                        <svg
+                          viewBox={`0 0 ${W} ${H}`}
+                          className="w-full rounded-lg border border-zinc-700"
+                          style={{background:"#1a6b2e", maxHeight:360}}
+                          onClick={(e) => {
+                            if (!window._placingPlayer) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = ((e.clientX - rect.left) / rect.width * W);
+                            const y = ((e.clientY - rect.top) / rect.height * H);
+                            const {pid, pname} = window._placingPlayer;
+                            window._placingPlayer = null;
+                            placePlayer(pid, pname, Math.round(x/W*100), Math.round(y/H*100));
+                          }}
+                        >
+                          {/* Campo medio */}
+                          <rect width={W} height={H} fill="#1a6b2e"/>
+                          {/* Línea de fondo */}
+                          <rect x="10" y="10" width={W-20} height={H-20} fill="none" stroke="white" strokeWidth="2" opacity="0.7"/>
+                          {/* Portería */}
+                          <rect x="10" y={H/2-40} width="18" height="80" fill="none" stroke="white" strokeWidth="2" opacity="0.7"/>
+                          {/* Área grande */}
+                          <rect x="10" y={H/2-80} width="70" height="160" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7"/>
+                          {/* Área pequeña */}
+                          <rect x="10" y={H/2-40} width="35" height="80" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7"/>
+                          {/* Línea central vertical */}
+                          <line x1={W/2} y1="10" x2={W/2} y2={H-10} stroke="white" strokeWidth="1.5" opacity="0.5" strokeDasharray="6,4"/>
+                          {/* Punto penal */}
+                          <circle cx="90" cy={H/2} r="3" fill="white" opacity="0.7"/>
+                          {/* Jugadores colocados */}
+                          {formacion.map(f => {
+                            const cx = f.x/100*W;
+                            const cy = f.y/100*H;
+                            const isCap = match.capitan === f.playerId;
+                            return (
+                              <g key={f.playerId} style={{cursor:"pointer"}} onClick={(e)=>{e.stopPropagation(); removePlayer(f.playerId);}}>
+                                <circle cx={cx} cy={cy} r="16" fill="#16a34a" stroke={isCap?"#fbbf24":"white"} strokeWidth={isCap?3:2}/>
+                                {isCap && <text x={cx+12} y={cy-12} fontSize="10" fill="#fbbf24">⭐</text>}
+                                <text x={cx} y={cy+4} textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">
+                                  {f.playerName.split(" ")[0].substring(0,8)}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </svg>
+                        <p className="text-xs text-zinc-500 mt-1">Haz clic en el campo para colocar · Clic en jugador para quitar</p>
+                      </div>
+
+                      {/* Jugadores titulares sin colocar */}
+                      {unplaced.length > 0 && (
+                        <div>
+                          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Titulares sin colocar — clic para seleccionar, luego clic en el campo</p>
+                          <div className="flex flex-wrap gap-2">
+                            {unplaced.map(t => (
+                              <button
+                                key={t.playerId}
+                                onClick={() => { window._placingPlayer = {pid: t.playerId, pname: t.playerName}; }}
+                                className="px-2 py-1 bg-green-900 border border-green-700 text-green-200 text-xs rounded hover:bg-green-800 transition-all"
+                              >{t.playerName} {match.capitan===t.playerId?"⭐":""}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {titulares.length === 0 && <p className="text-zinc-500 text-sm">No hay titulares asignados. Ve a Convocatoria y marca jugadores como Titular.</p>}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </>;
+        })()}
+
+        {(activeMatch?._tab||"conv") === "conv" && <div className="space-y-2">
           {(match.convocatoria || []).map(c => (
             <Card key={c.playerId} className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -1536,6 +1655,16 @@ function PartidosSection({ team, data, onSave, isCoord }) {
                     }`}
                   >{statusLabel[s]}</button>
                 ))}
+                <button
+                  onClick={() => {
+                    const matches2 = (data.matches||[]).map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
+                    const upd = matches2.find(m2=>m2.id===match.id);
+                    setActiveMatch(upd);
+                    onSave({...data, matches: matches2});
+                  }}
+                  className={`text-xs px-2 py-1 rounded border transition-all ${match.capitan===c.playerId ? "bg-yellow-700 border-yellow-500 text-yellow-200" : "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500"}`}
+                  title="Capitán"
+                >⭐ Capitán</button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <Input label="Minutos" type="number" value={c.minutos} onChange={e => updateConv(match.id, c.playerId, "minutos", Number(e.target.value))} />
@@ -1545,7 +1674,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
               </div>
             </Card>
           ))}
-        </div>
+        </div>}
       </div>
     );
   }
@@ -1914,10 +2043,12 @@ function ClasificacionSection({ team, data }) {
     };
   };
 
+  const getPlayerCapitanias = (playerId) => matches.filter(m => m.capitan === playerId).length;
   const ranked = players.map(p => ({
     ...p,
     ...getPlayerMatchStats(p.id),
     att: getPlayerAttendance(p.id),
+    capitanias: getPlayerCapitanias(p.id),
   }));
 
   const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
