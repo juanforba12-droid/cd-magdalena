@@ -13,12 +13,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+function cleanLoaded(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.filter(i => i != null).map(cleanLoaded);
+  const result = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === 'pizarra' && Array.isArray(v)) {
+      result[k] = v.filter(i => i != null);
+    } else {
+      result[k] = cleanLoaded(v);
+    }
+  }
+  return result;
+}
+
 export async function loadData() {
   try {
     const snap = await getDoc(doc(db, "cdmagdalena", "main"));
     if (!snap.exists()) return null;
     const raw = snap.data().json;
-    return raw ? JSON.parse(raw) : null;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ? cleanLoaded(parsed) : null;
   } catch(e) { console.error("Load error", e); return null; }
 }
 
