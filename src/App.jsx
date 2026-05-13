@@ -617,7 +617,7 @@ function Pizarra({ value, onChange }) {
   const removeItem = (id) => onChange(items.filter(i => i.id !== id));
   const saveEditNum = (id, num) => { onChange(items.map(i => i.id === id ? { ...i, num } : i)); setEditingItem(null); };
 
-  const renderItem = (item, idx) => { if (!item || typeof item !== 'object') return null;
+  const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type) return null;
     const isPlayer = item.type.startsWith("player_");
     const color = isPlayer ? item.type.replace("player_", "") : null;
     const mat = !isPlayer ? MATERIALS.find(m => m.id === item.type) : null;
