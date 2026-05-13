@@ -870,6 +870,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
               </div>
               <div className="flex gap-1 ml-3 shrink-0">
                 {libTab==="equipo" && <Btn small variant="secondary" onClick={() => openEdit(t)}>✏️</Btn>}
+                {libTab==="equipo" && <Btn small variant="secondary" title="Publicar en biblioteca global" onClick={() => { if(window.confirm("¿Publicar esta tarea en la biblioteca de todos los equipos?")) { onSaveGlobal([...(globalTasks||[]), {...t, id: Date.now(), equipo: team}]); } }}>🌐</Btn>}
                 {libTab==="equipo" && <Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</Btn>}
                 {libTab==="global" && isCoord && <Btn small variant="secondary" onClick={() => {setEditingGlobal(t);setShowGlobalEditor(true);}}>✏️</Btn>}
                 {libTab==="global" && isCoord && <Btn small variant="danger" onClick={() => delGlobalTask(t.id)}>🗑️</Btn>}
