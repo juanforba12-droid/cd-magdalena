@@ -506,6 +506,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 // PIZARRA TÁCTICA
 // ══════════════════════════════════════════════════════════════════════════════
 const PLAYER_COLORS = ["red","yellow","blue","green"];
+const PLAYER_COLOR_STYLES = { red:"bg-red-600 border-red-400", yellow:"bg-yellow-500 border-yellow-300", blue:"bg-blue-600 border-blue-400", green:"bg-green-600 border-green-400" };
 const PLAYER_COLOR_HEX2 = { red:"#dc2626", yellow:"#eab308", blue:"#2563eb", green:"#16a34a" };
 
 const MATERIALS = [
