@@ -2643,14 +2643,14 @@ export default function App() {
         ...t,
         tasks: (t.tasks || []).map(task => ({
           ...task,
-          pizarra: (task.pizarra || []).map(el => ({
+          pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => ({
             type: el.type, x: el.x, y: el.y, color: el.color, number: el.number, material: el.material
           }))
         }))
       })),
       tasks: (d.tasks || []).map(task => ({
         ...task,
-        pizarra: (task.pizarra || []).map(el => ({
+        pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => ({
           type: el.type, x: el.x, y: el.y, color: el.color, number: el.number, material: el.material
         }))
       }))
