@@ -2314,7 +2314,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenadores (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
-function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, players }) {
+function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, deleteValuation, players, getCoachHistory }) {
   const [step, setStep] = useState("list"); // list | pickMatch | pickType | pickCoach | valorCoach | valorEquipo
   const [selMatch, setSelMatch] = useState(null);
   const [selCoach, setSelCoach] = useState(null);
@@ -2326,11 +2326,56 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, player
   const matchObj = matches.find(m => m.id === selMatch);
 
   // STEP: list — mostrar valoraciones existentes
+  if (step === "informes") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Btn small variant="ghost" onClick={() => setStep("list")}>← Volver</Btn>
+          <p className="text-white font-semibold">📊 Informes de entrenadores</p>
+        </div>
+        {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
+        {coaches.map(c => {
+          const history = getCoachHistory(c.id);
+          const avg = history.length ? (history.reduce((s,h)=>s+h.nota,0)/history.length).toFixed(2) : null;
+          return (
+            <Card key={c.id} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-white font-bold text-lg">👤 {c.name}</span>
+                {avg ? <div className="text-center"><div className={`text-2xl font-black ${avg>=7?"text-green-400":avg>=5?"text-yellow-400":"text-red-400"}`}>{avg}</div><div className="text-xs text-zinc-500">Media temporada</div></div> : <span className="text-zinc-500 text-sm">Sin valoraciones</span>}
+              </div>
+              {history.length > 0 && (
+                <div className="space-y-2">
+                  {history.map((h,i) => (
+                    <div key={i} className="flex items-center gap-3 bg-zinc-800 rounded-lg px-3 py-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white text-sm font-semibold">vs {h.rival}</span>
+                          <span className="text-zinc-400 text-xs">📅 {h.fecha}</span>
+                          {h.coordinador && <Badge color="blue">👤 {h.coordinador}</Badge>}
+                        </div>
+                        {h.comentario && <p className="text-zinc-400 text-xs mt-1">{h.comentario}</p>}
+                      </div>
+                      <div className={`text-xl font-black ${h.nota>=7?"text-green-400":h.nota>=5?"text-yellow-400":"text-red-400"}`}>{h.nota.toFixed(1)}</div>
+                      <Btn small variant="danger" onClick={() => deleteValuation(h.matchId, c.id)}>🗑️</Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (step === "list") return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <p className="text-xs text-zinc-500 uppercase tracking-wider">Valoraciones por partido</p>
-        <Btn small onClick={() => setStep("pickMatch")}>➕ Añadir valoración</Btn>
+        <div className="flex gap-2">
+          <Btn small variant="secondary" onClick={() => setStep("informes")}>📊 Informes</Btn>
+          <Btn small onClick={() => setStep("pickMatch")}>➕ Añadir valoración</Btn>
+        </div>
       </div>
       {matches.filter(m => (m.coachValuations||[]).length > 0 || (m.playerValuations||[]).length > 0).map(m => (
         <Card key={m.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelMatch(m.id); setStep("pickType"); }}>
@@ -2520,12 +2565,20 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
     onSaveTeam(selectedTeam, { ...teamData, matches: newMatches });
   };
 
+  const deleteValuation = (matchId, coachId) => {
+    const newMatches = (teamData.matches || []).map(m => {
+      if (m.id !== matchId) return m;
+      return { ...m, coachValuations: (m.coachValuations || []).filter(v => v.coachId !== coachId) };
+    });
+    onSaveTeam(selectedTeam, { ...teamData, matches: newMatches });
+  };
+
   const getCoachHistory = (coachId) => {
     return matches
       .filter(m => m.coachValuations?.find(v => v.coachId === coachId && v.nota !== "" && v.nota !== undefined))
       .map(m => {
         const v = m.coachValuations.find(v => v.coachId === coachId);
-        return { rival: m.rival, fecha: m.fecha, nota: parseFloat(v.nota), comentario: v.comentario || "", coordinador: v.coordinador || "" };
+        return { matchId: m.id, rival: m.rival, fecha: m.fecha, nota: parseFloat(v.nota), comentario: v.comentario || "", coordinador: v.coordinador || "" };
       });
   };
 
@@ -2629,7 +2682,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 
       {/* Valoraciones tab */}
       {tab === "valoraciones" && (
-        <ValoracionesTab key={selectedTeam} matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} players={teamData.players||[]} />
+        <ValoracionesTab key={selectedTeam} matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} deleteValuation={deleteValuation} players={teamData.players||[]} getCoachHistory={getCoachHistory} />
       )}
 
       {/* Asistencia tab */}
