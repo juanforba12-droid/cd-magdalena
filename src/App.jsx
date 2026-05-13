@@ -520,6 +520,8 @@ const MATERIALS = [
   { id:"aro", label:"Aro", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5 text-cyan-400"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"balon", label:"Balón", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 8 L12 13 L15 8 Z" fill="currentColor" opacity="0.5"/><path d="M3.5 9 L9 8 L12 13 L8 17 Z" fill="currentColor" opacity="0.3"/><path d="M20.5 9 L15 8 L12 13 L16 17 Z" fill="currentColor" opacity="0.3"/></svg> },
   { id:"valla", label:"Valla", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-lime-400"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> },
+  { id:"linea_azul", label:"Línea azul", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/></svg> },
+  { id:"linea_naranja", label:"Línea naranja", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/></svg> },
 ];
 
 const FIELD_TYPES = [
