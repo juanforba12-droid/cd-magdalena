@@ -2314,6 +2314,106 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenadores (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
+function ValoracionesTab({ matches, coaches, coordProfile, saveValuation }) {
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Partidos que ya tienen alguna valoración
+  const matchesConVal = matches.filter(m => (m.coachValuations||[]).length > 0);
+  const matchesSinVal = matches.filter(m => !(m.coachValuations||[]).length);
+
+  if (coaches.length === 0) return <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>;
+  if (matches.length === 0) return <p className="text-zinc-500 text-sm">No hay partidos registrados.</p>;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider">Valoraciones por partido</p>
+        <Btn small onClick={() => setShowPicker(true)}>➕ Añadir valoración</Btn>
+      </div>
+
+      {/* Selector de partido */}
+      {showPicker && (
+        <Card className="border-zinc-600">
+          <p className="text-zinc-300 text-sm font-semibold mb-2">Selecciona un partido</p>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {matches.map(m => (
+              <button key={m.id} onClick={() => { setSelectedMatch(m.id); setShowPicker(false); }}
+                className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
+                <span className="text-white text-sm">vs {m.rival}</span>
+                <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
+                {m.resultado && <Badge color="green">{m.resultado}</Badge>}
+                {(m.coachValuations||[]).length > 0 && <Badge color="blue">Valorado</Badge>}
+              </button>
+            ))}
+          </div>
+          <Btn small variant="secondary" className="mt-2" onClick={() => setShowPicker(false)}>Cancelar</Btn>
+        </Card>
+      )}
+
+      {/* Valoraciones existentes */}
+      {matchesConVal.map(m => (
+        <Card key={m.id}>
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="text-white font-semibold">vs {m.rival}</span>
+            <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
+            {m.resultado && <Badge color="green">{m.resultado}</Badge>}
+            <button onClick={() => setSelectedMatch(selectedMatch === m.id ? null : m.id)}
+              className="ml-auto text-xs text-zinc-400 hover:text-white transition-all">
+              {selectedMatch === m.id ? "▲ Ocultar" : "▼ Ver"}
+            </button>
+          </div>
+          {selectedMatch === m.id && (
+            <div className="space-y-3">
+              {coaches.map(c => {
+                const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
+                return (
+                  <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
+                    <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
+                    <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
+                    <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)} />
+                    <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(m.id, c.id, "comentario", e.target.value)} placeholder="Escribe tu observación sobre el entrenador..." rows={3} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      ))}
+
+      {/* Partido recién seleccionado sin valoración previa */}
+      {selectedMatch && !matchesConVal.find(m=>m.id===selectedMatch) && (() => {
+        const m = matches.find(x=>x.id===selectedMatch);
+        if (!m) return null;
+        return (
+          <Card>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="text-white font-semibold">vs {m.rival}</span>
+              <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
+              {m.resultado && <Badge color="green">{m.resultado}</Badge>}
+            </div>
+            <div className="space-y-3">
+              {coaches.map(c => {
+                const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
+                return (
+                  <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
+                    <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
+                    <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
+                    <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)} />
+                    <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(m.id, c.id, "comentario", e.target.value)} placeholder="Escribe tu observación sobre el entrenador..." rows={3} />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })()}
+
+      {matchesConVal.length === 0 && !selectedMatch && <p className="text-zinc-500 text-sm">No hay valoraciones todavía. Usa "➕ Añadir valoración" para empezar.</p>}
+    </div>
+  );
+}
+
 function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
   const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
   const [newCoachName, setNewCoachName] = useState("");
@@ -2463,44 +2563,13 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
       </Card>
 
       {/* Valoraciones tab */}
-      {tab === "valoraciones" && matches.length > 0 && coaches.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs text-zinc-500 uppercase tracking-wider">Valoraciones por partido</p>
-          {matches.map(m => (
-            <Card key={m.id}>
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-white font-semibold">vs {m.rival}</span>
-                <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
-                {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-              </div>
-              <div className="space-y-3">
-                {coaches.map(c => {
-                  const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
-                  return (
-                    <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
-                      <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
-                      <Input label="Tu nombre (coordinador)" 
-                        value={val.coordinador || coordProfile || ""}
-                        onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)}
-                        placeholder="¿Quién hace esta valoración?"
-                      />
-                      <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10"
-                        value={val.nota || ""}
-                        onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)}
-                      />
-                      <Textarea label="Observación"
-                        value={val.comentario || ""}
-                        onChange={e => saveValuation(m.id, c.id, "comentario", e.target.value)}
-                        placeholder="Escribe tu observación sobre el entrenador..."
-                        rows={3}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
-        </div>
+      {tab === "valoraciones" && (() => {
+        const [valMatch, setValMatch] = window._valMatchState || [null, ()=>{}];
+        // Use a ref-like approach with component state via a wrapper
+        return null;
+      })()}
+      {tab === "valoraciones" && (
+        <ValoracionesTab matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} />
       )}
 
       {/* Asistencia tab */}
