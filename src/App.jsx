@@ -640,7 +640,7 @@ function Pizarra({ value, onChange }) {
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{backgroundColor: PLAYER_COLOR_HEX2[color]||"#dc2626", borderColor: PLAYER_COLOR_HEX2[color]||"#dc2626"}} style={{fontSize:10}} title="Doble clic para editar número">
+            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{backgroundColor: PLAYER_COLOR_HEX2[color]||"#dc2626", borderColor: PLAYER_COLOR_HEX2[color]||"#dc2626", fontSize:10}} title="Doble clic para editar número">
               {(item.num != null ? item.num : "")}
             </div>
           )
