@@ -971,7 +971,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     const PLAYER_COLOR_HEX = { red:"#dc2626", yellow:"#eab308", blue:"#2563eb", green:"#16a34a" };
     const W = 500, H = 325;
 
-    const renderFieldSVG = (items, fieldType) => {
+    const renderFieldSVG = (rawItems, fieldType) => { const items = (rawItems || []).filter(item => item != null && typeof item === 'object');
       const markings = fieldType === "blank" ? "" : fieldType === "half" ? `
         <rect x="10" y="10" width="480" height="305" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <line x1="10" y1="162" x2="490" y2="162" stroke="white" stroke-width="2" opacity="0.6"/>
