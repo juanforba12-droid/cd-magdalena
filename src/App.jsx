@@ -752,6 +752,8 @@ function TareasSection({ team, data, onSave }) {
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
 
+  const openEdit = (t) => { setEditing({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) }); setShowEditor(true); };
+
   const tasks = data.tasks || [];
 
   const saveTask = (t) => {
@@ -788,7 +790,7 @@ function TareasSection({ team, data, onSave }) {
                 {t.pizarra?.length > 0 && <p className="text-zinc-600 text-xs mt-1">🎨 Pizarra con {t.pizarra.length} elementos</p>}
               </div>
               <div className="flex gap-1 ml-3 shrink-0">
-                <Btn small variant="secondary" onClick={() => { setEditing(t); setShowEditor(true); }}>✏️</Btn>
+                <Btn small variant="secondary" onClick={() => { openEdit(t); }}>✏️</Btn>
                 <Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</Btn>
               </div>
             </div>
