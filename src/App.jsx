@@ -586,11 +586,16 @@ function Pizarra({ value, onChange }) {
   const fieldRef = useRef(null);
   const items = (value || []).filter(i => i != null && typeof i === 'object' && typeof i.type === 'string');
 
+  const getCoords = (e) => {
+    if (e.touches && e.touches[0]) return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    return { clientX: e.clientX, clientY: e.clientY };
+  };
   const addItem = (e) => {
     if (dragging !== null) return;
     const rect = fieldRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const {clientX, clientY} = getCoords(e);
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
     if (tool === "erase") return;
     if (tool === "move") return;
@@ -602,6 +607,7 @@ function Pizarra({ value, onChange }) {
 
   const startDrag = (e, id) => {
     e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
     const rect = fieldRef.current.getBoundingClientRect();
     const item = items.find(i => i.id === id);
     setDragOffset({
@@ -611,6 +617,8 @@ function Pizarra({ value, onChange }) {
     setDragging(id);
   };
 
+  const onTouchMove = (e) => { e.preventDefault(); onMouseMove(e.touches[0]); };
+  const onTouchStart = (e) => { if(e.touches.length===1) startDrag({...e, clientX:e.touches[0].clientX, clientY:e.touches[0].clientY, stopPropagation:()=>e.stopPropagation(), preventDefault:()=>e.preventDefault()}, null); };
   const onMouseMove = (e) => {
     if (dragging === null) return;
     const rect = fieldRef.current.getBoundingClientRect();
@@ -706,7 +714,7 @@ function Pizarra({ value, onChange }) {
       {/* Field */}
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none"
         style={{ paddingBottom:"65%", background:"#1a6b2e", cursor:"crosshair" }}
-        onClick={addItem} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onClick={addItem} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
       >
         <FieldMarkings type={fieldType} />
         <div className="absolute inset-0">{items.map(renderItem)}</div>
