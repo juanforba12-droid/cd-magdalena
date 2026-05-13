@@ -2625,7 +2625,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 
       {/* Valoraciones tab */}
       {tab === "valoraciones" && (
-        <ValoracionesTab matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} players={teamData.players||[]} />
+        <ValoracionesTab key={selectedTeam} matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} players={teamData.players||[]} />
       )}
 
       {/* Asistencia tab */}
