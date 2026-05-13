@@ -3,6 +3,13 @@ import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 
 // ── Initial state ────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(e) { console.error("Render error:", e); }
+  render() { return this.state.hasError ? <div style={{color:'white',padding:20}}>Error al renderizar. Recarga la página.</div> : this.props.children; }
+}
+
 const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Transición", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
 const COORDINATORS = ["Lalo", "Patri", "Jose", "Juan", "Xuso", "Fer", "Oscar"];
 
