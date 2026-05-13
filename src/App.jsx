@@ -2316,7 +2316,9 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
 // ══════════════════════════════════════════════════════════════════════════════
 function ValoracionesTab({ matches, coaches, coordProfile, saveValuation }) {
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [selectedCoach, setSelectedCoach] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerStep, setPickerStep] = useState("match"); // match | coach
 
   // Partidos que ya tienen alguna valoración
   const matchesConVal = matches.filter(m => (m.coachValuations||[]).length > 0);
@@ -2336,18 +2338,33 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation }) {
       {showPicker && (
         <Card className="border-zinc-600">
           <p className="text-zinc-300 text-sm font-semibold mb-2">Selecciona un partido</p>
-          <div className="space-y-1 max-h-48 overflow-y-auto">
-            {matches.map(m => (
-              <button key={m.id} onClick={() => { setSelectedMatch(m.id); setShowPicker(false); }}
-                className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
-                <span className="text-white text-sm">vs {m.rival}</span>
-                <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
-                {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-                {(m.coachValuations||[]).length > 0 && <Badge color="blue">Valorado</Badge>}
-              </button>
-            ))}
-          </div>
-          <Btn small variant="secondary" className="mt-2" onClick={() => setShowPicker(false)}>Cancelar</Btn>
+          {pickerStep === "match" && <>
+            <p className="text-zinc-300 text-sm font-semibold mb-2">1. Selecciona un partido</p>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {matches.map(m => (
+                <button key={m.id} onClick={() => { setSelectedMatch(m.id); setPickerStep("coach"); }}
+                  className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
+                  <span className="text-white text-sm">vs {m.rival}</span>
+                  <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
+                  {m.resultado && <Badge color="green">{m.resultado}</Badge>}
+                  {(m.coachValuations||[]).length > 0 && <Badge color="blue">Valorado</Badge>}
+                </button>
+              ))}
+            </div>
+          </>}
+          {pickerStep === "coach" && <>
+            <p className="text-zinc-300 text-sm font-semibold mb-2">2. Selecciona un entrenador</p>
+            <div className="space-y-1">
+              {coaches.map(c => (
+                <button key={c.id} onClick={() => { setSelectedCoach(c.id); setShowPicker(false); setPickerStep("match"); }}
+                  className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
+                  <span className="text-white text-sm">👤 {c.name}</span>
+                </button>
+              ))}
+            </div>
+            <Btn small variant="ghost" className="mt-2" onClick={() => setPickerStep("match")}>← Volver</Btn>
+          </>}
+          <Btn small variant="secondary" className="mt-2" onClick={() => { setShowPicker(false); setPickerStep("match"); }}>Cancelar</Btn>
         </Card>
       )}
 
@@ -2365,7 +2382,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation }) {
           </div>
           {selectedMatch === m.id && (
             <div className="space-y-3">
-              {coaches.map(c => {
+              {coaches.filter(c => !selectedCoach || c.id === selectedCoach).map(c => {
                 const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
                 return (
                   <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
