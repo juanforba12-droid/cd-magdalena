@@ -565,6 +565,7 @@ function FieldMarkings({ type }) {
 }
 
 function Pizarra({ value, onChange }) {
+  const items = (value || []).filter(i => i != null);
   const [tool, setTool] = useState("player_red");
   const [playerNum, setPlayerNum] = useState(1);
   const [fieldType, setFieldType] = useState("full");
