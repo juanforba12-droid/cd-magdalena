@@ -779,6 +779,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Tareas (biblioteca)
 // ══════════════════════════════════════════════════════════════════════════════
+
 const TASK_CATEGORIES = [
   { id: "activacion", label: "🏃 Activación", color: "orange" },
   { id: "tecnica", label: "⚽ Técnica", color: "blue" },
