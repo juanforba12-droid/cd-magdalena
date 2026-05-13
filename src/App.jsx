@@ -983,7 +983,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
 
   const printTraining = (t) => {
     const PLAYER_COLOR_HEX = { red:"#dc2626", yellow:"#eab308", blue:"#2563eb", green:"#16a34a" };
-    const W = 500, H = 325;
+    const W = 700, H = 455;
 
     const renderFieldSVG = (rawItems, fieldType) => { const items = (rawItems || []).filter(item => item != null && typeof item === 'object');
       const fieldBg = `<rect width="500" height="325" fill="#2d6a4f" rx="4"/>`;
