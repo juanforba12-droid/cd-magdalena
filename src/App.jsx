@@ -1440,6 +1440,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
   const [fecha, setFecha] = useState("");
   const [golesLocal, setGolesLocal] = useState("");
   const [golesVisitante, setGolesVisitante] = useState("");
+  const [rivales, setRivales] = useState([{num:"",nombre:""},{num:"",nombre:""}]);
 
   const setAttRecord = (sessionId, playerId, playerName, status, sessionFecha) => {
     const att = [...(data.attendance || [])].filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
@@ -1479,6 +1480,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     } else {
       setGolesLocal(""); setGolesVisitante("");
     }
+    setRivales(m?.mejoresRivales || [{num:"",nombre:""},{num:"",nombre:""}]);
     setView("form");
   };
 
@@ -1488,14 +1490,14 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     const matches = [...(data.matches || [])];
     if (editing) {
       const idx = matches.findIndex(m => m.id === editing.id);
-      matches[idx] = { ...editing, rival, lugar, fecha, resultado };
+      matches[idx] = { ...editing, rival, lugar, fecha, resultado, mejoresRivales: rivales };
     } else {
       const players = data.players || [];
       const convocatoria = players.map(p => ({
         playerId: p.id, playerName: p.name,
         status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
       }));
-      matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria, capitan: null, formacion: [] });
+      matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales });
     }
     onSave({ ...data, matches: matches.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
     setView("list");
