@@ -2173,8 +2173,8 @@ function MejoresRivalesSection({ db }) {
     if (t.includes("juvenil")) return "Juvenil";
     return "Otros";
   };
-  const filtered = filterTeam === "all" ? allRivales : allRivales.filter(r => r.equipo === filterTeam);
-  const teams = [...new Set(allRivales.map(r => r.equipo))];
+  const filtered = filterTeam === "all" ? allRivales : allRivales.filter(r => teamToCategoria(r.equipo) === filterTeam);
+  const categoriesWithData = [...new Set(allRivales.map(r => teamToCategoria(r.equipo)))];
 
   return (
     <div className="space-y-4">
@@ -2184,8 +2184,8 @@ function MejoresRivalesSection({ db }) {
       {/* Filtro por equipo */}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilterTeam("all")} className={`px-2 py-1 rounded text-xs border transition-all ${filterTeam==="all"?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Todos</button>
-        {teams.map(t => (
-          <button key={t} onClick={() => setFilterTeam(t)} className={`px-2 py-1 rounded text-xs border transition-all ${filterTeam===t?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{t}</button>
+        {CATEGORIAS.filter(c => categoriesWithData.includes(c.id)).map(c => (
+          <button key={c.id} onClick={() => setFilterTeam(c.id)} className={`px-2 py-1 rounded text-xs border transition-all ${filterTeam===c.id?c.color+" font-semibold":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.id}</button>
         ))}
       </div>
 
