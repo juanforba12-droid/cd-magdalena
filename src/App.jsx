@@ -1012,7 +1012,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="escalera") return `<rect x="${cx-8}" y="${cy-10}" width="16" height="20" fill="none" stroke="#f59e0b" stroke-width="1.5"/><line x1="${cx-8}" y1="${cy-4}" x2="${cx+8}" y2="${cy-4}" stroke="#f59e0b" stroke-width="1.5"/><line x1="${cx-8}" y1="${cy+3}" x2="${cx+8}" y2="${cy+3}" stroke="#f59e0b" stroke-width="1.5"/>`;
     if (type==="pesa") return `<circle cx="${cx-6}" cy="${cy}" r="4" fill="none" stroke="#a78bfa" stroke-width="2"/><circle cx="${cx+6}" cy="${cy}" r="4" fill="none" stroke="#a78bfa" stroke-width="2"/><line x1="${cx-6}" y1="${cy}" x2="${cx+6}" y2="${cy}" stroke="#a78bfa" stroke-width="3"/>`;
     if (type==="pica") return `<line x1="${cx}" y1="${cy-12}" x2="${cx}" y2="${cy+8}" stroke="#ef4444" stroke-width="2"/><polygon points="${cx},${cy-12} ${cx+8},${cy-6} ${cx},${cy-2}" fill="#ef4444"/>`;
-    if (type==="aro") return `<circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
+    if (type==="aro") return `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
     if (type==="balon") return `<circle cx="${cx}" cy="${cy}" r="7" fill="white" opacity="0.9"/><circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="#333" stroke-width="1"/>`;
     if (type==="valla") return `<rect x="${cx-10}" y="${cy-5}" width="20" height="10" fill="none" stroke="#a3e635" stroke-width="2"/>`;
     if (type==="linea_azul") return `<line x1="${cx-12}" y1="${cy}" x2="${cx+12}" y2="${cy}" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>`;
