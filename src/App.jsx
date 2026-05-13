@@ -1579,6 +1579,19 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           <Btn variant="secondary" onClick={() => setView("list")}>Cancelar</Btn>
         </div>
       </Card>
+      <Card>
+        <p className="text-white font-semibold mb-1">⭐ Mejores jugadores rivales</p>
+        <p className="text-zinc-400 text-sm mb-3">Los dos jugadores más destacados del equipo rival.</p>
+        <div className="space-y-3">
+          {[0,1].map(i => (
+            <div key={i} className="flex gap-2 items-center">
+              <span className="text-zinc-400 text-sm w-4">{i+1}.</span>
+              <input type="number" min="1" max="99" placeholder="Nº" value={rivales[i]?.num||""} onChange={e => setRivales(prev => prev.map((x,j)=>j===i?{...x,num:e.target.value}:x))} className="bg-zinc-900 border border-zinc-700 rounded px-2 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-16 text-center"/>
+              <input type="text" placeholder="Nombre y apellidos" value={rivales[i]?.nombre||""} onChange={e => setRivales(prev => prev.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 flex-1"/>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 
