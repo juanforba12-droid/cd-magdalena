@@ -63,7 +63,7 @@ const Textarea = ({ label, ...props }) => (
   </div>
 );
 
-const Card = ({ children, className = "" }) => (
+const Card = ({ children, className = "", onClick }) => (
   <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-5 ${className}`}>{children}</div>
 );
 
