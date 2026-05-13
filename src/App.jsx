@@ -2314,135 +2314,162 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenadores (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
-function ValoracionesTab({ matches, coaches, coordProfile, saveValuation }) {
-  const [selectedMatch, setSelectedMatch] = useState(null);
-  const [selectedCoach, setSelectedCoach] = useState(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerStep, setPickerStep] = useState("match"); // match | coach | extra
-  const [extraFields, setExtraFields] = useState({});
+function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, players }) {
+  const [step, setStep] = useState("list"); // list | pickMatch | pickType | pickCoach | valorCoach | valorEquipo
+  const [selMatch, setSelMatch] = useState(null);
+  const [selCoach, setSelCoach] = useState(null);
 
-  // Partidos que ya tienen alguna valoración
-  const matchesConVal = matches.filter(m => (m.coachValuations||[]).length > 0);
-  const matchesSinVal = matches.filter(m => !(m.coachValuations||[]).length);
-
-  if (coaches.length === 0) return <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>;
   if (matches.length === 0) return <p className="text-zinc-500 text-sm">No hay partidos registrados.</p>;
 
-  return (
+  const reset = () => { setStep("list"); setSelMatch(null); setSelCoach(null); };
+
+  const matchObj = matches.find(m => m.id === selMatch);
+
+  // STEP: list — mostrar valoraciones existentes
+  if (step === "list") return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <p className="text-xs text-zinc-500 uppercase tracking-wider">Valoraciones por partido</p>
-        <Btn small onClick={() => setShowPicker(true)}>➕ Añadir valoración</Btn>
+        <Btn small onClick={() => setStep("pickMatch")}>➕ Añadir valoración</Btn>
       </div>
-
-      {/* Selector de partido */}
-      {showPicker && (
-        <Card className="border-zinc-600">
-          <p className="text-zinc-300 text-sm font-semibold mb-2">Selecciona un partido</p>
-          {pickerStep === "match" && <>
-            <p className="text-zinc-300 text-sm font-semibold mb-2">1. Selecciona un partido</p>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {matches.map(m => (
-                <button key={m.id} onClick={() => { setSelectedMatch(m.id); setPickerStep("coach"); }}
-                  className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
-                  <span className="text-white text-sm">vs {m.rival}</span>
-                  <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
-                  {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-                  {(m.coachValuations||[]).length > 0 && <Badge color="blue">Valorado</Badge>}
-                </button>
-              ))}
-            </div>
-          </>}
-          {pickerStep === "coach" && <>
-            <p className="text-zinc-300 text-sm font-semibold mb-2">2. Selecciona un entrenador</p>
-            <div className="space-y-1">
-              {coaches.map(c => (
-                <button key={c.id} onClick={() => { setSelectedCoach(c.id); setPickerStep("extra"); }}
-                  className="w-full text-left px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 transition-all flex items-center gap-2">
-                  <span className="text-white text-sm">👤 {c.name}</span>
-                </button>
-              ))}
-            </div>
-            <Btn small variant="ghost" className="mt-2" onClick={() => setPickerStep("match")}>← Volver</Btn>
-          </>}
-          {pickerStep === "extra" && <>
-            <p className="text-zinc-300 text-sm font-semibold mb-2">3. Equipo (opcional)</p>
-            <input
-              className="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white text-sm mb-2"
-              placeholder="Nombre del equipo (opcional)"
-              value={extraFields.equipo || ""}
-              onChange={e => setExtraFields(prev => ({...prev, equipo: e.target.value}))}
-            />
-            <Btn small onClick={() => { setShowPicker(false); setPickerStep("match"); }}>✓ Confirmar</Btn>
-            <Btn small variant="ghost" className="mt-2 ml-2" onClick={() => setPickerStep("coach")}>← Volver</Btn>
-          </>}
-          <Btn small variant="secondary" className="mt-2" onClick={() => { setShowPicker(false); setPickerStep("match"); }}>Cancelar</Btn>
-        </Card>
-      )}
-
-      {/* Valoraciones existentes */}
-      {matchesConVal.map(m => (
-        <Card key={m.id}>
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
+      {matches.filter(m => (m.coachValuations||[]).length > 0 || (m.playerValuations||[]).length > 0).map(m => (
+        <Card key={m.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelMatch(m.id); setStep("pickType"); }}>
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white font-semibold">vs {m.rival}</span>
             <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
             {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-            <button onClick={() => setSelectedMatch(selectedMatch === m.id ? null : m.id)}
-              className="ml-auto text-xs text-zinc-400 hover:text-white transition-all">
-              {selectedMatch === m.id ? "▲ Ocultar" : "▼ Ver"}
-            </button>
-            {selectedMatch === m.id && selectedCoach && <button onClick={()=>{setSelectedCoach(null); setExtraFields({});}} className="text-xs text-zinc-500 hover:text-white ml-1">Ver todos</button>}
+            {(m.coachValuations||[]).length > 0 && <Badge color="blue">Entrenadores</Badge>}
+            {(m.playerValuations||[]).length > 0 && <Badge color="purple">Jugadores</Badge>}
           </div>
-          {selectedMatch === m.id && (
-            <div className="space-y-3">
-              {coaches.filter(c => !selectedCoach || c.id === selectedCoach).map(c => {
-                const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
-                return (
-                  <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
-                    <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
-                    <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
-                    <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)} />
-                    <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(m.id, c.id, "comentario", e.target.value)} placeholder="Escribe tu observación sobre el entrenador..." rows={3} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </Card>
       ))}
-
-      {/* Partido recién seleccionado sin valoración previa */}
-      {selectedMatch && !matchesConVal.find(m=>m.id===selectedMatch) && (() => {
-        const m = matches.find(x=>x.id===selectedMatch);
-        if (!m) return null;
-        return (
-          <Card>
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className="text-white font-semibold">vs {m.rival}</span>
-              <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
-              {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-            </div>
-            <div className="space-y-3">
-              {coaches.map(c => {
-                const val = (m.coachValuations || []).find(v => v.coachId === c.id) || {};
-                return (
-                  <div key={c.id} className="bg-zinc-800 rounded-lg p-3 space-y-2">
-                    <span className="text-zinc-300 text-sm font-semibold">{c.name}</span>
-                    <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(m.id, c.id, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
-                    <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(m.id, c.id, "nota", e.target.value)} />
-                    <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(m.id, c.id, "comentario", e.target.value)} placeholder="Escribe tu observación sobre el entrenador..." rows={3} />
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        );
-      })()}
-
-      {matchesConVal.length === 0 && !selectedMatch && <p className="text-zinc-500 text-sm">No hay valoraciones todavía. Usa "➕ Añadir valoración" para empezar.</p>}
+      {matches.filter(m=>(m.coachValuations||[]).length>0||(m.playerValuations||[]).length>0).length === 0 &&
+        <p className="text-zinc-500 text-sm">No hay valoraciones todavía. Usa "➕ Añadir valoración" para empezar.</p>}
     </div>
   );
+
+  // STEP: pickMatch
+  if (step === "pickMatch") return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={reset}>← Volver</Btn><p className="text-white font-semibold">1. Selecciona un partido</p></div>
+      {matches.map(m => (
+        <Card key={m.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelMatch(m.id); setStep("pickType"); }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white text-sm font-semibold">vs {m.rival}</span>
+            <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
+            {m.resultado && <Badge color="green">{m.resultado}</Badge>}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // STEP: pickType — entrenador o equipo
+  if (step === "pickType") return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickMatch")}>← Volver</Btn><p className="text-white font-semibold">2. ¿Qué quieres valorar?</p></div>
+      <p className="text-zinc-400 text-xs">Partido: vs {matchObj?.rival} — {matchObj?.fecha}</p>
+      <Card className="cursor-pointer hover:border-blue-700 border-zinc-700" onClick={() => setStep("pickCoach")}>
+        <p className="text-white font-semibold">👤 Entrenador</p>
+        <p className="text-zinc-400 text-sm">Valorar a un entrenador individualmente</p>
+      </Card>
+      <Card className="cursor-pointer hover:border-purple-700 border-zinc-700" onClick={() => setStep("valorEquipo")}>
+        <p className="text-white font-semibold">🏟️ Equipo</p>
+        <p className="text-zinc-400 text-sm">Valorar a entrenadores y jugadores del equipo</p>
+      </Card>
+    </div>
+  );
+
+  // STEP: pickCoach
+  if (step === "pickCoach") return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickType")}>← Volver</Btn><p className="text-white font-semibold">3. Selecciona un entrenador</p></div>
+      {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
+      {coaches.map(c => (
+        <Card key={c.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelCoach(c.id); setStep("valorCoach"); }}>
+          <span className="text-white font-semibold">👤 {c.name}</span>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // STEP: valorCoach
+  if (step === "valorCoach") {
+    const c = coaches.find(x => x.id === selCoach);
+    const val = (matchObj?.coachValuations || []).find(v => v.coachId === selCoach) || {};
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickCoach")}>← Volver</Btn><p className="text-white font-semibold">Valorar a {c?.name}</p></div>
+        <p className="text-zinc-400 text-xs">Partido: vs {matchObj?.rival} — {matchObj?.fecha}</p>
+        <Card className="space-y-3">
+          <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(matchObj.id, selCoach, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
+          <Input label="Nota (0-10)" type="number" step="0.1" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(matchObj.id, selCoach, "nota", e.target.value)} />
+          <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(matchObj.id, selCoach, "comentario", e.target.value)} placeholder="Escribe tu observación..." rows={3} />
+        </Card>
+        <Btn onClick={reset}>✓ Guardar y volver</Btn>
+      </div>
+    );
+  }
+
+  // STEP: valorEquipo — entrenadores + jugadores
+  if (step === "valorEquipo") {
+    const convocados = (matchObj?.convocatoria || []).filter(c => c.status !== "no_conv");
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickType")}>← Volver</Btn><p className="text-white font-semibold">Valorar equipo — vs {matchObj?.rival}</p></div>
+
+        {coaches.length > 0 && <>
+          <p className="text-xs text-zinc-500 uppercase tracking-wider">Entrenadores</p>
+          {coaches.map(c => {
+            const val = (matchObj?.coachValuations || []).find(v => v.coachId === c.id) || {};
+            return (
+              <Card key={c.id} className="space-y-2">
+                <span className="text-white font-semibold">👤 {c.name}</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Nota (0-10)" type="number" step="0.1" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(matchObj.id, c.id, "nota", e.target.value)} />
+                  <Input label="Coordinador" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(matchObj.id, c.id, "coordinador", e.target.value)} />
+                </div>
+                <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(matchObj.id, c.id, "comentario", e.target.value)} rows={2} />
+              </Card>
+            );
+          })}
+        </>}
+
+        {convocados.length > 0 && <>
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mt-2">Jugadores convocados</p>
+          {convocados.map(c => {
+            const pvals = matchObj?.playerValuations || [];
+            const val = pvals.find(v => v.playerId === c.playerId) || {};
+            const savePlayerVal = (field, value) => {
+              const newVals = pvals.filter(v => v.playerId !== c.playerId);
+              newVals.push({...val, playerId: c.playerId, playerName: c.playerName, [field]: value});
+              const newMatches = matches.map(m => m.id !== matchObj.id ? m : {...m, playerValuations: newVals});
+              saveValuation(matchObj.id, null, "__playerVals__", newVals, newMatches);
+            };
+            return (
+              <Card key={c.playerId} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-semibold">{c.playerName}</span>
+                  <Badge color={c.status==="titular"?"green":"blue"}>{c.status==="titular"?"Titular":"Suplente"}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Nota (0-10)" type="number" step="0.1" min="0" max="10" value={val.nota || ""} onChange={e => savePlayerVal("nota", e.target.value)} />
+                  <Input label="Coordinador" value={val.coordinador || coordProfile || ""} onChange={e => savePlayerVal("coordinador", e.target.value)} />
+                </div>
+                <Textarea label="Observación" value={val.comentario || ""} onChange={e => savePlayerVal("comentario", e.target.value)} rows={2} />
+              </Card>
+            );
+          })}
+        </>}
+        {convocados.length === 0 && <p className="text-zinc-400 text-sm">No hay jugadores convocados en este partido.</p>}
+        <Btn onClick={reset}>✓ Guardar y volver</Btn>
+      </div>
+    );
+  }
+
+  return null;
 }
+
 
 function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
   const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
@@ -2472,7 +2499,11 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
     onSaveTeam(selectedTeam, { ...teamData, coaches: coaches.filter(c => c.id !== id) });
   };
 
-  const saveValuation = (matchId, coachId, field, value) => {
+  const saveValuation = (matchId, coachId, field, value, prebuiltMatches) => {
+    if (prebuiltMatches) {
+      onSaveTeam(selectedTeam, { ...teamData, matches: prebuiltMatches });
+      return;
+    }
     const newMatches = (teamData.matches || []).map(m => {
       if (m.id !== matchId) return m;
       const vals = m.coachValuations || [];
@@ -2599,7 +2630,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
         return null;
       })()}
       {tab === "valoraciones" && (
-        <ValoracionesTab matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} />
+        <ValoracionesTab matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} players={teamData.players||[]} />
       )}
 
       {/* Asistencia tab */}
