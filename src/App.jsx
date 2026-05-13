@@ -2353,13 +2353,14 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, player
     <div className="space-y-3">
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={reset}>← Volver</Btn><p className="text-white font-semibold">1. Selecciona un partido</p></div>
       {matches.map(m => (
-        <Card key={m.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelMatch(m.id); setStep("pickType"); }}>
+        <div key={m.id} className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 cursor-pointer transition-colors"
+          onClick={(e) => { e.stopPropagation(); setSelMatch(m.id); setStep("pickType"); }}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white text-sm font-semibold">vs {m.rival}</span>
             <span className="text-zinc-400 text-xs">📅 {m.fecha}</span>
             {m.resultado && <Badge color="green">{m.resultado}</Badge>}
           </div>
-        </Card>
+        </div>
       ))}
     </div>
   );
@@ -2369,14 +2370,16 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, player
     <div className="space-y-3">
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickMatch")}>← Volver</Btn><p className="text-white font-semibold">2. ¿Qué quieres valorar?</p></div>
       <p className="text-zinc-400 text-xs">Partido: vs {matchObj?.rival} — {matchObj?.fecha}</p>
-      <Card className="cursor-pointer hover:border-blue-700 border-zinc-700" onClick={() => setStep("pickCoach")}>
+      <div className="bg-zinc-900 border border-zinc-700 hover:border-blue-700 rounded-xl p-4 cursor-pointer transition-colors"
+        onClick={(e) => { e.stopPropagation(); setStep("pickCoach"); }}>
         <p className="text-white font-semibold">👤 Entrenador</p>
         <p className="text-zinc-400 text-sm">Valorar a un entrenador individualmente</p>
-      </Card>
-      <Card className="cursor-pointer hover:border-purple-700 border-zinc-700" onClick={() => setStep("valorEquipo")}>
+      </div>
+      <div className="bg-zinc-900 border border-zinc-700 hover:border-purple-700 rounded-xl p-4 cursor-pointer transition-colors"
+        onClick={(e) => { e.stopPropagation(); setStep("valorEquipo"); }}>
         <p className="text-white font-semibold">🏟️ Equipo</p>
         <p className="text-zinc-400 text-sm">Valorar a entrenadores y jugadores del equipo</p>
-      </Card>
+      </div>
     </div>
   );
 
@@ -2386,9 +2389,10 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, player
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickType")}>← Volver</Btn><p className="text-white font-semibold">3. Selecciona un entrenador</p></div>
       {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
       {coaches.map(c => (
-        <Card key={c.id} className="cursor-pointer hover:border-zinc-600" onClick={() => { setSelCoach(c.id); setStep("valorCoach"); }}>
+        <div key={c.id} className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 cursor-pointer transition-colors"
+          onClick={(e) => { e.stopPropagation(); setSelCoach(c.id); setStep("valorCoach"); }}>
           <span className="text-white font-semibold">👤 {c.name}</span>
-        </Card>
+        </div>
       ))}
     </div>
   );
