@@ -631,7 +631,7 @@ function Pizarra({ value, onChange }) {
       >
         {isPlayer ? (
           editingItem?.id === item.id ? (
-            <input autoFocus type="number" defaultValue={editingItem.num}
+            <input autoFocus type="number" defaultValue={editingItem?.num ?? ""}
               className="w-7 h-7 rounded-full text-center font-bold border-2 bg-zinc-900 text-white border-white outline-none"
               style={{fontSize:10}}
               onBlur={e => saveEditNum(item.id, e.target.value)}
