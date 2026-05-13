@@ -986,7 +986,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     const W = 700, H = 455;
 
     const renderFieldSVG = (rawItems, fieldType) => { const items = (rawItems || []).filter(item => item != null && typeof item === 'object');
-      const fieldBg = `<rect width="500" height="325" fill="#2d6a4f" rx="4"/>`;
+      const fieldBg = `<rect width="${W}" height="${H}" fill="#2d6a4f"/>`;
   const markings = fieldType === "blank" ? "" : fieldType === "half" ? `
         <rect x="10" y="10" width="480" height="305" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <line x1="10" y1="162" x2="490" y2="162" stroke="white" stroke-width="2" opacity="0.6"/>
@@ -1032,7 +1032,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         return getIcon(item.type, cx, cy);
 return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
       }).join("");
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="100%" height="100%" fill="#1a6b2e"/>${markings}${itemsSVG}</svg>`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="${W}" height="${H}" fill="#1a6b2e"/>${markings}${itemsSVG}</svg>`;
     };
 
     const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
