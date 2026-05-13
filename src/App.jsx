@@ -2624,11 +2624,6 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
       </Card>
 
       {/* Valoraciones tab */}
-      {tab === "valoraciones" && (() => {
-        const [valMatch, setValMatch] = window._valMatchState || [null, ()=>{}];
-        // Use a ref-like approach with component state via a wrapper
-        return null;
-      })()}
       {tab === "valoraciones" && (
         <ValoracionesTab matches={matches} coaches={coaches} coordProfile={coordProfile} saveValuation={saveValuation} players={teamData.players||[]} />
       )}
