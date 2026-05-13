@@ -506,7 +506,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 // PIZARRA TÁCTICA
 // ══════════════════════════════════════════════════════════════════════════════
 const PLAYER_COLORS = ["red","yellow","blue","green"];
-const PLAYER_COLOR_STYLES = { red:"bg-red-600 border-red-400", yellow:"bg-yellow-500 border-yellow-300", blue:"bg-blue-600 border-blue-400", green:"bg-green-600 border-green-400" };
+const PLAYER_COLOR_HEX2 = { red:"#dc2626", yellow:"#eab308", blue:"#2563eb", green:"#16a34a" };
 
 const MATERIALS = [
   { id:"cono", label:"Cono", svg: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-orange-400"><path d="M12 2L4 20h16L12 2z"/><ellipse cx="12" cy="20" rx="8" ry="2" fill="currentColor" opacity="0.4"/></svg> },
@@ -639,7 +639,7 @@ function Pizarra({ value, onChange }) {
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg ${PLAYER_COLOR_STYLES[color]}`} style={{fontSize:10}} title="Doble clic para editar número">
+            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{backgroundColor: PLAYER_COLOR_HEX2[color]||"#dc2626", borderColor: PLAYER_COLOR_HEX2[color]||"#dc2626"}} style={{fontSize:10}} title="Doble clic para editar número">
               {(item.num != null ? item.num : "")}
             </div>
           )
