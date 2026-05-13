@@ -522,6 +522,8 @@ const MATERIALS = [
   { id:"valla", label:"Valla", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-lime-400"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> },
   { id:"linea_azul", label:"Línea azul", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/></svg> },
   { id:"linea_naranja", label:"Línea naranja", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/></svg> },
+  { id:"linea_azul_v", label:"Línea azul V", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="12" y1="2" x2="12" y2="22" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/></svg> },
+  { id:"linea_naranja_v", label:"Línea naranja V", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="12" y1="2" x2="12" y2="22" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/></svg> },
 ];
 
 const FIELD_TYPES = [
@@ -591,6 +593,7 @@ function Pizarra({ value, onChange }) {
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
     if (tool === "erase") return;
+    if (tool === "move") return;
     const isPlayer = tool.startsWith("player_");
     const newItem = { id: Date.now(), x, y, type: tool, ...(isPlayer ? { num: playerNum } : {}) };
     if (isPlayer) setPlayerNum(n => n + 1);
@@ -690,7 +693,8 @@ function Pizarra({ value, onChange }) {
           ))}
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setTool("erase")}
+          <button onClick={() => setTool("move")} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="move"?"bg-blue-700 border-blue-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Mover elementos">✋ Mover</button>
+            <button onClick={() => setTool("erase")}
             className={`px-3 py-1 rounded text-xs border transition-all ${tool==="erase"?"bg-red-700 border-red-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
           >🗑 Borrar</button>
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
