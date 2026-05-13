@@ -2621,7 +2621,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
             );
           })}
         </div>
-      </Card>
+      </Card>)}
 
       {/* Valoraciones tab */}
       {tab === "valoraciones" && (
