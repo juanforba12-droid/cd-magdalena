@@ -3190,6 +3190,14 @@ export default function App() {
   };
 
   const updateTeamData = async (team, newData) => {
+    // Recargar datos frescos de Firebase antes de guardar para evitar sobreescrituras
+    let freshDb;
+    try {
+      freshDb = await loadData();
+      if (freshDb) setDb(freshDb);
+    } catch(e) {
+      freshDb = db;
+    }
     const cleanTeam = (d) => ({
       ...d,
       trainings: (d.trainings || []).map(t => ({
@@ -3208,7 +3216,7 @@ export default function App() {
         }))
       }))
     });
-    const newDb = { ...db, [team]: cleanTeam(newData) };
+    const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
     setDb(newDb);
     await saveData(newDb);
   };
