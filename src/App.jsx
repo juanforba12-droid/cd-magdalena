@@ -949,6 +949,8 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const [editingTask, setEditingTask] = useState(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [duracion, setDuracion] = useState(90);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
 
   const setCoachAttRecord = (sessionId, coachId, status, sessionFecha) => {
     const coachAtt = [...(data.coachAttendance || [])].filter(a => !(a.sessionId === sessionId && a.coachId === coachId));
@@ -1041,11 +1043,23 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       const libTask = { ...task, id: Date.now() };
       newData.tasks = [...(data.tasks || []), libTask];
     }
-    onSave(newData);
+    saveWithFeedback(newData);
     setShowTaskEditor(false);
     setEditingTask(null);
     // update taskTraining reference
     setTaskTraining(trainings.find(t => t.id === taskTraining.id));
+  };
+
+  const saveWithFeedback = async (newData) => {
+    setSaving(true);
+    try {
+      await onSave(newData);
+      setLastSaved(new Date());
+    } catch(e) {
+      console.error('Save failed:', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const delTaskFromTraining = (trainingId, taskId) => {
@@ -1063,7 +1077,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       if (t.id !== taskTraining.id) return t;
       return { ...t, tasks: [...(t.tasks || []), task] };
     });
-    onSave({ ...data, trainings });
+    saveWithFeedback({ ...data, trainings });
     setTaskTraining(trainings.find(t => t.id === taskTraining.id));
   };
 
@@ -1236,6 +1250,8 @@ return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
       </div>
 
       {/* Tasks panel modal */}
+      {saving && <div className="fixed top-4 right-4 z-50 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-zinc-300 text-sm">💾 Guardando...</div>}
+      {lastSaved && !saving && <div className="fixed top-4 right-4 z-50 bg-green-900 border border-green-700 rounded-lg px-3 py-2 text-green-300 text-sm">✓ Guardado</div>}
       {taskTraining && (
         <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4 overflow-auto" onClick={() => { setTaskTraining(null); setShowTaskEditor(false); }}>
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl my-4" onClick={e => e.stopPropagation()}>
