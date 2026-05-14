@@ -3091,8 +3091,10 @@ export default function App() {
     Promise.all([loadData(), loadSeasons()]).then(([d, s]) => {
       // load passwords
       try { const raw = localStorage.getItem("cdmag_passwords"); if(raw) setTeamPasswords(JSON.parse(raw)); } catch(e) {}
-      try { const raw2 = localStorage.getItem("cdmag_global_tasks"); if(raw2) setGlobalTasks(JSON.parse(raw2)); } catch(e) {}
-      setDb(d || initState());
+      // globalTasks se carga de Firebase via loadData
+      const dbData = d || initState();
+      setDb(dbData);
+      if (dbData.__globalTasks) setGlobalTasks(dbData.__globalTasks);
       setSeasons(s || []);
       setLoading(false);
     });
@@ -3156,7 +3158,9 @@ export default function App() {
 
   const saveGlobalTasks = async (tasks) => {
     setGlobalTasks(tasks);
-    localStorage.setItem("cdmag_global_tasks", JSON.stringify(tasks));
+    const newDb = { ...db, __globalTasks: tasks };
+    setDb(newDb);
+    await saveData(newDb);
   };
 
   const savePasswords = async (newPwds) => {
