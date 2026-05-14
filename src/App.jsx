@@ -1250,8 +1250,6 @@ return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
       </div>
 
       {/* Tasks panel modal */}
-      {saving && <div className="fixed top-4 right-4 z-50 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-zinc-300 text-sm">💾 Guardando...</div>}
-      {lastSaved && !saving && <div className="fixed top-4 right-4 z-50 bg-green-900 border border-green-700 rounded-lg px-3 py-2 text-green-300 text-sm">✓ Guardado</div>}
       {taskTraining && (
         <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4 overflow-auto" onClick={() => { setTaskTraining(null); setShowTaskEditor(false); }}>
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl my-4" onClick={e => e.stopPropagation()}>
