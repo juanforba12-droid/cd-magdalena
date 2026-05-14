@@ -1095,6 +1095,21 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     }
   };
 
+  const moveTask = (trainingId, taskId, direction) => {
+    const trainings = (data.trainings || []).map(t => {
+      if (t.id !== trainingId) return t;
+      const tasks = [...(t.tasks || [])];
+      const idx = tasks.findIndex(x => x.id === taskId);
+      if (idx === -1) return t;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= tasks.length) return t;
+      [tasks[idx], tasks[newIdx]] = [tasks[newIdx], tasks[idx]];
+      return { ...t, tasks };
+    });
+    saveWithFeedback({ ...data, trainings });
+    setTaskTraining(trainings.find(t => t.id === trainingId));
+  };
+
   const delTaskFromTraining = (trainingId, taskId) => {
     const trainings = (data.trainings || []).map(t => {
       if (t.id !== trainingId) return t;
@@ -1359,6 +1374,8 @@ return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
                     </div>
                     <div className="flex gap-1 ml-2 shrink-0">
                       <Btn small variant="secondary" onClick={() => { setEditingTask(task); setShowTaskEditor(true); }}>✏️</Btn>
+                      <Btn small variant="secondary" onClick={() => moveTask(taskTraining.id, task.id, "up")} disabled={i===0}>↑</Btn>
+                      <Btn small variant="secondary" onClick={() => moveTask(taskTraining.id, task.id, "down")} disabled={i===(taskTraining.tasks||[]).length-1}>↓</Btn>
                       <Btn small variant="danger" onClick={() => delTaskFromTraining(taskTraining.id, task.id)}>🗑️</Btn>
                     </div>
                   </div>
