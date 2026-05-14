@@ -281,59 +281,60 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
           if (["Portero","Defensa","Mediocentro","Delantero"].includes(pp)) return pp;
           return "Sin posición";
         };
-        return POSICIONES_ORDEN.map(pos => {
-          const grupo = filtered.filter(p => getPosGroup(p) === pos)
-            .sort((a,b) => (parseInt(a.dorsal)||999) - (parseInt(b.dorsal)||999));
-          if (grupo.length === 0) return null;
-          const posColor = {Portero:"text-yellow-400",Defensa:"text-blue-400",Mediocentro:"text-green-400",Delantero:"text-red-400","Sin posición":"text-zinc-400"};
-          return (
-            <div key={pos} className="space-y-2">
-              <p className={`text-xs uppercase tracking-wider font-bold ${posColor[pos]||"text-zinc-400"}`}>{pos} ({grupo.length})</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {grupo.map(p => (
-          <Card key={p.id} className={`flex justify-between items-start border ${statusStyle(p.status || "disponible")}`}>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {p.dorsal && <span className="text-red-500 font-bold text-lg">#{p.dorsal}</span>}
-                <span className="text-white font-semibold">{p.name}</span>
-                {p.status && p.status !== "disponible" && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusStyle(p.status)}`}>
-                    {PLAYER_STATUSES.find(s => s.val === p.status)?.label}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {(p.positions || []).map(pos => <Badge key={pos}>{pos}</Badge>)}
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {PLAYER_STATUSES.map(s => (
-                  <button key={s.val} onClick={() => setPlayerStatus(p.id, s.val)}
-                    className={`text-xs px-2 py-0.5 rounded border transition-all ${
-                      (p.status || "disponible") === s.val ? s.color : "bg-transparent border-zinc-700 text-zinc-600 hover:border-zinc-500"
-                    }`}
-                  >{s.label}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-1 ml-2 shrink-0">
-              <Btn small variant="ghost" onClick={() => setStatsPlayer(p)}>📈</Btn>
-              <Btn small variant="ghost" onClick={() => openNotes(p)} title="Informes del jugador">
-                {(p.reports || []).length > 0 ? `📋 ${(p.reports||[]).length}` : "📋"}
-              </Btn>
-              <Btn small variant="secondary" onClick={() => open(p)}>✏️</Btn>
-              <Btn small variant="danger" onClick={() => del(p.id)}>🗑️</Btn>
-            </div>
-          </Card>
-        ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+        const posColor = {Portero:"text-yellow-400",Defensa:"text-blue-400",Mediocentro:"text-green-400",Delantero:"text-red-400","Sin posición":"text-zinc-400"};
+        if (filtered.length === 0) return <p className="text-zinc-500 text-sm">{search ? `No hay jugadores con "${search}"` : "No hay jugadores en la plantilla."}</p>;
+        return (
+          <div className="space-y-5">
+            {POSICIONES_ORDEN.map(pos => {
+              const grupo = filtered.filter(p => getPosGroup(p) === pos)
+                .sort((a,b) => (parseInt(a.dorsal)||999) - (parseInt(b.dorsal)||999));
+              if (grupo.length === 0) return null;
+              return (
+                <div key={pos} className="space-y-2">
+                  <p className={`text-xs uppercase tracking-wider font-bold ${posColor[pos]||"text-zinc-400"}`}>{pos} ({grupo.length})</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {grupo.map(p => (
+                      <Card key={p.id} className={`flex justify-between items-start border ${statusStyle(p.status || "disponible")}`}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {p.dorsal && <span className="text-red-500 font-bold text-lg">#{p.dorsal}</span>}
+                            <span className="text-white font-semibold">{p.name}</span>
+                            {p.status && p.status !== "disponible" && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusStyle(p.status)}`}>
+                                {PLAYER_STATUSES.find(s => s.val === p.status)?.label}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(p.positions || []).map(pos2 => <Badge key={pos2}>{pos2}</Badge>)}
+                          </div>
+                          <div className="flex gap-1 flex-wrap">
+                            {PLAYER_STATUSES.map(s => (
+                              <button key={s.val} onClick={() => setPlayerStatus(p.id, s.val)}
+                                className={`text-xs px-2 py-0.5 rounded border transition-all ${
+                                  (p.status || "disponible") === s.val ? s.color : "bg-transparent border-zinc-700 text-zinc-600 hover:border-zinc-500"
+                                }`}
+                              >{s.label}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 ml-2 shrink-0">
+                          <Btn small variant="ghost" onClick={() => setStatsPlayer(p)}>📈</Btn>
+                          <Btn small variant="ghost" onClick={() => openNotes(p)} title="Informes del jugador">
+                            {(p.reports || []).length > 0 ? `📋 ${(p.reports||[]).length}` : "📋"}
+                          </Btn>
+                          <Btn small variant="secondary" onClick={() => open(p)}>✏️</Btn>
+                          <Btn small variant="danger" onClick={() => del(p.id)}>🗑️</Btn>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
       })()}
-      {(data.players || []).filter(p => p.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-        <p className="text-zinc-500 text-sm">{search ? `No hay jugadores con "${search}"` : "No hay jugadores en la plantilla."}</p>
-      )}
 
       {/* Reports modal */}
       {notesPlayer && (
