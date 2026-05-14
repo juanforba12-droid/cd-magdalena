@@ -1258,7 +1258,11 @@ return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
                 <h3 className="text-white font-bold text-lg">Tareas del entrenamiento</h3>
                 <p className="text-zinc-400 text-sm">{taskTraining.fecha}</p>
               </div>
-              <Btn small variant="secondary" onClick={() => { setTaskTraining(null); setShowTaskEditor(false); }}>✕</Btn>
+              <div className="flex items-center gap-2">
+                {saving && <span className="text-zinc-400 text-xs">💾 Guardando...</span>}
+                {lastSaved && !saving && <span className="text-green-400 text-xs">✓ Guardado</span>}
+                <Btn small variant="secondary" onClick={() => { setTaskTraining(null); setShowTaskEditor(false); }}>✕</Btn>
+              </div>
             </div>
             <div className="p-5 space-y-3">
               {/* Progress bar */}
