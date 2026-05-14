@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -63,6 +63,19 @@ export async function loadSeasons() {
     const raw = snap.data().json;
     return raw ? JSON.parse(raw) : [];
   } catch(e) { return []; }
+}
+
+export function subscribeToData(callback) {
+  try {
+    return onSnapshot(doc(db, "cdmagdalena", "main"), (snap) => {
+      if (!snap.exists()) return;
+      try {
+        const raw = snap.data().json;
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed) callback(cleanLoaded(parsed));
+      } catch(e) { console.error("Snapshot parse error", e); }
+    });
+  } catch(e) { console.error("Subscribe error", e); return () => {}; }
 }
 
 export async function saveSeasons(seasons) {
