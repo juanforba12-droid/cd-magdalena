@@ -1961,7 +1961,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white text-sm font-semibold">{s.fecha}</span>
-                    <Badge color={s.tipo === "Partido" ? "red" : "blue"}>{s.tipo}</Badge>
+                    <Badge color={s.tipo === "Partido" ? "red" : "blue"}>{s.tipo === "Partido" ? "⚽ Partido" : "🏃 Entrenamiento"}</Badge>
                     <span className="text-zinc-400 text-xs truncate">{s.desc}</span>
                   </div>
                 </div>
@@ -1992,7 +1992,13 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
       <h2 className="text-xl font-bold text-white">Asistencia — {team}</h2>
       <p className="text-zinc-500 text-sm">Selecciona un jugador para ver y registrar su asistencia.</p>
       <div className="space-y-2">
-        {players.map(p => {
+        {[...players].sort((a, b) => {
+          const sa = getPlayerStats(a.id);
+          const sb = getPlayerStats(b.id);
+          if (sb.present !== sa.present) return sb.present - sa.present;
+          if (sb.late !== sa.late) return sb.late - sa.late;
+          return sa.absent - sb.absent;
+        }).map(p => {
           const stats = getPlayerStats(p.id);
           const total = stats.present + stats.late + stats.absent;
           return (
