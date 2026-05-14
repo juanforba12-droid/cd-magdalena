@@ -3190,7 +3190,7 @@ export default function App() {
   };
 
   const updateTeamData = async (team, newData) => {
-    // Recargar datos frescos de Firebase antes de guardar para evitar sobreescrituras
+    if (window._setSaving) window._setSaving(true);
     let freshDb;
     try {
       freshDb = await loadData();
@@ -3219,6 +3219,7 @@ export default function App() {
     const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
     setDb(newDb);
     await saveData(newDb);
+    setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
   };
 
   const saveGlobalTasks = async (tasks) => {
