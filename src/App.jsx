@@ -113,6 +113,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [name, setName] = useState("");
   const [dorsal, setDorsal] = useState("");
   const [positions, setPositions] = useState([]);
+  const [posicionPrincipal, setPosicionPrincipal] = useState("");
   const [statsPlayer, setStatsPlayer] = useState(null);
   const [notesPlayer, setNotesPlayer] = useState(null);
   const [reportTitle, setReportTitle] = useState("");
@@ -198,6 +199,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     setName(p ? p.name : "");
     setDorsal(p ? p.dorsal : "");
     setPositions(p ? p.positions : []);
+    setPosicionPrincipal(p ? (p.posicionPrincipal || (p.positions||[])[0] || "") : "");
     setShowForm(true);
   };
 
@@ -206,9 +208,9 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     const players = [...(data.players || [])];
     if (editing) {
       const idx = players.findIndex(p => p.id === editing.id);
-      players[idx] = { ...editing, name, dorsal, positions };
+      players[idx] = { ...editing, name, dorsal, positions, posicionPrincipal };
     } else {
-      players.push({ id: Date.now(), name, dorsal, positions });
+      players.push({ id: Date.now(), name, dorsal, positions, posicionPrincipal });
     }
     onSave({ ...data, players });
     setShowForm(false);
@@ -238,7 +240,15 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
             <Input label="Dorsal" type="number" value={dorsal} onChange={e => setDorsal(e.target.value)} />
           </div>
           <div className="mb-4">
-            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posiciones</label>
+            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posición principal</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {["Portero","Defensa","Mediocentro","Delantero"].map(pos => (
+                <button key={pos} onClick={() => { setPosicionPrincipal(pos); setPositions(prev => prev.includes(pos) ? prev : [pos, ...prev.filter(p=>p!==pos)]); }}
+                  className={`text-xs px-3 py-1.5 rounded border transition-all font-medium ${posicionPrincipal===pos?"bg-red-700 border-red-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
+                >{pos}</button>
+              ))}
+            </div>
+            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posiciones secundarias</label>
             <div className="flex flex-wrap gap-2">
               {POSITIONS.map(pos => (
                 <button
@@ -246,7 +256,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                   onClick={() => togglePos(pos)}
                   className={`text-xs px-2 py-1 rounded border transition-all ${
                     positions.includes(pos)
-                      ? "bg-red-700 border-red-500 text-white"
+                      ? "bg-zinc-600 border-zinc-400 text-white"
                       : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"
                   }`}
                 >{pos}</button>
@@ -262,8 +272,25 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 
       <Input placeholder="🔍 Buscar jugador por nombre..." value={search} onChange={e => setSearch(e.target.value)} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {(data.players || []).filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => (
+      {(() => {
+        const POSICIONES_ORDEN = ["Portero","Defensa","Mediocentro","Delantero","Sin posición"];
+        const filtered = (data.players || []).filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+        const getPrincipal = (p) => p.posicionPrincipal || (p.positions||[])[0] || "Sin posición";
+        const getPosGroup = (p) => {
+          const pp = getPrincipal(p);
+          if (["Portero","Defensa","Mediocentro","Delantero"].includes(pp)) return pp;
+          return "Sin posición";
+        };
+        return POSICIONES_ORDEN.map(pos => {
+          const grupo = filtered.filter(p => getPosGroup(p) === pos)
+            .sort((a,b) => (parseInt(a.dorsal)||999) - (parseInt(b.dorsal)||999));
+          if (grupo.length === 0) return null;
+          const posColor = {Portero:"text-yellow-400",Defensa:"text-blue-400",Mediocentro:"text-green-400",Delantero:"text-red-400","Sin posición":"text-zinc-400"};
+          return (
+            <div key={pos} className="space-y-2">
+              <p className={`text-xs uppercase tracking-wider font-bold ${posColor[pos]||"text-zinc-400"}`}>{pos} ({grupo.length})</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {grupo.map(p => (
           <Card key={p.id} className={`flex justify-between items-start border ${statusStyle(p.status || "disponible")}`}>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
