@@ -325,10 +325,14 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
             </div>
           </Card>
         ))}
-        {(data.players || []).filter(p => p.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-          <p className="text-zinc-500 text-sm col-span-2">{search ? `No hay jugadores con "${search}"` : "No hay jugadores en la plantilla."}</p>
-        )}
+              </div>
+            </div>
+          );
+        })}
       </div>
+      {(data.players || []).filter(p => p.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+        <p className="text-zinc-500 text-sm">{search ? `No hay jugadores con "${search}"` : "No hay jugadores en la plantilla."}</p>
+      )}
 
       {/* Reports modal */}
       {notesPlayer && (
