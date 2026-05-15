@@ -798,7 +798,7 @@ function Pizarra({ value, onChange }) {
         </div>
       <p className="text-xs text-zinc-600">Haz clic para añadir · Arrastra para mover · Doble clic en jugador para editar número</p>
       {/* Field */}
-      <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none"
+      <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none pizarra-field"
         style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
         onClick={(e) => { if(tool==="pencil") return; addItem(e); }}
         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
