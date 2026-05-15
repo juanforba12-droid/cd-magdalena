@@ -722,7 +722,7 @@ function Pizarra({ value, onChange }) {
     {color:"#ffffff",label:"Blanco"},
   ];
   const PENCIL_SIZES = [{size:1.5,label:"Fino"},{size:3,label:"Medio"},{size:5,label:"Grueso"}];
-  const items = (value || []).filter(i => i != null && typeof i === 'object' && typeof i.type === 'string');
+  const items = (value || []).filter(i => i != null && typeof i === 'object' && typeof i.type === 'string' && (i.type !== 'drawing' || (Array.isArray(i.path) && i.path.length > 0)));
 
   const getCoords = (e) => {
     if (e.touches && e.touches[0]) return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
@@ -1340,7 +1340,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="linea_naranja_v") return `<line x1="${cx}" y1="${cy-12}" x2="${cx}" y2="${cy+12}" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>`;
     return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
   };
-      const drawingsSVG = (items || []).filter(i => i && i.type === "drawing" && i.path).map(item => {
+      const drawingsSVG = (items || []).filter(i => i && i.type === "drawing" && Array.isArray(i.path) && i.path.length > 0).map(item => {
         const points = item.path.map(p => `${(p.x/100)*W},${(p.y/100)*H}`).join(" ");
         return `<polyline points="${points}" fill="none" stroke="${item.color||"#fff"}" stroke-width="${item.size||2}" stroke-linecap="round" stroke-linejoin="round"/>`;
       }).join("");
