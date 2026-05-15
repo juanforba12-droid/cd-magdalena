@@ -672,9 +672,9 @@ function Pizarra({ value, onChange }) {
 
   const onMouseUp = () => setDragging(null);
   const startPencil = (e) => {
-    if (tool !== "pencil") return;
-    e.stopPropagation();
-    const rect = fieldRef.current.getBoundingClientRect();
+    e.preventDefault();
+    const rect = fieldRef.current?.getBoundingClientRect();
+    if (!rect) return;
     const {clientX, clientY} = getCoords(e);
     const x = ((clientX - rect.left) / rect.width) * 100;
     const y = ((clientY - rect.top) / rect.height) * 100;
@@ -795,8 +795,9 @@ function Pizarra({ value, onChange }) {
       {/* Field */}
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none"
         style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
-        onClick={addItem} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-        onMouseDown={startPencil}
+        onClick={(e) => { if(tool==="pencil") return; addItem(e); }}
+        onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onMouseDown={(e) => { if(tool==="pencil") startPencil(e); }}
         onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
       >
         <FieldMarkings type={fieldType} />
