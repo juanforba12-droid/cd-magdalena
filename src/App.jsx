@@ -553,10 +553,7 @@ const MATERIALS = [
   { id:"aro", label:"Aro", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5 text-cyan-400"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"balon", label:"Balón", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 8 L12 13 L15 8 Z" fill="currentColor" opacity="0.5"/><path d="M3.5 9 L9 8 L12 13 L8 17 Z" fill="currentColor" opacity="0.3"/><path d="M20.5 9 L15 8 L12 13 L16 17 Z" fill="currentColor" opacity="0.3"/></svg> },
   { id:"valla", label:"Valla", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-lime-400"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> },
-  { id:"linea_azul", label:"Línea azul", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/></svg> },
-  { id:"linea_naranja", label:"Línea naranja", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="2" y1="12" x2="22" y2="12" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/></svg> },
-  { id:"linea_azul_v", label:"Línea azul V", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="12" y1="2" x2="12" y2="22" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/></svg> },
-  { id:"linea_naranja_v", label:"Línea naranja V", svg: <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5"><line x1="12" y1="2" x2="12" y2="22" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/></svg> },
+
 ];
 
 const FIELD_TYPES = [
@@ -616,7 +613,19 @@ function Pizarra({ value, onChange }) {
   const [dragging, setDragging] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [editingItem, setEditingItem] = useState(null);
+  const [drawing, setDrawing] = useState(false);
+  const [currentPath, setCurrentPath] = useState([]);
+  const [pencilColor, setPencilColor] = useState("#ef4444");
+  const [pencilSize, setPencilSize] = useState(2);
   const fieldRef = useRef(null);
+  const PENCIL_COLORS = [
+    {color:"#ef4444",label:"Rojo"},
+    {color:"#3b82f6",label:"Azul"},
+    {color:"#f97316",label:"Naranja"},
+    {color:"#22c55e",label:"Verde"},
+    {color:"#ffffff",label:"Blanco"},
+  ];
+  const PENCIL_SIZES = [{size:1.5,label:"Fino"},{size:3,label:"Medio"},{size:5,label:"Grueso"}];
   const items = (value || []).filter(i => i != null && typeof i === 'object' && typeof i.type === 'string');
 
   const getCoords = (e) => {
@@ -632,6 +641,7 @@ function Pizarra({ value, onChange }) {
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
     if (tool === "erase") return;
     if (tool === "move") return;
+    if (tool === "pencil") return;
     const isPlayer = tool.startsWith("player_");
     const newItem = { id: Date.now(), x, y, type: tool, ...(isPlayer ? { num: playerNum } : {}) };
     if (isPlayer) setPlayerNum(n => n + 1);
@@ -662,6 +672,18 @@ function Pizarra({ value, onChange }) {
 
   const onMouseUp = () => setDragging(null);
   const removeItem = (id) => onChange(items.filter(i => i.id !== id));
+  const removeDrawingAt = (e) => {
+    if (tool !== "erase") return;
+    const rect = fieldRef.current.getBoundingClientRect();
+    const {clientX, clientY} = getCoords(e);
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    // Eliminar trazos cercanos al punto de clic
+    onChange(items.filter(i => {
+      if (i.type !== "drawing") return true;
+      return !i.path.some(p => Math.abs(p.x - x) < 3 && Math.abs(p.y - y) < 3);
+    }));
+  };
   const saveEditNum = (id, num) => { onChange(items.map(i => i.id === id ? { ...i, num } : i)); setEditingItem(null); };
 
   const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type || typeof item.type !== 'string') return null;
@@ -735,6 +757,7 @@ function Pizarra({ value, onChange }) {
         </div>
         <div className="flex gap-1">
           <button onClick={() => setTool("move")} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="move"?"bg-blue-700 border-blue-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Mover elementos">✋ Mover</button>
+            <button onClick={() => setTool("pencil")} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="pencil"?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Dibujar">✏️ Lápiz</button>
             <button onClick={() => setTool("erase")}
             className={`px-3 py-1 rounded text-xs border transition-all ${tool==="erase"?"bg-red-700 border-red-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
           >🗑 Borrar</button>
@@ -746,11 +769,31 @@ function Pizarra({ value, onChange }) {
       <p className="text-xs text-zinc-600">Haz clic para añadir · Arrastra para mover · Doble clic en jugador para editar número</p>
       {/* Field */}
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none"
-        style={{ paddingBottom:"65%", background:"#1a6b2e", cursor:"crosshair" }}
-        onClick={addItem} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
+        style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
+        onClick={addItem} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+        onMouseDown={startPencil}
+        onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
       >
         <FieldMarkings type={fieldType} />
-        <div className="absolute inset-0">{items.map(renderItem)}</div>
+        {/* Renderizar trazos guardados */}
+        <svg className="absolute inset-0 w-full h-full" style={{pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
+          {items.filter(i=>i.type==="drawing").map(item => (
+            <polyline key={item.id}
+              points={item.path.map(p=>`${p.x},${p.y}`).join(" ")}
+              fill="none" stroke={item.color||"#fff"} strokeWidth={item.size||2}
+              strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {/* Trazo actual en curso */}
+          {drawing && currentPath.length > 1 && (
+            <polyline
+              points={currentPath.map(p=>`${p.x},${p.y}`).join(" ")}
+              fill="none" stroke={pencilColor} strokeWidth={pencilSize}
+              strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+        <div className="absolute inset-0">{items.filter(i=>i.type!=="drawing").map(renderItem)}</div>
       </div>
     </div>
   );
