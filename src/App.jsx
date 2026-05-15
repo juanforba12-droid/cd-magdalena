@@ -853,6 +853,9 @@ function Pizarra({ value, onChange }) {
                 className={`px-2 py-0.5 rounded text-xs border transition-all ${pencilSize===s.size?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}
               >{s.label}</button>
             ))}
+            <button onClick={() => onChange(items.filter(i => i.type !== "drawing"))}
+              className="px-2 py-0.5 rounded text-xs border border-red-700 bg-red-900/40 text-red-300 hover:bg-red-800 transition-all ml-1"
+            >🗑️ Borrar trazos</button>
           </div>
         )}
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
