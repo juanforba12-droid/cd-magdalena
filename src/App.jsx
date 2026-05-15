@@ -935,7 +935,10 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   const [minutos, setMinutos] = useState(task?.minutos || 10);
   const [descripcion, setDescripcion] = useState(task?.descripcion || "");
   const [categoria, setCategoria] = useState(task?.categoria || "");
-  const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map((el, idx) => ({ id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' })));
+  const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map((el, idx) => {
+    if (el.type === 'drawing') return { id: el.id || (Date.now() + idx), type: 'drawing', path: el.path || [], color: el.color, size: el.size };
+    return { id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' };
+  }));
 
   const handleSave = (toLib = false) => {
     if (!nombre.trim()) return;
