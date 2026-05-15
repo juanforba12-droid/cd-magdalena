@@ -3394,16 +3394,20 @@ export default function App() {
         ...t,
         tasks: (t.tasks || []).map(task => ({
           ...task,
-          pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => ({
-            id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material
-          }))
+          pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
+            el.type === "drawing"
+              ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
+              : { id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
+          ))
         }))
       })),
       tasks: (d.tasks || []).map(task => ({
         ...task,
-        pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => ({
-          id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material
-        }))
+        pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
+          el.type === "drawing"
+            ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
+            : { id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
+        ))
       }))
     });
     const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
