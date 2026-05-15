@@ -885,7 +885,11 @@ function Pizarra({ value, onChange }) {
                 className={`px-2 py-0.5 rounded text-xs border transition-all ${pencilSize===s.size?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}
               >{s.label}</button>
             ))}
-            <button onClick={() => setPencilMode(m => m==="erase"?"draw":"erase")}
+            <button onClick={() => {
+                const newMode = pencilMode==="erase"?"draw":"erase";
+                setPencilMode(newMode);
+                pencilModeRef.current = newMode;
+              }}
               className={`px-2 py-0.5 rounded text-xs border transition-all ml-2 ${pencilMode==="erase"?"bg-orange-700 border-orange-500 text-white":"bg-zinc-800 border-zinc-600 text-zinc-300"}`}
             >{pencilMode==="erase"?"✏️ Dibujar":"🧹 Goma"}</button>
           </div>
