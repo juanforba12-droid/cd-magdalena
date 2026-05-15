@@ -1340,18 +1340,20 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="linea_naranja_v") return `<line x1="${cx}" y1="${cy-12}" x2="${cx}" y2="${cy+12}" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>`;
     return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
   };
-      const itemsSVG = (items || []).filter(item => item != null && item.type).map(item => {
+      const drawingsSVG = (items || []).filter(i => i && i.type === "drawing" && i.path).map(item => {
+        const points = item.path.map(p => `${(p.x/100)*W},${(p.y/100)*H}`).join(" ");
+        return `<polyline points="${points}" fill="none" stroke="${item.color||"#fff"}" stroke-width="${item.size||2}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }).join("");
+      const itemsSVG = (items || []).filter(item => item != null && item.type && item.type !== "drawing").map(item => {
         const cx = (item.x / 100) * W;
         const cy = (item.y / 100) * H;
         if (item.type.startsWith("player_")) {
           const color = item.type.replace("player_", "");
           return `<circle cx="${cx}" cy="${cy}" r="14" fill="${PLAYER_COLOR_HEX[color]}" stroke="white" stroke-width="1.5"/><text x="${cx}" y="${cy+4}" text-anchor="middle" fill="white" font-size="11" font-weight="bold">${item.num ?? ""}</text>`;
         }
-        const icons = {cono:"🔶",chino:"🔺",porteria_grande:"⬛","porteria_pequeña":"▪",escalera:"🪜",pesa:"🏋",pica:"🚩",aro:"⭕"};
         return getIcon(item.type, cx, cy);
-return `<circle cx="${cx}" cy="${cy}" r="8" fill="#888"/>`;
       }).join("");
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="${W}" height="${H}" fill="#1a6b2e"/><g transform="scale(${W/500},${H/325})">${markings}</g>${itemsSVG}</svg>`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="${W}" height="${H}" fill="#1a6b2e"/><g transform="scale(${W/500},${H/325})">${markings}</g>${drawingsSVG}${itemsSVG}</svg>`;
     };
 
     const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
