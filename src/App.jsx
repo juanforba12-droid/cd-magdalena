@@ -787,11 +787,10 @@ function Pizarra({ value, onChange }) {
             ))}
           </div>
         )}
-        <div className="flex gap-1 hidden">
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
             className="px-3 py-1 rounded text-xs border border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-red-700 hover:text-red-400 transition-all"
           >Limpiar</button>
-      </div>
+        </div>
       <p className="text-xs text-zinc-600">Haz clic para añadir · Arrastra para mover · Doble clic en jugador para editar número</p>
       {/* Field */}
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none"
