@@ -661,10 +661,26 @@ function Pizarra({ value, onChange }) {
       const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
       const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
       if (pencilModeRef.current === "erase" && erasingRef.current) {
-        onChange(prev => (prev||[]).filter(i => {
-          if (i.type !== "drawing") return true;
-          return !i.path.some(p => Math.abs(p.x - x) < 5 && Math.abs(p.y - y) < 5);
-        }));
+        const RADIUS = 4;
+        onChange(prev => {
+          return (prev||[]).flatMap(i => {
+            if (i.type !== "drawing") return [i];
+            // Dividir el path en segmentos eliminando los puntos cercanos al cursor
+            const segments = [];
+            let current = [];
+            for (const p of i.path) {
+              const near = Math.abs(p.x - x) < RADIUS && Math.abs(p.y - y) < RADIUS;
+              if (near) {
+                if (current.length > 1) segments.push({...i, id: Date.now() + Math.random(), path: current});
+                current = [];
+              } else {
+                current.push(p);
+              }
+            }
+            if (current.length > 1) segments.push({...i, id: Date.now() + Math.random(), path: current});
+            return segments;
+          });
+        });
         return;
       }
       if (!drawingRef.current) return;
