@@ -863,8 +863,8 @@ function Pizarra({ value, onChange }) {
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none pizarra-field"
         style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
         onClick={(e) => { if(tool==="pencil") return; addItem(e); }}
-        onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-        onMouseDown={(e) => { if(tool==="pencil") startPencil(e); }}
+        onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => { setDragging(null); onMouseUp(); }}
+        onMouseDown={(e) => { if(tool==="pencil") startPencil(e); if(tool==="erase") setDragging(-1); }}
         onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
       >
         <FieldMarkings type={fieldType} />
