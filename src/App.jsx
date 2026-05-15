@@ -870,11 +870,8 @@ function Pizarra({ value, onChange }) {
               >{s.label}</button>
             ))}
             <button onClick={() => setPencilMode(m => m==="erase"?"draw":"erase")}
-              className={`px-2 py-0.5 rounded text-xs border transition-all ml-1 ${pencilMode==="erase"?"bg-red-700 border-red-500 text-white":"border-red-700 bg-red-900/40 text-red-300"}`}
+              className={`px-2 py-0.5 rounded text-xs border transition-all ml-2 ${pencilMode==="erase"?"bg-orange-700 border-orange-500 text-white":"bg-zinc-800 border-zinc-600 text-zinc-300"}`}
             >{pencilMode==="erase"?"✏️ Dibujar":"🧹 Goma"}</button>
-            <button onClick={() => onChange(items.filter(i => i.type !== "drawing"))}
-              className="px-2 py-0.5 rounded text-xs border border-zinc-600 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-all"
-            >🗑️ Todo</button>
           </div>
         )}
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
