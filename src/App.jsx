@@ -771,10 +771,26 @@ function Pizarra({ value, onChange }) {
             <button onClick={() => setTool("erase")}
             className={`px-3 py-1 rounded text-xs border transition-all ${tool==="erase"?"bg-red-700 border-red-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
           >🗑 Borrar</button>
+        </div>
+        {tool === "pencil" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {PENCIL_COLORS.map(c => (
+              <button key={c.color} onClick={() => setPencilColor(c.color)}
+                className={`w-6 h-6 rounded-full border-2 transition-all ${pencilColor===c.color?"border-white scale-125":"border-zinc-600"}`}
+                style={{backgroundColor: c.color}} title={c.label}/>
+            ))}
+            <div className="w-px h-4 bg-zinc-600"/>
+            {PENCIL_SIZES.map(s => (
+              <button key={s.size} onClick={() => setPencilSize(s.size)}
+                className={`px-2 py-0.5 rounded text-xs border transition-all ${pencilSize===s.size?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}
+              >{s.label}</button>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-1 hidden">
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
             className="px-3 py-1 rounded text-xs border border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-red-700 hover:text-red-400 transition-all"
           >Limpiar</button>
-        </div>
       </div>
       <p className="text-xs text-zinc-600">Haz clic para añadir · Arrastra para mover · Doble clic en jugador para editar número</p>
       {/* Field */}
