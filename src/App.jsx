@@ -661,7 +661,7 @@ function Pizarra({ value, onChange }) {
       const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
       const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
       if (pencilModeRef.current === "erase" && erasingRef.current) {
-        const RADIUS = 2;
+        const RADIUS = 1;
         onChange(prev => {
           return (prev||[]).flatMap(i => {
             if (i.type !== "drawing") return [i];
@@ -866,7 +866,7 @@ function Pizarra({ value, onChange }) {
         </div>
         <div className="flex gap-1">
           <button onClick={() => setTool("move")} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="move"?"bg-blue-700 border-blue-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Mover elementos">✋ Mover</button>
-            <button onClick={() => setTool("pencil")} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="pencil"?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Dibujar">✏️ Lápiz</button>
+            <button onClick={() => { setTool("pencil"); setPencilMode("draw"); pencilModeRef.current = "draw"; }} className={`px-2 py-1 rounded text-xs border transition-all ${tool==="pencil"?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`} title="Dibujar">✏️ Lápiz</button>
             <button onClick={() => setTool("erase")}
             className={`px-3 py-1 rounded text-xs border transition-all ${tool==="erase"?"bg-red-700 border-red-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}
           >🗑 Borrar</button>
@@ -884,13 +884,9 @@ function Pizarra({ value, onChange }) {
                 className={`px-2 py-0.5 rounded text-xs border transition-all ${pencilSize===s.size?"bg-purple-700 border-purple-500 text-white":"bg-zinc-800 border-zinc-700 text-zinc-400"}`}
               >{s.label}</button>
             ))}
-            <button onClick={() => {
-                const newMode = pencilMode==="erase"?"draw":"erase";
-                setPencilMode(newMode);
-                pencilModeRef.current = newMode;
-              }}
+            <button onClick={() => { setPencilMode("erase"); pencilModeRef.current = "erase"; }}
               className={`px-2 py-0.5 rounded text-xs border transition-all ml-2 ${pencilMode==="erase"?"bg-orange-700 border-orange-500 text-white":"bg-zinc-800 border-zinc-600 text-zinc-300"}`}
-            >{pencilMode==="erase"?"✏️ Dibujar":"🧹 Goma"}</button>
+            >🧹 Goma</button>
           </div>
         )}
           <button onClick={() => { onChange([]); setPlayerNum(1); }}
