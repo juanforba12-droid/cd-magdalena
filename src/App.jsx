@@ -617,6 +617,7 @@ function Pizarra({ value, onChange }) {
   const [currentPath, setCurrentPath] = useState([]);
   const drawingRef = useRef(false);
   const currentPathRef = useRef([]);
+  const erasingRef = useRef(false);
   const [pencilColor, setPencilColor] = useState("#ef4444");
   const [pencilSize, setPencilSize] = useState(2);
   const fieldRef = useRef(null);
@@ -864,7 +865,7 @@ function Pizarra({ value, onChange }) {
         style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
         onClick={(e) => { if(tool==="pencil") return; addItem(e); }}
         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => { setDragging(null); onMouseUp(); }}
-        onMouseDown={(e) => { if(tool==="pencil") startPencil(e); if(tool==="erase") setDragging(-1); }}
+        onMouseDown={(e) => { if(tool==="pencil") startPencil(e); if(tool==="erase") erasingRef.current=true; }}
         onTouchMove={onTouchMove} onTouchEnd={onMouseUp}
       >
         <FieldMarkings type={fieldType} />
