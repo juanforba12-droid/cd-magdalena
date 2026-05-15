@@ -620,6 +620,68 @@ function Pizarra({ value, onChange }) {
   const [pencilColor, setPencilColor] = useState("#ef4444");
   const [pencilSize, setPencilSize] = useState(2);
   const fieldRef = useRef(null);
+  const toolRef = useRef(tool);
+  const pencilColorRef = useRef(pencilColor);
+  const pencilSizeRef = useRef(pencilSize);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+  useEffect(() => { pencilColorRef.current = pencilColor; }, [pencilColor]);
+  useEffect(() => { pencilSizeRef.current = pencilSize; }, [pencilSize]);
+
+  useEffect(() => {
+    const el = fieldRef.current;
+    if (!el) return;
+    const handleDown = (e) => {
+      if (toolRef.current !== "pencil") return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = el.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const x = ((clientX - rect.left) / rect.width) * 100;
+      const y = ((clientY - rect.top) / rect.height) * 100;
+      drawingRef.current = true;
+      currentPathRef.current = [{x, y}];
+      setDrawing(true);
+      setCurrentPath([{x, y}]);
+    };
+    const handleMove = (e) => {
+      if (toolRef.current !== "pencil" || !drawingRef.current) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+      currentPathRef.current = [...currentPathRef.current, {x, y}];
+      setCurrentPath([...currentPathRef.current]);
+    };
+    const handleUp = () => {
+      if (toolRef.current !== "pencil" || !drawingRef.current) return;
+      if (currentPathRef.current.length > 1) {
+        const newItem = { id: Date.now(), type: "drawing", path: [...currentPathRef.current], color: pencilColorRef.current, size: pencilSizeRef.current };
+        onChange(prev => [...(prev||[]), newItem]);
+      }
+      drawingRef.current = false;
+      currentPathRef.current = [];
+      setDrawing(false);
+      setCurrentPath([]);
+    };
+    el.addEventListener("mousedown", handleDown);
+    el.addEventListener("mousemove", handleMove);
+    el.addEventListener("mouseup", handleUp);
+    el.addEventListener("touchstart", handleDown, {passive:false});
+    el.addEventListener("touchmove", handleMove, {passive:false});
+    el.addEventListener("touchend", handleUp);
+    return () => {
+      el.removeEventListener("mousedown", handleDown);
+      el.removeEventListener("mousemove", handleMove);
+      el.removeEventListener("mouseup", handleUp);
+      el.removeEventListener("touchstart", handleDown);
+      el.removeEventListener("touchmove", handleMove);
+      el.removeEventListener("touchend", handleUp);
+    };
+  }, []);
+
   const PENCIL_COLORS = [
     {color:"#ef4444",label:"Rojo"},
     {color:"#3b82f6",label:"Azul"},
