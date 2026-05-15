@@ -661,7 +661,7 @@ function Pizarra({ value, onChange }) {
       const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
       const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
       if (pencilModeRef.current === "erase" && erasingRef.current) {
-        const RADIUS = 4;
+        const RADIUS = 2;
         onChange(prev => {
           return (prev||[]).flatMap(i => {
             if (i.type !== "drawing") return [i];
@@ -689,8 +689,7 @@ function Pizarra({ value, onChange }) {
     };
     const handleUp = () => {
       erasingRef.current = false;
-      if (toolRef.current !== "pencil" || !drawingRef.current) return;
-      if (currentPathRef.current.length > 1) {
+      if (toolRef.current === "pencil" && drawingRef.current && currentPathRef.current.length > 1) {
         const newItem = { id: Date.now(), type: "drawing", path: [...currentPathRef.current], color: pencilColorRef.current, size: pencilSizeRef.current };
         onChange(prev => [...(prev||[]), newItem]);
       }
