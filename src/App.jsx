@@ -615,6 +615,8 @@ function Pizarra({ value, onChange }) {
   const [editingItem, setEditingItem] = useState(null);
   const [drawing, setDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState([]);
+  const drawingRef = useRef(false);
+  const currentPathRef = useRef([]);
   const [pencilColor, setPencilColor] = useState("#ef4444");
   const [pencilSize, setPencilSize] = useState(2);
   const fieldRef = useRef(null);
@@ -673,11 +675,14 @@ function Pizarra({ value, onChange }) {
   const onMouseUp = () => setDragging(null);
   const startPencil = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     const rect = fieldRef.current?.getBoundingClientRect();
     if (!rect) return;
     const {clientX, clientY} = getCoords(e);
     const x = ((clientX - rect.left) / rect.width) * 100;
     const y = ((clientY - rect.top) / rect.height) * 100;
+    drawingRef.current = true;
+    currentPathRef.current = [{x, y}];
     setDrawing(true);
     setCurrentPath([{x, y}]);
   };
