@@ -671,6 +671,16 @@ function Pizarra({ value, onChange }) {
   };
 
   const onMouseUp = () => setDragging(null);
+  const startPencil = (e) => {
+    if (tool !== "pencil") return;
+    e.stopPropagation();
+    const rect = fieldRef.current.getBoundingClientRect();
+    const {clientX, clientY} = getCoords(e);
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    setDrawing(true);
+    setCurrentPath([{x, y}]);
+  };
   const removeItem = (id) => onChange(items.filter(i => i.id !== id));
   const removeDrawingAt = (e) => {
     if (tool !== "erase") return;
