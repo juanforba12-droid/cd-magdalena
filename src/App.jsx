@@ -816,6 +816,7 @@ function Pizarra({ value, onChange }) {
 
   const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type || typeof item.type !== 'string') return null;
     if (item.type === "flecha") {
+      if (item.x2 == null || item.y2 == null) return null;
       return (
         <svg key={item.id} className="absolute inset-0 w-full h-full" style={{zIndex:5, pointerEvents: tool==="erase"?"auto":"none"}}>
           <defs><marker id={`arr-${item.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs>
