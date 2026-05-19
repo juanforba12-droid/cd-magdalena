@@ -1335,13 +1335,11 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     const renderFieldSVG = (rawItems, fieldType) => { const items = (rawItems || []).filter(item => item != null && typeof item === 'object');
       const fieldBg = `<rect width="${W}" height="${H}" fill="#2d6a4f"/>`;
   const markings = fieldType === "blank" ? "" : fieldType === "half" ? `
-        <rect x="10" y="10" width="480" height="305" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <line x1="10" y1="162" x2="490" y2="162" stroke="white" stroke-width="2" opacity="0.6"/>
-        <circle cx="250" cy="162" r="60" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <rect x="140" y="10" width="220" height="90" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <rect x="180" y="10" width="140" height="40" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <rect x="140" y="225" width="220" height="90" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <rect x="180" y="275" width="140" height="40" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <rect x="10" y="10" width="${W-20}" height="${H-20}" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <rect x="${W/2-110}" y="10" width="220" height="90" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <rect x="${W/2-70}" y="10" width="140" height="40" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <circle cx="${W/2}" cy="100" r="60" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <circle cx="${W/2}" cy="70" r="3" fill="white" opacity="0.6"/>
       ` : `
         <rect x="10" y="10" width="480" height="305" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <line x1="250" y1="10" x2="250" y2="315" stroke="white" stroke-width="2" opacity="0.6"/>
