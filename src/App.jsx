@@ -1343,6 +1343,21 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       `;
   const getIcon = (type, cx, cy) => {
     if (type==="cono") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#f97316"/>`;
+    if (type==="cono_amarillo") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#eab308"/>`;
+    if (type==="cono_rojo") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#dc2626"/>`;
+    if (type==="cono_azul") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#2563eb"/>`;
+    if (type==="chino_naranja") return `<polygon points="${cx},${cy-6} ${cx-3},${cy+4} ${cx+3},${cy+4}" fill="#f97316"/><circle cx="${cx}" cy="${cy+4}" r="1.5" fill="#f97316"/>`;
+    if (type==="chino_rojo") return `<polygon points="${cx},${cy-6} ${cx-3},${cy+4} ${cx+3},${cy+4}" fill="#dc2626"/><circle cx="${cx}" cy="${cy+4}" r="1.5" fill="#dc2626"/>`;
+    if (type==="chino_azul") return `<polygon points="${cx},${cy-6} ${cx-3},${cy+4} ${cx+3},${cy+4}" fill="#2563eb"/><circle cx="${cx}" cy="${cy+4}" r="1.5" fill="#2563eb"/>`;
+    if (type==="aro_rojo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#dc2626" stroke-width="2"/>`;
+    if (type==="aro_amarillo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#eab308" stroke-width="2"/>`;
+    if (type==="aro_verde") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#16a34a" stroke-width="2"/>`;
+    if (type==="flecha_der") return `<line x1="${cx-8}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+8},${cy-4} ${cx+14},${cy} ${cx+8},${cy+4}" fill="white"/>`;
+    if (type==="flecha_izq") return `<line x1="${cx+8}" y1="${cy}" x2="${cx-8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx-8},${cy-4} ${cx-14},${cy} ${cx-8},${cy+4}" fill="white"/>`;
+    if (type==="flecha_arr") return `<line x1="${cx}" y1="${cy+8}" x2="${cx}" y2="${cy-8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy-8} ${cx},${cy-14} ${cx+4},${cy-8}" fill="white"/>`;
+    if (type==="flecha_abj") return `<line x1="${cx}" y1="${cy-8}" x2="${cx}" y2="${cy+8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy+8} ${cx},${cy+14} ${cx+4},${cy+8}" fill="white"/>`;
+    if (type==="flecha_diagr") return `<line x1="${cx-8}" y1="${cy-8}" x2="${cx+8}" y2="${cy+8}" stroke="white" stroke-width="2"/><polygon points="${cx+4},${cy+10} ${cx+10},${cy+4} ${cx+10},${cy+10}" fill="white"/>`;
+    if (type==="flecha_diagl") return `<line x1="${cx+8}" y1="${cy-8}" x2="${cx-8}" y2="${cy+8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy+10} ${cx-10},${cy+4} ${cx-10},${cy+10}" fill="white"/>`;
     if (type==="chino") return `<polygon points="${cx},${cy-6} ${cx-3},${cy+4} ${cx+3},${cy+4}" fill="#eab308"/><circle cx="${cx}" cy="${cy+5}" r="1.5" fill="#eab308"/>`;
     if (type==="porteria_grande") return `<rect x="${cx-11}" y="${cy-7}" width="22" height="12" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2"/>`;
     if (type==="porteria_pequeña") return `<rect x="${cx-7}" y="${cy-5}" width="14" height="9" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2"/>`;
