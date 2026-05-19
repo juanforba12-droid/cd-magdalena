@@ -1338,8 +1338,8 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         <rect x="10" y="10" width="${W-20}" height="${H-20}" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <rect x="${W/2-110}" y="10" width="220" height="90" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <rect x="${W/2-70}" y="10" width="140" height="40" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <circle cx="${W/2}" cy="100" r="60" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
-        <circle cx="${W/2}" cy="70" r="3" fill="white" opacity="0.6"/>
+        <circle cx="${W/2}" cy="${H-20}" r="70" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
+        <circle cx="${W/2}" cy="55" r="3" fill="white" opacity="0.6"/>
       ` : `
         <rect x="10" y="10" width="480" height="305" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <line x1="250" y1="10" x2="250" y2="315" stroke="white" stroke-width="2" opacity="0.6"/>
