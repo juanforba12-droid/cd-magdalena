@@ -962,9 +962,9 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
           <div>
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Categoría</label>
             <div className="flex flex-wrap gap-1.5">
-              <button onClick={()=>setCategoria("")} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===""?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Sin categoría</button>
+              <button type="button" onClick={e=>{e.preventDefault();setCategoria("");}} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===""?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Sin categoría</button>
               {TASK_CATEGORIES.map(c=>(
-                <button key={c.id} onClick={()=>setCategoria(c.id)} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
+                <button type="button" key={c.id} onClick={e=>{e.preventDefault();setCategoria(c.id);}} className={`px-2 py-1 rounded text-xs border transition-all ${categoria===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
               ))}
             </div>
           </div>
