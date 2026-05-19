@@ -609,10 +609,12 @@ function FieldMarkings({ type }) {
   );
 }
 
-function Pizarra({ value, onChange }) {
+function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange }) {
   const [tool, setTool] = useState("player_red");
   const [playerNum, setPlayerNum] = useState(1);
-  const [fieldType, setFieldType] = useState("full");
+  const [_fieldType, _setFieldType] = useState("full");
+  const fieldType = fieldTypeProp !== undefined ? fieldTypeProp : _fieldType;
+  const setFieldType = onFieldTypeChange || _setFieldType;
   const [dragging, setDragging] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [editingItem, setEditingItem] = useState(null);
@@ -993,7 +995,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
           </div>
           <div>
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra táctica</label>
-            <Pizarra value={pizarra} onChange={setPizarra} />
+            <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
           </div>
         </div>
         <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap">
