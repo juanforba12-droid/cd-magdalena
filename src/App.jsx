@@ -1365,7 +1365,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="aro_rojo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#dc2626" stroke-width="2"/>`;
     if (type==="aro_amarillo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#eab308" stroke-width="2"/>`;
     if (type==="aro_verde") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#16a34a" stroke-width="2"/>`;
-    if (type==="flecha") { const fx2=(item.x2||50)/100*W, fy2=(item.y2||50)/100*H; return `<defs><marker id="arr${Math.round(cx)}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs><line x1="${cx}" y1="${cy}" x2="${fx2}" y2="${fy2}" stroke="white" stroke-width="2.5" marker-end="url(#arr${Math.round(cx)})"/>`;}
+    if (type==="flecha") return "";
     if (type==="flecha_der") return `<line x1="${cx-8}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+8},${cy-4} ${cx+14},${cy} ${cx+8},${cy+4}" fill="white"/>`;
     if (type==="flecha_izq") return `<line x1="${cx+8}" y1="${cy}" x2="${cx-8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx-8},${cy-4} ${cx-14},${cy} ${cx-8},${cy+4}" fill="white"/>`;
     if (type==="flecha_arr") return `<line x1="${cx}" y1="${cy+8}" x2="${cx}" y2="${cy-8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy-8} ${cx},${cy-14} ${cx+4},${cy-8}" fill="white"/>`;
@@ -1392,6 +1392,12 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         return `<polyline points="${points}" fill="none" stroke="${item.color||"#fff"}" stroke-width="${item.size||2}" stroke-linecap="round" stroke-linejoin="round"/>`;
       }).join("");
       const itemsSVG = (items || []).filter(item => item != null && item.type && item.type !== "drawing").map(item => {
+        if (item.type === "flecha") {
+          const fx1 = (item.x||0)/100*W, fy1 = (item.y||0)/100*H;
+          const fx2 = (item.x2||0)/100*W, fy2 = (item.y2||0)/100*H;
+          const aid = `a${Math.round(fx1)}${Math.round(fy1)}`;
+          return `<defs><marker id="${aid}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs><line x1="${fx1}" y1="${fy1}" x2="${fx2}" y2="${fy2}" stroke="white" stroke-width="2.5" marker-end="url(#${aid})"/>`;
+        }
         const cx = (item.x / 100) * W;
         const cy = (item.y / 100) * H;
         if (item.type.startsWith("player_")) {
