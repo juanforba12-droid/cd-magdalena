@@ -817,9 +817,10 @@ function Pizarra({ value, onChange }) {
   const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type || typeof item.type !== 'string') return null;
     if (item.type === "flecha") {
       return (
-        <svg key={item.id} className="absolute inset-0 w-full h-full pointer-events-none" style={{zIndex:5}}>
+        <svg key={item.id} className="absolute inset-0 w-full h-full" style={{zIndex:5, pointerEvents: tool==="erase"?"auto":"none"}}>
           <defs><marker id={`arr-${item.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs>
-          <line x1={`${item.x}%`} y1={`${item.y}%`} x2={`${item.x2}%`} y2={`${item.y2}%`} stroke="white" strokeWidth="2.5" markerEnd={`url(#arr-${item.id})`}/>
+          <line x1={`${item.x}%`} y1={`${item.y}%`} x2={`${item.x2}%`} y2={`${item.y2}%`} stroke="white" strokeWidth="8" strokeOpacity="0" onMouseDown={e=>{e.stopPropagation();if(tool==="erase")removeItem(item.id);}} style={{cursor:tool==="erase"?"crosshair":"default"}}/>
+          <line x1={`${item.x}%`} y1={`${item.y}%`} x2={`${item.x2}%`} y2={`${item.y2}%`} stroke="white" strokeWidth="2.5" markerEnd={`url(#arr-${item.id})`} style={{pointerEvents:"none"}}/>
         </svg>
       );
     }
@@ -964,7 +965,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   const [categoria, setCategoria] = useState(task?.categoria || "");
   const [pizarra, setPizarra] = useState((task?.pizarra || []).filter(el => el != null).map((el, idx) => {
     if (el.type === 'drawing') return { id: el.id || (Date.now() + idx), type: 'drawing', path: el.path || [], color: el.color, size: el.size };
-    return { id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' };
+    return { id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, x2: el.x2, y2: el.y2, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' };
   }));
 
   const handleSave = (toLib = false) => {
@@ -1364,7 +1365,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="aro_rojo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#dc2626" stroke-width="2"/>`;
     if (type==="aro_amarillo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#eab308" stroke-width="2"/>`;
     if (type==="aro_verde") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#16a34a" stroke-width="2"/>`;
-    if (type==="flecha") return `<line x1="${cx-10}" y1="${cy}" x2="${cx+10}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+10},${cy-3} ${cx+15},${cy} ${cx+10},${cy+3}" fill="white"/>`;
+    if (type==="flecha") { const fx2=(item.x2||50)/100*W, fy2=(item.y2||50)/100*H; return `<defs><marker id="arr${Math.round(cx)}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs><line x1="${cx}" y1="${cy}" x2="${fx2}" y2="${fy2}" stroke="white" stroke-width="2.5" marker-end="url(#arr${Math.round(cx)})"/>`;}
     if (type==="flecha_der") return `<line x1="${cx-8}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+8},${cy-4} ${cx+14},${cy} ${cx+8},${cy+4}" fill="white"/>`;
     if (type==="flecha_izq") return `<line x1="${cx+8}" y1="${cy}" x2="${cx-8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx-8},${cy-4} ${cx-14},${cy} ${cx-8},${cy+4}" fill="white"/>`;
     if (type==="flecha_arr") return `<line x1="${cx}" y1="${cy+8}" x2="${cx}" y2="${cy-8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy-8} ${cx},${cy-14} ${cx+4},${cy-8}" fill="white"/>`;
