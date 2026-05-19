@@ -829,6 +829,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
         className="absolute transform -translate-x-1/2 -translate-y-1/2 select-none"
         style={{ left:`${item.x}%`, top:`${item.y}%`, cursor: tool==="erase"?"crosshair":"grab", zIndex: dragging===item.id?10:1 }}
         onMouseDown={e => { if(tool==="erase"){e.stopPropagation();removeItem(item.id);}else startDrag(e,item.id); }}
+        onTouchStart={e => { e.stopPropagation(); if(tool==="erase"){removeItem(item.id);}else{ const t=e.touches[0]; startDrag({clientX:t.clientX,clientY:t.clientY,stopPropagation:()=>e.stopPropagation(),preventDefault:()=>e.preventDefault()},item.id);} }}
         onDoubleClick={e => { e.stopPropagation(); if(isPlayer) setEditingItem({id:item.id,num:item.num??""}); }}
       >
         {isPlayer ? (
