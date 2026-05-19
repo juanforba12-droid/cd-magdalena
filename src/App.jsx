@@ -581,7 +581,7 @@ function FieldMarkings({ type }) {
       <rect x="28" y="2" width="44" height="18" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <rect x="36" y="2" width="28" height="8" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <rect x="42" y="0" width="16" height="2" fill="none" stroke="white" strokeWidth="0.7" opacity="0.8"/>
-      <circle cx="50" cy="20" r="12" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
+      <path d="M 38 20 A 12 12 0 0 0 62 20" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <circle cx="50" cy="14" r="0.8" fill="white" opacity="0.6"/>
       <path d="M2 5 A3 3 0 0 1 5 2" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <path d="M95 2 A3 3 0 0 1 98 5" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
