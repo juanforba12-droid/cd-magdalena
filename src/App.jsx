@@ -577,21 +577,14 @@ function FieldMarkings({ type }) {
   if (type === "half") return (
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 65" preserveAspectRatio="none">
       <rect x="2" y="2" width="96" height="61" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <line x1="2" y1="32.5" x2="98" y2="32.5" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <circle cx="50" cy="32.5" r="12" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <circle cx="50" cy="32.5" r="0.8" fill="white" opacity="0.6"/>
+      <line x1="2" y1="2" x2="98" y2="2" stroke="white" strokeWidth="0.8" opacity="0.8"/>
       <rect x="28" y="2" width="44" height="18" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <rect x="36" y="2" width="28" height="8" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <rect x="42" y="0" width="16" height="2" fill="none" stroke="white" strokeWidth="0.7" opacity="0.8"/>
+      <circle cx="50" cy="20" r="12" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <circle cx="50" cy="14" r="0.8" fill="white" opacity="0.6"/>
-      <rect x="28" y="45" width="44" height="18" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <rect x="36" y="55" width="28" height="8" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <rect x="42" y="63" width="16" height="2" fill="none" stroke="white" strokeWidth="0.7" opacity="0.8"/>
-      <circle cx="50" cy="51" r="0.8" fill="white" opacity="0.6"/>
       <path d="M2 5 A3 3 0 0 1 5 2" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
       <path d="M95 2 A3 3 0 0 1 98 5" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <path d="M98 60 A3 3 0 0 1 95 63" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
-      <path d="M5 63 A3 3 0 0 1 2 60" fill="none" stroke="white" strokeWidth="0.5" opacity="0.6"/>
     </svg>
   );
   return (
