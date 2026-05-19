@@ -560,12 +560,7 @@ const MATERIALS = [
   { id:"aro_rojo", label:"Aro 🔴", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"aro_amarillo", label:"Aro 🟡", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"aro_verde", label:"Aro 🟢", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
-  { id:"flecha_der", label:"→", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="3" y1="12" x2="19" y2="12"/><polyline points="13,6 19,12 13,18"/></svg> },
-  { id:"flecha_izq", label:"←", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="21" y1="12" x2="5" y2="12"/><polyline points="11,6 5,12 11,18"/></svg> },
-  { id:"flecha_arr", label:"↑", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="12" y1="21" x2="12" y2="5"/><polyline points="6,11 12,5 18,11"/></svg> },
-  { id:"flecha_abj", label:"↓", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="12" y1="3" x2="12" y2="19"/><polyline points="6,13 12,19 18,13"/></svg> },
-  { id:"flecha_diagr", label:"↘", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="4" y1="4" x2="19" y2="19"/><polyline points="10,19 19,19 19,10"/></svg> },
-  { id:"flecha_diagl", label:"↙", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="20" y1="4" x2="5" y2="19"/><polyline points="14,19 5,19 5,10"/></svg> },
+  { id:"flecha", label:"Flecha", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="4" y1="20" x2="20" y2="4"/><polyline points="10,4 20,4 20,14"/></svg> },
   { id:"balon", label:"Balón", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 8 L12 13 L15 8 Z" fill="currentColor" opacity="0.5"/><path d="M3.5 9 L9 8 L12 13 L8 17 Z" fill="currentColor" opacity="0.3"/><path d="M20.5 9 L15 8 L12 13 L16 17 Z" fill="currentColor" opacity="0.3"/></svg> },
   { id:"valla", label:"Valla", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-lime-400"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> },
 
@@ -628,6 +623,7 @@ function Pizarra({ value, onChange }) {
   const [dragging, setDragging] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [editingItem, setEditingItem] = useState(null);
+  const [arrowStart, setArrowStart] = useState(null);
   const [drawing, setDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState([]);
   const drawingRef = useRef(false);
@@ -748,6 +744,14 @@ function Pizarra({ value, onChange }) {
     const rect = fieldRef.current.getBoundingClientRect();
     const {clientX, clientY} = getCoords(e);
     const x = ((clientX - rect.left) / rect.width) * 100;
+    const y2temp = ((clientY - rect.top) / rect.height) * 100;
+    if (tool === "flecha") {
+      if (!arrowStart) { setArrowStart({x, y: y2temp}); return; }
+      const newArrow = { id: Date.now(), type: "flecha", x: arrowStart.x, y: arrowStart.y, x2: x, y2: y2temp };
+      onChange([...items, newArrow]);
+      setArrowStart(null);
+      return;
+    }
     const y = ((clientY - rect.top) / rect.height) * 100;
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
     if (tool === "erase") return;
@@ -811,6 +815,14 @@ function Pizarra({ value, onChange }) {
   const saveEditNum = (id, num) => { onChange(items.map(i => i.id === id ? { ...i, num } : i)); setEditingItem(null); };
 
   const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type || typeof item.type !== 'string') return null;
+    if (item.type === "flecha") {
+      return (
+        <svg key={item.id} className="absolute inset-0 w-full h-full pointer-events-none" style={{zIndex:5}}>
+          <defs><marker id={`arr-${item.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="white"/></marker></defs>
+          <line x1={`${item.x}%`} y1={`${item.y}%`} x2={`${item.x2}%`} y2={`${item.y2}%`} stroke="white" strokeWidth="2.5" markerEnd={`url(#arr-${item.id})`}/>
+        </svg>
+      );
+    }
     const isPlayer = item.type.startsWith("player_");
     const color = isPlayer ? item.type.replace("player_", "") : null;
     const mat = !isPlayer ? MATERIALS.find(m => m.id === item.type) : null;
@@ -1352,6 +1364,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="aro_rojo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#dc2626" stroke-width="2"/>`;
     if (type==="aro_amarillo") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#eab308" stroke-width="2"/>`;
     if (type==="aro_verde") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#16a34a" stroke-width="2"/>`;
+    if (type==="flecha") return `<line x1="${cx-10}" y1="${cy}" x2="${cx+10}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+10},${cy-3} ${cx+15},${cy} ${cx+10},${cy+3}" fill="white"/>`;
     if (type==="flecha_der") return `<line x1="${cx-8}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx+8},${cy-4} ${cx+14},${cy} ${cx+8},${cy+4}" fill="white"/>`;
     if (type==="flecha_izq") return `<line x1="${cx+8}" y1="${cy}" x2="${cx-8}" y2="${cy}" stroke="white" stroke-width="2"/><polygon points="${cx-8},${cy-4} ${cx-14},${cy} ${cx-8},${cy+4}" fill="white"/>`;
     if (type==="flecha_arr") return `<line x1="${cx}" y1="${cy+8}" x2="${cx}" y2="${cy-8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy-8} ${cx},${cy-14} ${cx+4},${cy-8}" fill="white"/>`;
