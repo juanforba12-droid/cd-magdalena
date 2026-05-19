@@ -3451,7 +3451,7 @@ export default function App() {
           pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
             el.type === "drawing"
               ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
-              : { id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
+              : { id: el.id, type: el.type, x: el.x, y: el.y, x2: el.x2, y2: el.y2, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
           ))
         }))
       })),
@@ -3460,7 +3460,7 @@ export default function App() {
         pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
           el.type === "drawing"
             ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
-            : { id: el.id, type: el.type, x: el.x, y: el.y, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
+            : { id: el.id, type: el.type, x: el.x, y: el.y, x2: el.x2, y2: el.y2, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
         ))
       }))
     });
