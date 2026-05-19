@@ -964,7 +964,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
 
   const handleSave = (toLib = false) => {
     if (!nombre.trim()) return;
-    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra, categoria };
+    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra, categoria, fieldType };
     onSave(t, toLib);
   };
 
