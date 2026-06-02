@@ -107,6 +107,7 @@ function AttendanceChart({ present, late, absent }) {
 // SECTION: Plantilla
 // ══════════════════════════════════════════════════════════════════════════════
 function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
+  const [tab, setTab] = useState("oficial"); // "oficial" | "probando"
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -228,11 +229,27 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header + Tabs */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Plantilla — {team}</h2>
-        <Btn onClick={() => open()}>+ Añadir jugador</Btn>
+        {tab === "oficial"
+          ? <Btn onClick={() => open()}>+ Añadir jugador</Btn>
+          : <Btn onClick={() => { setTab("oficial"); setTimeout(() => { window.dispatchEvent(new CustomEvent("openProbandoForm")); }, 50); }}>+ Añadir jugador en prueba</Btn>
+        }
       </div>
+      {/* Pestañas */}
+      <div className="flex gap-0 border-b border-zinc-800">
+        <button
+          onClick={() => { setTab("oficial"); setShowForm(false); }}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "oficial" ? "border-red-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+        >👥 Plantilla oficial</button>
+        <button
+          onClick={() => { setTab("probando"); setShowForm(false); }}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${tab === "probando" ? "border-blue-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+        >🔍 Probando {(data.probando||[]).length > 0 && <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/50 px-1.5 py-0.5 rounded-full">{(data.probando||[]).length}</span>}</button>
+      </div>
+      {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
+      {tab === "oficial" && <>
 
       {/* Add/Edit Form */}
       {showForm && (
@@ -391,6 +408,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
         </div>
       )}
 
+      </>}
       {/* ── Modal: Asistencia a entrenamientos ────────────────────────────── */}
       {attPlayer && (() => {
         const att = getPlayerAttHistory(attPlayer.id);
@@ -3534,7 +3552,7 @@ function InformesSection({ player, team, data, onSave, onBack }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Jugadores Probando
 // ══════════════════════════════════════════════════════════════════════════════
-function ProbandoSection({ team, data, onSave, isCoord }) {
+function ProbandoContent({ team, data, onSave, isCoord }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -3901,7 +3919,6 @@ export default function App() {
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
     ...(isCoord ? [{ id: "mejoresrivales", label: "Mejores Rivales", icon: "⭐" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
-    { id: "probando", label: "Probando", icon: "🔍" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
     { id: "partidos", label: "Partidos", icon: "⚽" },
@@ -4206,9 +4223,7 @@ export default function App() {
             {activeSection === "plantilla" && (
               <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} />
             )}
-            {activeSection === "probando" && (
-              <ProbandoSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
-            )}
+
             {activeSection === "informes" && informesPlayer && (
               <InformesSection
                 player={informesPlayer.player}
