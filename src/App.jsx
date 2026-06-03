@@ -320,8 +320,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden sm:table-cell">Posición</th>
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden md:table-cell">Posiciones alt.</th>
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Estado</th>
-                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden lg:table-cell">Teléfono</th>}
-                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden lg:table-cell">DNI</th>}
+                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Teléfono</th>}
+                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">DNI</th>}
                         <th className="text-right px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Acciones</th>
                       </tr>
                     </thead>
@@ -370,12 +370,12 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                               </div>
                             </td>
                             {isCoord && (
-                              <td className="px-3 py-3 hidden lg:table-cell">
+                              <td className="px-3 py-3">
                                 <span className="text-zinc-300 text-sm font-mono">{p.telefono || <span className="text-zinc-600">—</span>}</span>
                               </td>
                             )}
                             {isCoord && (
-                              <td className="px-3 py-3 hidden lg:table-cell">
+                              <td className="px-3 py-3">
                                 <span className="text-zinc-300 text-sm font-mono">{p.dni || <span className="text-zinc-600">—</span>}</span>
                               </td>
                             )}
