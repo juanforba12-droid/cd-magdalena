@@ -120,6 +120,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [attPlayer, setAttPlayer] = useState(null);
   const [search, setSearch] = useState("");
   const [fichaUploading, setFichaUploading] = useState({});
+  const [fichaVisor, setFichaVisor] = useState(null);
   const [fichas, setFichas] = useState(null);
 
   // ── Historial de partidos ─────────────────────────────────────────────────
@@ -437,8 +438,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                                         const arr = new Uint8Array(byteStr.length);
                                         for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
                                         const blob = new Blob([arr], { type: "application/pdf" });
-                                        const url = URL.createObjectURL(blob);
-                                        window.open(url, "_blank");
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        setFichaVisor({ blobUrl, blob, nombre: fichas[String(p.id)].nombre || "ficha.pdf" });
                                       }}
                                       title={fichas[String(p.id)].nombre || "Ver ficha PDF"}
                                       className="text-xs px-2 py-1 rounded bg-blue-900/40 border border-blue-700/50 text-blue-300 hover:bg-blue-900/70 transition-all font-medium"
@@ -509,6 +510,31 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
       )}
 
       </>}
+      {fichaVisor && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
+            <span className="text-white font-semibold text-sm truncate max-w-xs">{fichaVisor.nombre}</span>
+            <div className="flex gap-2">
+              {navigator.share && (
+                <button onClick={async () => {
+                  try {
+                    const file = new File([fichaVisor.blob], fichaVisor.nombre, { type: "application/pdf" });
+                    await navigator.share({ files: [file], title: fichaVisor.nombre });
+                  } catch(e) { if (e.name !== "AbortError") alert("Error: " + e.message); }
+                }} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-white text-sm font-semibold">
+                  📤 Compartir
+                </button>
+              )}
+              <button onClick={() => { URL.revokeObjectURL(fichaVisor.blobUrl); setFichaVisor(null); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold">
+                ✕ Cerrar
+              </button>
+            </div>
+          </div>
+          <iframe src={fichaVisor.blobUrl} className="flex-1 w-full border-0" title={fichaVisor.nombre} />
+        </div>
+      )}
+
       {/* ── Modal: Asistencia a entrenamientos ────────────────────────────── */}
       {attPlayer && (() => {
         const att = getPlayerAttHistory(attPlayer.id);
