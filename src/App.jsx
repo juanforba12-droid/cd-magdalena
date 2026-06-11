@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, uploadFichaPDF, deleteFichaPDF } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 
@@ -120,6 +120,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [attPlayer, setAttPlayer] = useState(null);
   const [search, setSearch] = useState("");
   const [fichaUploading, setFichaUploading] = useState({});
+  const [fichas, setFichas] = useState(null);
 
   // ── Historial de partidos ─────────────────────────────────────────────────
   const getPlayerMatchHistory = (playerId) => {
@@ -146,6 +147,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     }).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
     return { present, late, absent, total, detail };
   };
+
+  useEffect(() => { if (!isCoord) return; loadFichas(team).then(setFichas); }, [team]);
 
   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
   const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
@@ -207,8 +210,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 
   const del = (id) => {
     if (!window.confirm("¿Eliminar jugador?\nSe eliminarán también sus datos, informes y ficha PDF si tiene.")) return;
-    const player = (data.players || []).find(p => p.id === id);
-    if (player?.fichaUrl) deleteFichaPDF(team, id).catch(() => {});
+    if (fichas?.[id]) deleteFicha(team, id).catch(() => {});
+    setFichas(prev => { const n = { ...(prev||{}) }; delete n[id]; return n; });
     onSave({ ...data, players: data.players.filter(p => p.id !== id) });
   };
 
@@ -217,32 +220,35 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
       alert("Solo se admiten archivos PDF.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("El PDF no puede superar 5 MB.");
+    if (file.size > 700 * 1024) {
+      alert("El PDF no puede superar 700 KB.\nUsa ilovepdf.com para reducir el tamaño.");
       return;
     }
     setFichaUploading(prev => ({ ...prev, [player.id]: true }));
-    const result = await uploadFichaPDF(team, player.id, file);
-    setFichaUploading(prev => ({ ...prev, [player.id]: false }));
-    if (result.ok) {
-      const players = (data.players || []).map(p =>
-        p.id !== player.id ? p : { ...p, fichaUrl: result.url, fichaNombre: file.name }
-      );
-      onSave({ ...data, players });
-    } else {
-      alert("Error al subir el PDF. Comprueba los permisos de Firebase Storage.\n" + result.error);
-    }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+      const result = await saveFicha(team, player.id, base64, file.name);
+      setFichaUploading(prev => ({ ...prev, [player.id]: false }));
+      if (result.ok) {
+        setFichas(prev => ({ ...(prev||{}), [String(player.id)]: { base64, nombre: file.name } }));
+      } else {
+        alert("Error al guardar la ficha: " + result.error);
+      }
+    };
+    reader.onerror = () => {
+      setFichaUploading(prev => ({ ...prev, [player.id]: false }));
+      alert("Error al leer el archivo.");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleFichaDelete = async (player) => {
     if (!window.confirm(`¿Eliminar la ficha PDF de ${player.name}?`)) return;
     setFichaUploading(prev => ({ ...prev, [player.id]: true }));
-    await deleteFichaPDF(team, player.id);
+    await deleteFicha(team, player.id);
     setFichaUploading(prev => ({ ...prev, [player.id]: false }));
-    const players = (data.players || []).map(p =>
-      p.id !== player.id ? p : { ...p, fichaUrl: null, fichaNombre: null }
-    );
-    onSave({ ...data, players });
+    setFichas(prev => { const n = { ...(prev||{}) }; delete n[String(player.id)]; return n; });
   };
 
   const togglePos = (pos) => {
@@ -2010,6 +2016,8 @@ function PartidosSection({ team, data, onSave, isCoord }) {
   }, [data.players?.length]);
 
   const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
+  useEffect(() => { if (!isCoord) return; loadFichas(team).then(setFichas); }, [team]);
+
   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
 
   if (view === "form") return (

@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -13,7 +12,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
 
 function cleanLoaded(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -86,27 +84,34 @@ export async function saveSeasons(seasons) {
   } catch(e) { console.error(e); }
 }
 
-// ── Firebase Storage: fichas PDF ─────────────────────────────────────────────
-export async function uploadFichaPDF(team, playerId, file) {
+export async function loadFichas(team) {
   try {
-    const path = `fichas/${team}/${playerId}.pdf`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, { contentType: "application/pdf" });
-    const url = await getDownloadURL(storageRef);
-    return { ok: true, url };
+    const snap = await getDoc(doc(db, "cdmagdalena_fichas", team));
+    if (!snap.exists()) return {};
+    return snap.data() || {};
+  } catch(e) { console.error("loadFichas error", e); return {}; }
+}
+
+export async function saveFicha(team, playerId, base64, nombre) {
+  try {
+    const current = await loadFichas(team);
+    current[String(playerId)] = { base64, nombre };
+    await setDoc(doc(db, "cdmagdalena_fichas", team), current);
+    return { ok: true };
   } catch(e) {
-    console.error("Upload ficha error", e);
+    console.error("saveFicha error", e);
     return { ok: false, error: e.message };
   }
 }
 
-export async function deleteFichaPDF(team, playerId) {
+export async function deleteFicha(team, playerId) {
   try {
-    const path = `fichas/${team}/${playerId}.pdf`;
-    const storageRef = ref(storage, path);
-    await deleteObject(storageRef);
+    const current = await loadFichas(team);
+    delete current[String(playerId)];
+    await setDoc(doc(db, "cdmagdalena_fichas", team), current);
     return { ok: true };
   } catch(e) {
+    console.error("deleteFicha error", e);
     return { ok: false, error: e.message };
   }
 }
