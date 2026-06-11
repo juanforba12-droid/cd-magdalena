@@ -425,18 +425,26 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                             {isCoord && (
                               <td className="px-3 py-3">
                                 {fichaUploading[p.id] ? (
-                                  <span className="text-xs text-zinc-400 animate-pulse">⏳ Subiendo...</span>
-                                ) : p.fichaUrl ? (
+                                  <span className="text-xs text-zinc-400 animate-pulse">⏳ Guardando...</span>
+                                ) : fichas === null ? (
+                                  <span className="text-xs text-zinc-600">...</span>
+                                ) : fichas[String(p.id)] ? (
                                   <div className="flex items-center gap-1.5">
-                                    <a
-                                      href={p.fichaUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      title={p.fichaNombre || "Ver ficha PDF"}
+                                    <button
+                                      onClick={() => {
+                                        const b64 = fichas[String(p.id)].base64;
+                                        const byteStr = atob(b64.split(",")[1]);
+                                        const arr = new Uint8Array(byteStr.length);
+                                        for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+                                        const blob = new Blob([arr], { type: "application/pdf" });
+                                        const url = URL.createObjectURL(blob);
+                                        window.open(url, "_blank");
+                                      }}
+                                      title={fichas[String(p.id)].nombre || "Ver ficha PDF"}
                                       className="text-xs px-2 py-1 rounded bg-blue-900/40 border border-blue-700/50 text-blue-300 hover:bg-blue-900/70 transition-all font-medium"
                                     >
                                       📄 Ver
-                                    </a>
+                                    </button>
                                     <label
                                       title="Reemplazar PDF"
                                       className="text-xs px-1.5 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all cursor-pointer"
