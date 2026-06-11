@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -12,6 +13,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 function cleanLoaded(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -44,7 +46,6 @@ export async function saveData(data) {
       json = JSON.stringify(data);
     } catch(jsonErr) {
       console.error("JSON.stringify failed:", jsonErr.message);
-      // Try to identify which key causes the issue
       for (const team of Object.keys(data)) {
         try { JSON.stringify(data[team]); }
         catch(e2) { console.error("Problem in team:", team, e2.message); }
@@ -83,4 +84,29 @@ export async function saveSeasons(seasons) {
     const json = JSON.stringify(seasons);
     await setDoc(doc(db, "cdmagdalena", "seasons"), { json });
   } catch(e) { console.error(e); }
+}
+
+// ── Firebase Storage: fichas PDF ─────────────────────────────────────────────
+export async function uploadFichaPDF(team, playerId, file) {
+  try {
+    const path = `fichas/${team}/${playerId}.pdf`;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file, { contentType: "application/pdf" });
+    const url = await getDownloadURL(storageRef);
+    return { ok: true, url };
+  } catch(e) {
+    console.error("Upload ficha error", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function deleteFichaPDF(team, playerId) {
+  try {
+    const path = `fichas/${team}/${playerId}.pdf`;
+    const storageRef = ref(storage, path);
+    await deleteObject(storageRef);
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
 }

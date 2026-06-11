@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, uploadFichaPDF, deleteFichaPDF } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 
@@ -119,6 +119,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [statsPlayer, setStatsPlayer] = useState(null);
   const [attPlayer, setAttPlayer] = useState(null);
   const [search, setSearch] = useState("");
+  const [fichaUploading, setFichaUploading] = useState({});
 
   // ── Historial de partidos ─────────────────────────────────────────────────
   const getPlayerMatchHistory = (playerId) => {
@@ -205,8 +206,43 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   };
 
   const del = (id) => {
-    if (!window.confirm("¿Eliminar jugador?")) return;
+    if (!window.confirm("¿Eliminar jugador?\nSe eliminarán también sus datos, informes y ficha PDF si tiene.")) return;
+    const player = (data.players || []).find(p => p.id === id);
+    if (player?.fichaUrl) deleteFichaPDF(team, id).catch(() => {});
     onSave({ ...data, players: data.players.filter(p => p.id !== id) });
+  };
+
+  const handleFichaUpload = async (player, file) => {
+    if (!file || file.type !== "application/pdf") {
+      alert("Solo se admiten archivos PDF.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("El PDF no puede superar 5 MB.");
+      return;
+    }
+    setFichaUploading(prev => ({ ...prev, [player.id]: true }));
+    const result = await uploadFichaPDF(team, player.id, file);
+    setFichaUploading(prev => ({ ...prev, [player.id]: false }));
+    if (result.ok) {
+      const players = (data.players || []).map(p =>
+        p.id !== player.id ? p : { ...p, fichaUrl: result.url, fichaNombre: file.name }
+      );
+      onSave({ ...data, players });
+    } else {
+      alert("Error al subir el PDF. Comprueba los permisos de Firebase Storage.\n" + result.error);
+    }
+  };
+
+  const handleFichaDelete = async (player) => {
+    if (!window.confirm(`¿Eliminar la ficha PDF de ${player.name}?`)) return;
+    setFichaUploading(prev => ({ ...prev, [player.id]: true }));
+    await deleteFichaPDF(team, player.id);
+    setFichaUploading(prev => ({ ...prev, [player.id]: false }));
+    const players = (data.players || []).map(p =>
+      p.id !== player.id ? p : { ...p, fichaUrl: null, fichaNombre: null }
+    );
+    onSave({ ...data, players });
   };
 
   const togglePos = (pos) => {
@@ -322,6 +358,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Estado</th>
                         {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Teléfono</th>}
                         {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">DNI</th>}
+                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Ficha</th>}
                         <th className="text-right px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Acciones</th>
                       </tr>
                     </thead>
@@ -377,6 +414,55 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                             {isCoord && (
                               <td className="px-3 py-3">
                                 <span className="text-zinc-300 text-sm font-mono">{p.dni || <span className="text-zinc-600">—</span>}</span>
+                              </td>
+                            )}
+                            {isCoord && (
+                              <td className="px-3 py-3">
+                                {fichaUploading[p.id] ? (
+                                  <span className="text-xs text-zinc-400 animate-pulse">⏳ Subiendo...</span>
+                                ) : p.fichaUrl ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <a
+                                      href={p.fichaUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title={p.fichaNombre || "Ver ficha PDF"}
+                                      className="text-xs px-2 py-1 rounded bg-blue-900/40 border border-blue-700/50 text-blue-300 hover:bg-blue-900/70 transition-all font-medium"
+                                    >
+                                      📄 Ver
+                                    </a>
+                                    <label
+                                      title="Reemplazar PDF"
+                                      className="text-xs px-1.5 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all cursor-pointer"
+                                    >
+                                      🔄
+                                      <input
+                                        type="file"
+                                        accept="application/pdf"
+                                        className="hidden"
+                                        onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }}
+                                      />
+                                    </label>
+                                    <button
+                                      onClick={() => handleFichaDelete(p)}
+                                      title="Eliminar ficha"
+                                      className="text-xs px-1.5 py-1 rounded bg-zinc-800 border border-red-900/50 text-red-500 hover:bg-red-900/30 hover:border-red-700 transition-all"
+                                    >✕</button>
+                                  </div>
+                                ) : (
+                                  <label
+                                    title="Subir ficha PDF"
+                                    className="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all cursor-pointer flex items-center gap-1 w-fit"
+                                  >
+                                    ⬆️ Subir
+                                    <input
+                                      type="file"
+                                      accept="application/pdf"
+                                      className="hidden"
+                                      onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }}
+                                    />
+                                  </label>
+                                )}
                               </td>
                             )}
                             <td className="px-3 py-3">
