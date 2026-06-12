@@ -116,6 +116,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [posicionPrincipal, setPosicionPrincipal] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [statsPlayer, setStatsPlayer] = useState(null);
   const [attPlayer, setAttPlayer] = useState(null);
   const [search, setSearch] = useState("");
@@ -192,13 +193,14 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     setPosicionPrincipal(p ? (p.posicionPrincipal || (p.positions||[])[0] || "") : "");
     setTelefono(p ? (p.telefono || "") : "");
     setDni(p ? (p.dni || "") : "");
+    setFechaNacimiento(p ? (p.fechaNacimiento || "") : "");
     setShowForm(true);
   };
 
   const save = () => {
     if (!name.trim()) return;
     const players = [...(data.players || [])];
-    const playerData = { name, dorsal, positions, posicionPrincipal, ...(isCoord ? { telefono, dni } : {}) };
+    const playerData = { name, dorsal, positions, posicionPrincipal, ...(isCoord ? { telefono, dni, fechaNacimiento } : {}) };
     if (editing) {
       const idx = players.findIndex(p => p.id === editing.id);
       players[idx] = { ...editing, ...playerData };
@@ -306,6 +308,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Input label="Teléfono" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
               <Input label="DNI" value={dni} onChange={e => setDni(e.target.value)} />
+              <Input label="Fecha de nacimiento" type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} />
             </div>
           )}
           <div className="mb-4">
@@ -3689,6 +3692,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
   const [posicionPrincipal, setPosicionPrincipal] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [fechaPrueba, setFechaPrueba] = useState(new Date().toISOString().split("T")[0]);
   const [estadoPrueba, setEstadoPrueba] = useState("pendiente");
   const [notas, setNotas] = useState("");
@@ -3735,6 +3739,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
     setPosicionPrincipal(p ? (p.posicionPrincipal || "") : "");
     setTelefono(p ? (p.telefono || "") : "");
     setDni(p ? (p.dni || "") : "");
+    setFechaNacimiento(p ? (p.fechaNacimiento || "") : "");
     setFechaPrueba(p ? (p.fechaPrueba || new Date().toISOString().split("T")[0]) : new Date().toISOString().split("T")[0]);
     setEstadoPrueba(p ? (p.estadoPrueba || "pendiente") : "pendiente");
     setNotas(p ? (p.notas || "") : "");
@@ -3744,7 +3749,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
   const save = () => {
     if (!name.trim()) return;
     const probando = [...(data.probando || [])];
-    const playerData = { name, dorsal, positions, posicionPrincipal, telefono, dni, fechaPrueba, estadoPrueba, notas };
+    const playerData = { name, dorsal, positions, posicionPrincipal, telefono, dni, fechaNacimiento, fechaPrueba, estadoPrueba, notas };
     if (editing) {
       const idx = probando.findIndex(p => p.id === editing.id);
       probando[idx] = { ...editing, ...playerData };
@@ -3839,6 +3844,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
             <Input label="DNI" value={dni} onChange={e => setDni(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
+            <Input label="Fecha de nacimiento" type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} />
             <Input label="Fecha de prueba" type="date" value={fechaPrueba} onChange={e => setFechaPrueba(e.target.value)} />
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Estado</label>
