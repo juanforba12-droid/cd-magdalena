@@ -3715,7 +3715,7 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
 
   const guardar = () => {
     if (!nombre.trim() || seleccionados.length === 0) return;
-    const nueva = { id: Date.now(), nombre, fecha: fechaConv, jugadores: seleccionados };
+    const nueva = { id: Date.now(), nombre, fecha: fechaConv, jugadores: seleccionados.map(p => ({ id: p.id, equipo: p.equipo })) };
     const updated = [...convocatoriasGuardadas, nueva];
     onSave({ ...data, convocatorias: updated });
     setVista("lista");
@@ -3728,7 +3728,16 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
     onSave({ ...data, convocatorias: convocatoriasGuardadas.filter(c => c.id !== id) });
   };
 
+  const resolveJugadores = (conv) => {
+    return (conv.jugadores || []).map(ref => {
+      const jugador = (db[ref.equipo]?.players || []).find(p => p.id === ref.id);
+      return jugador ? { ...jugador, equipo: ref.equipo } : null;
+    }).filter(Boolean);
+  };
+
   const generarPDF = (conv) => {
+    const jugadoresResueltos = resolveJugadores(conv);
+    conv = { ...conv, jugadores: jugadoresResueltos };
     const campos = [];
     if (mostrarDorsal) campos.push("Dorsal");
     if (mostrarTelefono) campos.push("Teléfono");
@@ -3787,7 +3796,7 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
             <div key={c.id} className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <div className="font-semibold text-white">{c.nombre}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{c.fecha} · {c.jugadores.length} jugadores</div>
+                <div className="text-xs text-zinc-400 mt-0.5">{c.fecha} · {resolveJugadores(c).length} jugadores</div>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => { setConvActual(c); setVista("ver"); }} className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Ver</button>
@@ -3810,7 +3819,7 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
   const guardarEdicion = () => {
     if (!nombre.trim() || seleccionados.length === 0) return;
     const updated = convocatoriasGuardadas.map(c =>
-      c.id === convActual.id ? { ...c, nombre, fecha: fechaConv, jugadores: seleccionados } : c
+      c.id === convActual.id ? { ...c, nombre, fecha: fechaConv, jugadores: seleccionados.map(p => ({ id: p.id, equipo: p.equipo })) } : c
     );
     onSave({ ...data, convocatorias: updated });
     setVista("lista");
@@ -3968,13 +3977,14 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
   );
 
   // ── VISTA VER ────────────────────────────────────────────────────────────
+  const jugadoresResueltos = convActual ? resolveJugadores(convActual) : [];
   if (vista === "ver" && convActual) return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
         <div>
           <h2 className="text-lg font-bold text-white">{convActual.nombre}</h2>
-          <div className="text-xs text-zinc-400">{convActual.fecha} · {convActual.jugadores.length} jugadores</div>
+          <div className="text-xs text-zinc-400">{convActual.fecha} · {jugadoresResueltos.length} jugadores</div>
         </div>
       </div>
 
@@ -3995,9 +4005,9 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
         </div>
       </div>
 
-      {[...new Set(convActual.jugadores.map(j => j.equipo))].map(eq => (
+      {[...new Set(jugadoresResueltos.map(j => j.equipo))].map(eq => (
         <div key={eq} className="mb-4">
-          <div className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">{eq} ({convActual.jugadores.filter(j => j.equipo === eq).length})</div>
+          <div className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">{eq} ({jugadoresResueltos.filter(j => j.equipo === eq).length})</div>
           <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
@@ -4011,7 +4021,7 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
                 </tr>
               </thead>
               <tbody>
-                {convActual.jugadores.filter(j => j.equipo === eq).map(j => (
+                {jugadoresResueltos.filter(j => j.equipo === eq).map(j => (
                   <tr key={j.id} className="border-b border-zinc-700/50">
                     <td className="px-3 py-2 text-sm text-white">{j.name}</td>
                     <td className="px-3 py-2 text-sm text-zinc-300">{j.posicionPrincipal || (j.positions||[])[0] || "—"}</td>
