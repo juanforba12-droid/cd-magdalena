@@ -106,8 +106,8 @@ function AttendanceChart({ present, late, absent }) {
 
 // SECTION: Plantilla
 // ══════════════════════════════════════════════════════════════════════════════
-function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
-  const [tab, setTab] = useState("oficial"); // "oficial" | "probando"
+function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
+  const [tab, setTab] = useState("oficial"); // "oficial" | "probando" | "convocatoria"
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -292,8 +292,13 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
           onClick={() => { setTab("probando"); setShowForm(false); }}
           className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${tab === "probando" ? "border-blue-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >🔍 Probando {(data.probando||[]).length > 0 && <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/50 px-1.5 py-0.5 rounded-full">{(data.probando||[]).length}</span>}</button>
+        <button
+          onClick={() => { setTab("convocatoria"); setShowForm(false); }}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "convocatoria" ? "border-orange-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+        >📋 Convocatoria</button>
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
+      {tab === "convocatoria" && <ConvocatoriaContent team={team} data={data} onSave={onSave} isCoord={isCoord} db={db || {}} />}
       {tab === "oficial" && <>
 
       {/* Add/Edit Form */}
@@ -3675,6 +3680,272 @@ function InformesSection({ player, team, data, onSave, onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Convocatoria
+// ══════════════════════════════════════════════════════════════════════════════
+function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
+  const TEAMS = ["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"];
+  const [convocatorias, setConvocatorias] = React.useState([]);
+  const [vista, setVista] = React.useState("lista"); // "lista" | "nueva" | "ver"
+  const [nombre, setNombre] = React.useState("");
+  const [fechaConv, setFechaConv] = React.useState(new Date().toISOString().split("T")[0]);
+  const [equipoFiltro, setEquipoFiltro] = React.useState(team);
+  const [seleccionados, setSeleccionados] = React.useState([]);
+  const [convActual, setConvActual] = React.useState(null);
+  const [mostrarDorsal, setMostrarDorsal] = React.useState(true);
+  const [mostrarTelefono, setMostrarTelefono] = React.useState(false);
+  const [mostrarDNI, setMostrarDNI] = React.useState(false);
+  const [mostrarFechaNac, setMostrarFechaNac] = React.useState(false);
+
+  const convocatoriasGuardadas = data.convocatorias || [];
+
+  const jugadoresEquipo = (eq) => (db[eq]?.players || []).map(p => ({ ...p, equipo: eq }));
+
+  const toggleJugador = (p) => {
+    const key = p.equipo + "_" + p.id;
+    setSeleccionados(prev =>
+      prev.find(s => s.equipo + "_" + s.id === key)
+        ? prev.filter(s => s.equipo + "_" + s.id !== key)
+        : [...prev, p]
+    );
+  };
+
+  const isSelected = (p) => !!seleccionados.find(s => s.equipo + "_" + s.id === p.equipo + "_" + p.id);
+
+  const guardar = () => {
+    if (!nombre.trim() || seleccionados.length === 0) return;
+    const nueva = { id: Date.now(), nombre, fecha: fechaConv, jugadores: seleccionados };
+    const updated = [...convocatoriasGuardadas, nueva];
+    onSave({ ...data, convocatorias: updated });
+    setVista("lista");
+    setNombre("");
+    setSeleccionados([]);
+  };
+
+  const eliminar = (id) => {
+    if (!window.confirm("¿Eliminar convocatoria?")) return;
+    onSave({ ...data, convocatorias: convocatoriasGuardadas.filter(c => c.id !== id) });
+  };
+
+  const generarPDF = (conv) => {
+    const campos = [];
+    if (mostrarDorsal) campos.push("Dorsal");
+    if (mostrarTelefono) campos.push("Teléfono");
+    if (mostrarDNI) campos.push("DNI");
+    if (mostrarFechaNac) campos.push("F. Nacimiento");
+
+    const equipos = [...new Set(conv.jugadores.map(j => j.equipo))];
+    let html = `<html><head><style>
+      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      h2 { font-size: 13px; color: #666; margin-bottom: 16px; font-weight: normal; }
+      h3 { font-size: 14px; margin: 16px 0 6px; color: #c00; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+      th { background: #f0f0f0; text-align: left; padding: 6px 8px; font-size: 12px; }
+      td { padding: 5px 8px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
+      tr:nth-child(even) td { background: #fafafa; }
+    </style></head><body>
+    <h1>📋 ${conv.nombre}</h1>
+    <h2>Fecha: ${conv.fecha} · Total jugadores: ${conv.jugadores.length}</h2>`;
+
+    equipos.forEach(eq => {
+      const jEq = conv.jugadores.filter(j => j.equipo === eq);
+      html += `<h3>${eq} (${jEq.length})</h3><table><tr><th>Nombre</th><th>Posición</th>`;
+      campos.forEach(c => { html += `<th>${c}</th>`; });
+      html += `</tr>`;
+      jEq.forEach(j => {
+        html += `<tr><td>${j.name}</td><td>${j.posicionPrincipal || (j.positions||[])[0] || "—"}</td>`;
+        if (mostrarDorsal) html += `<td>${j.dorsal || "—"}</td>`;
+        if (mostrarTelefono) html += `<td>${j.telefono || "—"}</td>`;
+        if (mostrarDNI) html += `<td>${j.dni || "—"}</td>`;
+        if (mostrarFechaNac) html += `<td>${j.fechaNacimiento || "—"}</td>`;
+        html += `</tr>`;
+      });
+      html += `</table>`;
+    });
+    html += `</body></html>`;
+
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+    w.print();
+  };
+
+  // ── VISTA LISTA ─────────────────────────────────────────────────────────
+  if (vista === "lista") return (
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold text-white">Convocatorias guardadas</h2>
+        {isCoord && <button onClick={() => setVista("nueva")} className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Nueva convocatoria</button>}
+      </div>
+      {convocatoriasGuardadas.length === 0 ? (
+        <div className="text-zinc-500 text-sm text-center py-12">No hay convocatorias guardadas aún.</div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {convocatoriasGuardadas.map(c => (
+            <div key={c.id} className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-white">{c.nombre}</div>
+                <div className="text-xs text-zinc-400 mt-0.5">{c.fecha} · {c.jugadores.length} jugadores</div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => { setConvActual(c); setVista("ver"); }} className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Ver</button>
+                {isCoord && <button onClick={() => eliminar(c.id)} className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded-lg text-xs font-semibold">Eliminar</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── VISTA NUEVA ─────────────────────────────────────────────────────────
+  if (vista === "nueva") return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
+        <h2 className="text-lg font-bold text-white">Nueva convocatoria</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Nombre</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Torneo 2026, Jornada 1..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Fecha</label>
+          <input type="date" value={fechaConv} onChange={e => setFechaConv(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Filtrar por equipo</label>
+        <div className="flex flex-wrap gap-2">
+          {["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"].map(eq => (
+            <button key={eq} onClick={() => setEquipoFiltro(eq)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${equipoFiltro === eq ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
+              {eq}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Jugadores de {equipoFiltro} — Seleccionados: {seleccionados.length}</div>
+        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+          {jugadoresEquipo(equipoFiltro).length === 0 ? (
+            <div className="text-zinc-600 text-sm py-4 text-center">No hay jugadores en este equipo</div>
+          ) : jugadoresEquipo(equipoFiltro).map(p => (
+            <div key={p.id} onClick={() => toggleJugador(p)}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer border transition-all ${isSelected(p) ? "bg-orange-900/30 border-orange-600" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"}`}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected(p) ? "bg-orange-500 border-orange-500" : "border-zinc-500"}`}>
+                {isSelected(p) && <span className="text-white text-xs">✓</span>}
+              </div>
+              <span className="text-white text-sm font-medium">{p.name}</span>
+              <span className="text-zinc-400 text-xs">{p.posicionPrincipal || (p.positions||[])[0] || "—"}</span>
+              {p.dorsal && <span className="text-zinc-500 text-xs ml-auto">#{p.dorsal}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {seleccionados.length > 0 && (
+        <div className="mb-4 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3">
+          <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Seleccionados ({seleccionados.length})</div>
+          <div className="flex flex-wrap gap-2">
+            {seleccionados.map(p => (
+              <span key={p.equipo+"_"+p.id} className="bg-orange-900/40 border border-orange-700 text-orange-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                {p.name} <span className="text-orange-500 text-xs">({p.equipo})</span>
+                <button onClick={() => toggleJugador(p)} className="ml-1 text-orange-400 hover:text-white">×</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button onClick={guardar} disabled={!nombre.trim() || seleccionados.length === 0}
+          className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-semibold">
+          💾 Guardar convocatoria
+        </button>
+        <button onClick={() => { setVista("lista"); setNombre(""); setSeleccionados([]); }}
+          className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg text-sm">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── VISTA VER ────────────────────────────────────────────────────────────
+  if (vista === "ver" && convActual) return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
+        <div>
+          <h2 className="text-lg font-bold text-white">{convActual.nombre}</h2>
+          <div className="text-xs text-zinc-400">{convActual.fecha} · {convActual.jugadores.length} jugadores</div>
+        </div>
+      </div>
+
+      <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 mb-4">
+        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-3">Campos en el PDF</div>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { label: "Dorsal", val: mostrarDorsal, set: setMostrarDorsal },
+            { label: "Teléfono", val: mostrarTelefono, set: setMostrarTelefono },
+            { label: "DNI", val: mostrarDNI, set: setMostrarDNI },
+            { label: "F. Nacimiento", val: mostrarFechaNac, set: setMostrarFechaNac },
+          ].map(({ label, val, set }) => (
+            <button key={label} onClick={() => set(!val)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${val ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
+              {val ? "✓" : "+"} {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {[...new Set(convActual.jugadores.map(j => j.equipo))].map(eq => (
+        <div key={eq} className="mb-4">
+          <div className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">{eq} ({convActual.jugadores.filter(j => j.equipo === eq).length})</div>
+          <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-700">
+                  <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Nombre</th>
+                  <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Posición</th>
+                  {mostrarDorsal && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Dorsal</th>}
+                  {mostrarTelefono && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Teléfono</th>}
+                  {mostrarDNI && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">DNI</th>}
+                  {mostrarFechaNac && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">F. Nac.</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {convActual.jugadores.filter(j => j.equipo === eq).map(j => (
+                  <tr key={j.id} className="border-b border-zinc-700/50">
+                    <td className="px-3 py-2 text-sm text-white">{j.name}</td>
+                    <td className="px-3 py-2 text-sm text-zinc-300">{j.posicionPrincipal || (j.positions||[])[0] || "—"}</td>
+                    {mostrarDorsal && <td className="px-3 py-2 text-sm text-zinc-300">{j.dorsal || "—"}</td>}
+                    {mostrarTelefono && <td className="px-3 py-2 text-sm text-zinc-300">{j.telefono || "—"}</td>}
+                    {mostrarDNI && <td className="px-3 py-2 text-sm text-zinc-300">{j.dni || "—"}</td>}
+                    {mostrarFechaNac && <td className="px-3 py-2 text-sm text-zinc-300">{j.fechaNacimiento || "—"}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      <button onClick={() => generarPDF(convActual)}
+        className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-semibold text-sm mt-2">
+        📄 Generar PDF
+      </button>
+    </div>
+  );
+
+  return null;
+}
+
 // SECTION: Jugadores Probando
 // ══════════════════════════════════════════════════════════════════════════════
 function ProbandoContent({ team, data, onSave, isCoord }) {
@@ -4349,7 +4620,7 @@ export default function App() {
               <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
             )}
             {activeSection === "plantilla" && (
-              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} />
+              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} />
             )}
 
             {activeSection === "informes" && informesPlayer && (
