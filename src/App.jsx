@@ -3791,6 +3791,13 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => { setConvActual(c); setVista("ver"); }} className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Ver</button>
+                {isCoord && <button onClick={() => {
+                  setNombre(c.nombre);
+                  setFechaConv(c.fecha);
+                  setSeleccionados(c.jugadores);
+                  setConvActual(c);
+                  setVista("editar");
+                }} className="bg-blue-900/50 hover:bg-blue-800 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-semibold">Editar</button>}
                 {isCoord && <button onClick={() => eliminar(c.id)} className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded-lg text-xs font-semibold">Eliminar</button>}
               </div>
             </div>
@@ -3799,6 +3806,18 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
       )}
     </div>
   );
+
+  const guardarEdicion = () => {
+    if (!nombre.trim() || seleccionados.length === 0) return;
+    const updated = convocatoriasGuardadas.map(c =>
+      c.id === convActual.id ? { ...c, nombre, fecha: fechaConv, jugadores: seleccionados } : c
+    );
+    onSave({ ...data, convocatorias: updated });
+    setVista("lista");
+    setNombre("");
+    setSeleccionados([]);
+    setConvActual(null);
+  };
 
   // ── VISTA NUEVA ─────────────────────────────────────────────────────────
   if (vista === "nueva") return (
@@ -3869,6 +3888,78 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
           💾 Guardar convocatoria
         </button>
         <button onClick={() => { setVista("lista"); setNombre(""); setSeleccionados([]); }}
+          className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg text-sm">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── VISTA EDITAR ────────────────────────────────────────────────────────
+  if (vista === "editar") return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
+        <h2 className="text-lg font-bold text-white">Editar convocatoria</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Nombre</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Fecha</label>
+          <input type="date" value={fechaConv} onChange={e => setFechaConv(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+        </div>
+      </div>
+      <div className="mb-3">
+        <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Filtrar por equipo</label>
+        <div className="flex flex-wrap gap-2">
+          {["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"].map(eq => (
+            <button key={eq} onClick={() => setEquipoFiltro(eq)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${equipoFiltro === eq ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
+              {eq}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mb-4">
+        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Jugadores de {equipoFiltro} — Seleccionados: {seleccionados.length}</div>
+        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+          {jugadoresEquipo(equipoFiltro).length === 0 ? (
+            <div className="text-zinc-600 text-sm py-4 text-center">No hay jugadores en este equipo</div>
+          ) : jugadoresEquipo(equipoFiltro).map(p => (
+            <div key={p.id} onClick={() => toggleJugador(p)}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer border transition-all ${isSelected(p) ? "bg-orange-900/30 border-orange-600" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"}`}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected(p) ? "bg-orange-500 border-orange-500" : "border-zinc-500"}`}>
+                {isSelected(p) && <span className="text-white text-xs">✓</span>}
+              </div>
+              <span className="text-white text-sm font-medium">{p.name}</span>
+              <span className="text-zinc-400 text-xs">{p.posicionPrincipal || (p.positions||[])[0] || "—"}</span>
+              {p.dorsal && <span className="text-zinc-500 text-xs ml-auto">#{p.dorsal}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+      {seleccionados.length > 0 && (
+        <div className="mb-4 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3">
+          <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Seleccionados ({seleccionados.length})</div>
+          <div className="flex flex-wrap gap-2">
+            {seleccionados.map(p => (
+              <span key={p.equipo+"_"+p.id} className="bg-orange-900/40 border border-orange-700 text-orange-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                {p.name} <span className="text-orange-500 text-xs">({p.equipo})</span>
+                <button onClick={() => toggleJugador(p)} className="ml-1 text-orange-400 hover:text-white">×</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="flex gap-3">
+        <button onClick={guardarEdicion} disabled={!nombre.trim() || seleccionados.length === 0}
+          className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-semibold">
+          💾 Guardar cambios
+        </button>
+        <button onClick={() => { setVista("lista"); setNombre(""); setSeleccionados([]); setConvActual(null); }}
           className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg text-sm">
           Cancelar
         </button>
