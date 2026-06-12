@@ -426,7 +426,9 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                               <td className="px-3 py-3">
                                 <span className="text-zinc-300 text-sm font-mono">{p.dni || <span className="text-zinc-600">—</span>}</span>
                               </td>
-                              {isCoord && <td className="px-3 py-2 hidden md:table-cell">
+                            )}
+                            {isCoord && (
+                              <td className="px-3 py-2 hidden md:table-cell">
                                 <span className="text-zinc-300 text-sm font-mono">{p.fechaNacimiento || <span className="text-zinc-600">—</span>}</span>
                               </td>
                             )}
