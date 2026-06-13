@@ -30,8 +30,8 @@ function initState() {
 }
 
 // ── Tiny UI components ───────────────────────────────────────────────────────
-const Btn = ({ children, onClick, variant = "primary", small, className = "" }) => {
-  const base = "font-bold rounded transition-all duration-150 cursor-pointer border-0 ";
+const Btn = ({ children, onClick, variant = "primary", small, className = "", disabled = false }) => {
+  const base = "font-bold rounded transition-all duration-150 border-0 ";
   const sizes = small ? "px-3 py-1 text-xs" : "px-5 py-2 text-sm";
   const variants = {
     primary: "bg-red-600 hover:bg-red-500 text-white",
@@ -39,7 +39,16 @@ const Btn = ({ children, onClick, variant = "primary", small, className = "" }) 
     danger: "bg-zinc-800 hover:bg-red-800 text-red-400 border border-red-900",
     ghost: "bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-white",
   };
-  return <button className={`${base}${sizes} ${variants[variant]} ${className}`} onClick={onClick}>{children}</button>;
+  const disabledClass = disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : "cursor-pointer";
+  return (
+    <button
+      className={`${base}${sizes} ${variants[variant]} ${disabledClass} ${className}`}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
 };
 
 const Input = ({ label, ...props }) => (
@@ -2519,6 +2528,587 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Tácticas Animadas
+// ══════════════════════════════════════════════════════════════════════════════
+function TacticasSection({ team, data, onSave }) {
+  const tacticas = data.tacticas || [];
+  const [view, setView] = useState("lista"); // "lista" | "editor"
+  const [editando, setEditando] = useState(null);
+
+  const nuevaTactica = () => {
+    setEditando({
+      id: Date.now(),
+      nombre: "Nueva táctica",
+      jugadores: [
+        { id: 1, num: 1, x: 50, y: 88, color: "#ef4444" },
+        { id: 2, num: 2, x: 20, y: 72, color: "#ef4444" },
+        { id: 3, num: 3, x: 35, y: 72, color: "#ef4444" },
+        { id: 4, num: 4, x: 65, y: 72, color: "#ef4444" },
+        { id: 5, num: 5, x: 80, y: 72, color: "#ef4444" },
+        { id: 6, num: 6, x: 30, y: 55, color: "#ef4444" },
+        { id: 7, num: 7, x: 50, y: 52, color: "#ef4444" },
+        { id: 8, num: 8, x: 70, y: 55, color: "#ef4444" },
+        { id: 9, num: 9, x: 25, y: 35, color: "#ef4444" },
+        { id: 10, num: 10, x: 50, y: 30, color: "#ef4444" },
+        { id: 11, num: 11, x: 75, y: 35, color: "#ef4444" },
+      ],
+      keyframes: [], // [{id, duracion, jugadores: [{...j, activo}]}]
+    });
+    setView("editor");
+  };
+
+  const guardarTactica = (t) => {
+    const existe = tacticas.find(x => x.id === t.id);
+    const nuevas = existe
+      ? tacticas.map(x => x.id === t.id ? t : x)
+      : [...tacticas, t];
+    onSave({ ...data, tacticas: nuevas });
+    setView("lista");
+    setEditando(null);
+  };
+
+  const eliminarTactica = (id) => {
+    if (!window.confirm("¿Eliminar esta táctica?")) return;
+    onSave({ ...data, tacticas: tacticas.filter(t => t.id !== id) });
+  };
+
+  const abrirEditor = (t) => {
+    setEditando(JSON.parse(JSON.stringify(t))); // copia profunda
+    setView("editor");
+  };
+
+  if (view === "editor" && editando) {
+    return (
+      <TacticaEditor
+        tactica={editando}
+        onGuardar={guardarTactica}
+        onCancelar={() => { setView("lista"); setEditando(null); }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-white font-bold text-lg">🎬 Tácticas Animadas</h2>
+        <Btn onClick={nuevaTactica}>+ Nueva táctica</Btn>
+      </div>
+
+      {tacticas.length === 0 && (
+        <Card>
+          <p className="text-zinc-400 text-center py-6">
+            No hay tácticas guardadas. Crea una nueva para empezar.
+          </p>
+        </Card>
+      )}
+
+      {tacticas.map(t => (
+        <Card key={t.id} className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white font-semibold">{t.nombre}</p>
+            <p className="text-zinc-500 text-sm">
+              {t.jugadores?.length || 11} jugadores
+              {t.keyframes?.length > 0 ? ` · ${t.keyframes.length} paso${t.keyframes.length > 1 ? "s" : ""}` : " · sin animación"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Btn small onClick={() => abrirEditor(t)}>✏️ Editar</Btn>
+            <Btn small variant="danger" onClick={() => eliminarTactica(t.id)}>🗑️</Btn>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Funciones de dibujo (fuera del componente para evitar re-renders) ─────────
+const FIELD_W = 400;
+const FIELD_H = 560;
+
+function dibujarCampo(ctx) {
+  ctx.fillStyle = "#2d6a2d";
+  ctx.fillRect(0, 0, FIELD_W, FIELD_H);
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(20, 20, FIELD_W - 40, FIELD_H - 40);
+  ctx.beginPath(); ctx.moveTo(20, FIELD_H / 2); ctx.lineTo(FIELD_W - 20, FIELD_H / 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(FIELD_W / 2, FIELD_H / 2, 40, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(FIELD_W / 2, FIELD_H / 2, 3, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill();
+  const fw = FIELD_W - 40; const fh = FIELD_H - 40;
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.strokeRect(20 + fw * 0.15, 20, fw * 0.7, fh * 0.2);
+  ctx.strokeRect(20 + fw * 0.3, 20, fw * 0.4, fh * 0.1);
+  ctx.strokeRect(20 + fw * 0.15, FIELD_H - 20 - fh * 0.2, fw * 0.7, fh * 0.2);
+  ctx.strokeRect(20 + fw * 0.3, FIELD_H - 20 - fh * 0.1, fw * 0.4, fh * 0.1);
+  ctx.strokeRect(20 + fw * 0.38, 14, fw * 0.24, 6);
+  ctx.strokeRect(20 + fw * 0.38, FIELD_H - 20, fw * 0.24, 6);
+}
+
+function dibujarJugadores(ctx, jugs) {
+  jugs.forEach(j => {
+    const px = (j.x / 100) * FIELD_W;
+    const py = (j.y / 100) * FIELD_H;
+    const inactivo = j.activo === false;
+    const colorFondo = inactivo ? "#3f3f46" : (j.color || "#ef4444");
+    // El número debe ser negro si el fondo es blanco o muy claro
+    const colorTexto = (!inactivo && (j.color === "#ffffff" || j.color === "#fff")) ? "#111" : (inactivo ? "#a1a1aa" : "white");
+
+    // Establecer globalAlpha ANTES de dibujar cualquier cosa de este jugador
+    ctx.globalAlpha = inactivo ? 0.5 : 1;
+
+    // Sombra
+    ctx.beginPath(); ctx.arc(px + 1, py + 1, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
+
+    // Círculo jugador
+    ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
+    ctx.fillStyle = colorFondo; ctx.fill();
+    ctx.strokeStyle = inactivo ? "#71717a" : "white";
+    ctx.lineWidth = inactivo ? 1 : 2; ctx.stroke();
+
+    // Número
+    ctx.fillStyle = colorTexto;
+    ctx.font = `${inactivo ? "normal" : "bold"} 11px sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(j.num, px, py);
+
+    ctx.globalAlpha = 1; // resetear siempre al final
+  });
+}
+
+function dibujarFlechas(ctx, jugsBase, jugsDestino) {
+  if (!jugsDestino) return;
+  jugsBase.forEach(j => {
+    const dest = jugsDestino.find(d => d.id === j.id);
+    if (!dest) return;
+    const x1 = (j.x / 100) * FIELD_W; const y1 = (j.y / 100) * FIELD_H;
+    const x2 = (dest.x / 100) * FIELD_W; const y2 = (dest.y / 100) * FIELD_H;
+    if (Math.abs(x1 - x2) < 2 && Math.abs(y1 - y2) < 2) return;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = "rgba(255,255,100,0.6)"; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 10 * Math.cos(angle - 0.4), y2 - 10 * Math.sin(angle - 0.4));
+    ctx.lineTo(x2 - 10 * Math.cos(angle + 0.4), y2 - 10 * Math.sin(angle + 0.4));
+    ctx.closePath(); ctx.fillStyle = "rgba(255,255,100,0.8)"; ctx.fill();
+  });
+}
+
+function TacticaEditor({ tactica, onGuardar, onCancelar }) {
+  const canvasRef = useRef(null);
+  const [nombre, setNombre] = useState(tactica.nombre);
+  const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j })));
+  const [keyframes, setKeyframes] = useState(tactica.keyframes || []);
+  const [dragging, setDragging] = useState(null);
+  const [frameActivo, setFrameActivo] = useState(null); // null = posición inicial
+  const [playing, setPlaying] = useState(false);
+  const [grabando, setGrabando] = useState(false);
+  const animFrameRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+
+  const posicionesActuales = frameActivo !== null && keyframes[frameActivo]
+    ? keyframes[frameActivo].jugadores
+    : jugadores;
+
+  // Render canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    dibujarCampo(ctx);
+    if (frameActivo !== null && keyframes[frameActivo]) {
+      // Las flechas parten desde la posición del frame anterior (o inicial si es el primero)
+      const origenFlechas = frameActivo === 0 ? jugadores : keyframes[frameActivo - 1].jugadores;
+      const soloActivos = keyframes[frameActivo].jugadores.filter(j => j.activo !== false);
+      dibujarFlechas(ctx, origenFlechas, soloActivos);
+    }
+    dibujarJugadores(ctx, posicionesActuales);
+  }, [jugadores, keyframes, frameActivo]);
+
+  // Cleanup animación al desmontar
+  useEffect(() => {
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, []);
+
+  // Drag
+  const getPosEnCampo = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = FIELD_W / rect.width;
+    const scaleY = FIELD_H / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: ((clientX - rect.left) * scaleX / FIELD_W) * 100,
+      y: ((clientY - rect.top) * scaleY / FIELD_H) * 100,
+    };
+  };
+
+  const onMouseDown = (e) => {
+    if (playing) return; // no arrastrar durante animación
+    const canvas = canvasRef.current;
+    const pos = getPosEnCampo(e, canvas);
+    const jug = [...posicionesActuales].reverse().find(j => {
+      if (frameActivo !== null && j.activo === false) return false;
+      const dx = j.x - pos.x; const dy = j.y - pos.y;
+      return Math.sqrt(dx * dx + dy * dy) < 5;
+    });
+    if (jug) { e.preventDefault(); setDragging(jug.id); }
+  };
+
+  const onMouseMove = (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const pos = getPosEnCampo(e, canvas);
+    const nx = Math.max(2, Math.min(98, pos.x));
+    const ny = Math.max(2, Math.min(98, pos.y));
+    if (frameActivo !== null) {
+      setKeyframes(prev => prev.map((kf, i) =>
+        i === frameActivo
+          ? { ...kf, jugadores: kf.jugadores.map(j => j.id === dragging ? { ...j, x: nx, y: ny } : j) }
+          : kf
+      ));
+    } else {
+      setJugadores(prev => prev.map(j => j.id === dragging ? { ...j, x: nx, y: ny } : j));
+    }
+  };
+
+  const onMouseUp = () => setDragging(null);
+
+  // Keyframes
+  const addKeyframe = () => {
+    // Siempre copiamos el ÚLTIMO keyframe (o posición inicial si no hay ninguno)
+    // para que el nuevo paso siempre parta de donde terminó la animación
+    const ultimoKf = keyframes.length > 0 ? keyframes[keyframes.length - 1] : null;
+    const base = ultimoKf ? ultimoKf.jugadores : jugadores;
+    const nuevo = {
+      id: Date.now(),
+      duracion: 1.5,
+      jugadores: base.map(j => ({ ...j, activo: true })),
+    };
+    setKeyframes(prev => [...prev, nuevo]);
+    setFrameActivo(keyframes.length); // índice del nuevo (= longitud antes del push)
+  };
+
+  const eliminarKeyframe = (idx) => {
+    setKeyframes(prev => prev.filter((_, i) => i !== idx));
+    setFrameActivo(prev => {
+      if (prev === null) return null;
+      if (prev === idx) return null;
+      if (prev > idx) return prev - 1;
+      return prev;
+    });
+  };
+
+  const toggleJugadorActivo = (jugId) => {
+    if (frameActivo === null) return;
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === frameActivo
+        ? { ...kf, jugadores: kf.jugadores.map(j => j.id === jugId ? { ...j, activo: !j.activo } : j) }
+        : kf
+    ));
+  };
+
+  const cambiarDuracion = (nuevaDuracion) => {
+    if (frameActivo === null) return;
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === frameActivo ? { ...kf, duracion: nuevaDuracion } : kf
+    ));
+  };
+
+  const cambiarColor = (color) => {
+    setJugadores(prev => prev.map(j => ({ ...j, color })));
+    setKeyframes(prev => prev.map(kf => ({
+      ...kf,
+      jugadores: kf.jugadores.map(j => ({ ...j, color }))
+    })));
+  };
+
+  // Animación
+  const playAnimacion = (onFinish) => {
+    if (keyframes.length === 0) return;
+    setPlaying(true);
+    setFrameActivo(null);
+    const FPS = 60;
+
+    // Construir segmentos con duración propia y posición "desde" real para cada jugador
+    // Si un jugador no está activo en el keyframe, su posición destino es igual a la de origen → no se mueve
+    const getPosBase = (idx) => idx < 0 ? jugadores : keyframes[idx].jugadores;
+
+    const segmentos = keyframes.map((kf, i) => {
+      const fromJugs = getPosBase(i - 1);
+      const duracion = kf.duracion || 1.5;
+      const totalFrames = Math.max(1, Math.round(duracion * FPS)); // mínimo 1 frame
+      const toJugs = kf.jugadores.map(j => {
+        if (!j.activo) {
+          // Jugador quieto: su destino es su posición de origen
+          const origen = fromJugs.find(f => f.id === j.id) || j;
+          return { ...j, x: origen.x, y: origen.y };
+        }
+        return j;
+      });
+      return { from: fromJugs, to: toJugs, totalFrames };
+    });
+
+    let segIdx = 0;
+    let frameLocal = 0;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    const step = () => {
+      if (segIdx >= segmentos.length) {
+        setPlaying(false);
+        dibujarCampo(ctx);
+        dibujarJugadores(ctx, jugadores);
+        if (onFinish) onFinish();
+        return;
+      }
+      const { from, to, totalFrames } = segmentos[segIdx];
+      const t = frameLocal >= totalFrames - 1 ? 1 : frameLocal / totalFrames;
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      const interpoladas = from.map(j => {
+        const dest = to.find(d => d.id === j.id) || j;
+        return { ...j, x: j.x + (dest.x - j.x) * ease, y: j.y + (dest.y - j.y) * ease };
+      });
+      dibujarCampo(ctx);
+      dibujarJugadores(ctx, interpoladas);
+      frameLocal++;
+      if (frameLocal >= totalFrames) { segIdx++; frameLocal = 0; }
+      animFrameRef.current = requestAnimationFrame(step);
+    };
+
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animFrameRef.current = requestAnimationFrame(step);
+  };
+
+  const stopAnimacion = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setPlaying(false);
+    // Si estaba grabando, parar también el MediaRecorder
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop(); // dispara onstop → descarga el vídeo parcial y resetea grabando
+    }
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    dibujarCampo(ctx); dibujarJugadores(ctx, jugadores);
+  };
+
+  // Grabar vídeo
+  const grabarVideo = () => {
+    if (keyframes.length === 0) { alert("Añade al menos un keyframe antes de grabar."); return; }
+    const canvas = canvasRef.current;
+    // Detectar compatibilidad — iOS Safari no soporta captureStream
+    if (typeof canvas.captureStream !== "function") {
+      alert("Tu navegador no soporta grabación de vídeo desde canvas.\n\nPrueba con Chrome en ordenador o Android. En iPhone/iPad esta función no está disponible.");
+      return;
+    }
+    chunksRef.current = [];
+    const mimeTypes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+    const stream = canvas.captureStream(30);
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+    mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    mediaRecorderRef.current.onstop = () => {
+      setGrabando(false);
+      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const nombreArchivo = nombre
+        .replace(/[/\\:*?"<>|]/g, "") // eliminar caracteres inválidos en nombres de archivo
+        .replace(/\s+/g, "_")         // espacios por guiones bajos
+        .trim() || "tactica";          // fallback si queda vacío
+      a.href = url; a.download = `tactica_${nombreArchivo}.webm`; a.click();
+      URL.revokeObjectURL(url);
+    };
+    setGrabando(true);
+    try {
+      mediaRecorderRef.current.start();
+    } catch (err) {
+      setGrabando(false);
+      alert("Error al iniciar la grabación. Inténtalo de nuevo.");
+      return;
+    }
+    playAnimacion(() => {
+      setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+      }, 500);
+    });
+  };
+
+  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, keyframes });
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <button onClick={() => {
+          const haycambios =
+            nombre !== tactica.nombre ||
+            JSON.stringify(jugadores) !== JSON.stringify(tactica.jugadores) ||
+            JSON.stringify(keyframes) !== JSON.stringify(tactica.keyframes || []);
+          if (haycambios && !window.confirm("¿Salir sin guardar? Se perderán los cambios.")) return;
+          onCancelar();
+        }} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
+        <input
+          value={nombre}
+          onChange={e => setNombre(e.target.value)}
+          className="bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-white text-sm flex-1 min-w-40"
+          placeholder="Nombre de la táctica"
+        />
+        <Btn onClick={guardar}>💾 Guardar</Btn>
+      </div>
+
+      {/* Instrucciones paso a paso */}
+      <Card>
+        <p className="text-zinc-400 text-xs font-semibold mb-1">CÓMO CREAR UNA ANIMACIÓN</p>
+        <ol className="text-zinc-500 text-xs space-y-0.5 list-decimal list-inside">
+          <li><span className="text-zinc-300">Posición inicial:</span> arrastra los jugadores donde empiezan</li>
+          <li><span className="text-zinc-300">Añadir paso:</span> pulsa el botón para crear un nuevo movimiento</li>
+          <li><span className="text-zinc-300">Activa/desactiva jugadores</span> del paso — solo los activos se moverán</li>
+          <li><span className="text-zinc-300">Elige la duración</span> del paso (1s, 2s, 3s...)</li>
+          <li>Arrastra los jugadores activos a su posición destino en ese paso</li>
+          <li>Repite 2-5 para cada movimiento. Luego <span className="text-zinc-300">▶ Ver animación</span></li>
+        </ol>
+      </Card>
+
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        {/* Panel derecho - arriba en móvil, derecha en escritorio */}
+        <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
+          {/* Color equipo */}
+          <Card>
+            <p className="text-zinc-400 text-xs font-semibold mb-2">COLOR EQUIPO</p>
+            <div className="flex gap-2 flex-wrap">
+              {["#ef4444","#3b82f6","#22c55e","#f59e0b","#a855f7","#ffffff"].map(color => (
+                <button
+                  key={color}
+                  onClick={() => cambiarColor(color)}
+                  className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </Card>
+
+          {/* Keyframes */}
+          <Card>
+            <p className="text-zinc-400 text-xs font-semibold mb-2">MOVIMIENTOS</p>
+            <div className="space-y-1 mb-2">
+              <button
+                onClick={() => setFrameActivo(null)}
+                className={`w-full text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === null ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}
+              >📍 Posición inicial</button>
+              {keyframes.map((kf, i) => (
+                <div key={kf.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => setFrameActivo(i)}
+                    className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}
+                  >
+                    🔑 Paso {i + 1}
+                    <span className="text-zinc-500 text-xs ml-1">({kf.duracion || 1.5}s)</span>
+                  </button>
+                  <button onClick={() => eliminarKeyframe(i)} className="text-zinc-600 hover:text-red-400 text-xs px-1.5 py-1">✕</button>
+                </div>
+              ))}
+            </div>
+            <Btn small onClick={addKeyframe}>+ Añadir paso</Btn>
+          </Card>
+
+          {/* Opciones del keyframe activo */}
+          {frameActivo !== null && keyframes[frameActivo] && (
+            <Card>
+              <p className="text-zinc-400 text-xs font-semibold mb-2">PASO {frameActivo + 1} — OPCIONES</p>
+
+              {/* Duración */}
+              <div className="mb-3">
+                <p className="text-zinc-500 text-xs mb-1">⏱ Duración del movimiento</p>
+                <div className="flex gap-1 flex-wrap">
+                  {[1, 1.5, 2, 3, 4, 5].map(seg => (
+                    <button
+                      key={seg}
+                      onClick={() => cambiarDuracion(seg)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                        (keyframes[frameActivo].duracion || 1.5) === seg
+                          ? "bg-red-700 text-white"
+                          : "bg-zinc-700 text-zinc-400 hover:text-white"
+                      }`}
+                    >{seg}s</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Toggle jugadores */}
+              <div>
+                <p className="text-zinc-500 text-xs mb-1.5">👆 Toca para activar/desactivar movimiento</p>
+                <div className="grid grid-cols-4 gap-1">
+                  {keyframes[frameActivo].jugadores.map(j => {
+                    const esBlanco = j.color === "#ffffff" || j.color === "#fff";
+                    return (
+                      <button
+                        key={j.id}
+                        onClick={() => toggleJugadorActivo(j.id)}
+                        className={`rounded py-1 text-xs font-bold transition-all border ${
+                          j.activo
+                            ? "border-transparent"
+                            : "border-zinc-600 bg-zinc-800 text-zinc-500"
+                        }`}
+                        style={j.activo ? {
+                          backgroundColor: j.color || "#ef4444",
+                          color: esBlanco ? "#111" : "white"
+                        } : {}}
+                        title={j.activo ? "Se mueve — toca para dejar quieto" : "Quieto — toca para mover"}
+                      >
+                        {j.num}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">
+                  {keyframes[frameActivo].jugadores.filter(j => j.activo).length} de {keyframes[frameActivo].jugadores.length} en movimiento
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Controles */}
+          <div className="flex flex-col gap-2">
+            {!playing
+              ? <Btn onClick={() => playAnimacion()} disabled={keyframes.length === 0}>▶ Ver animación</Btn>
+              : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
+            }
+            <Btn variant="secondary" onClick={grabarVideo} disabled={grabando || playing || keyframes.length === 0}>
+              {grabando ? "⏺ Grabando..." : "⏺ Grabar vídeo (.webm)"}
+            </Btn>
+            {grabando && <p className="text-yellow-400 text-xs text-center">Grabando... no cierres la pantalla</p>}
+          </div>
+        </div>
+
+        {/* Canvas - abajo en móvil, izquierda en escritorio */}
+        <div className="flex-1 lg:order-1 flex justify-center">
+          <canvas
+            ref={canvasRef}
+            width={FIELD_W}
+            height={FIELD_H}
+            className="rounded-lg border border-zinc-700 cursor-grab active:cursor-grabbing"
+            style={{ width: "100%", maxWidth: "380px", touchAction: dragging ? "none" : "pan-y" }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
+            onTouchStart={onMouseDown}
+            onTouchMove={onMouseMove}
+            onTouchEnd={onMouseUp}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Clasificación
 // ══════════════════════════════════════════════════════════════════════════════
 function ClasificacionSection({ team, data }) {
@@ -4424,6 +5014,7 @@ export default function App() {
     { id: "partidos", label: "Partidos", icon: "⚽" },
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
+    { id: "tacticas", label: "Tácticas", icon: "🎬" },
   ];
 
   useEffect(() => {
@@ -4747,6 +5338,9 @@ export default function App() {
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
+            )}
+            {activeSection === "tacticas" && (
+              <TacticasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
             )}
           </div>
         </div>
