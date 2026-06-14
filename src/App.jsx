@@ -2697,44 +2697,110 @@ function dibujarFlechas(ctx, jugsBase, jugsDestino) {
   });
 }
 
+function dibujarBalon(ctx, b) {
+  const px = (b.x / 100) * FIELD_W;
+  const py = (b.y / 100) * FIELD_H;
+  // Sombra
+  ctx.beginPath(); ctx.arc(px + 1, py + 1, 9, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
+  // Círculo exterior blanco
+  ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2);
+  ctx.fillStyle = "white"; ctx.fill();
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 1; ctx.stroke();
+  // Manchas negras del balón (hexágonos simplificados)
+  ctx.fillStyle = "#222";
+  ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px - 5, py - 3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 5, py - 3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px - 5, py + 3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 5, py + 3, 2, 0, Math.PI * 2); ctx.fill();
+}
+
+function dibujarFlechaBalon(ctx, origen, destino) {
+  if (!origen || !destino) return;
+  const x1 = (origen.x / 100) * FIELD_W, y1 = (origen.y / 100) * FIELD_H;
+  const x2 = (destino.x / 100) * FIELD_W, y2 = (destino.y / 100) * FIELD_H;
+  if (Math.abs(x1 - x2) < 2 && Math.abs(y1 - y2) < 2) return;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
+  ctx.setLineDash([5, 3]); ctx.stroke(); ctx.setLineDash([]);
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - 10 * Math.cos(angle - 0.4), y2 - 10 * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - 10 * Math.cos(angle + 0.4), y2 - 10 * Math.sin(angle + 0.4));
+  ctx.closePath(); ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fill();
+}
+
 function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const canvasRef = useRef(null);
   const [nombre, setNombre] = useState(tactica.nombre);
-  const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j })));
-  const [keyframes, setKeyframes] = useState(tactica.keyframes || []);
+  const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j, tipo: j.tipo || "local" })));
+
+  // Valores por defecto — se declaran ANTES de los useState que los usan
+  const rivsDefault = tactica.rivales || [
+    { id: "r1",  num: 1,  x: 50, y: 12, color: "#1d4ed8", tipo: "rival" },
+    { id: "r2",  num: 2,  x: 20, y: 28, color: "#1d4ed8", tipo: "rival" },
+    { id: "r3",  num: 3,  x: 35, y: 28, color: "#1d4ed8", tipo: "rival" },
+    { id: "r4",  num: 4,  x: 65, y: 28, color: "#1d4ed8", tipo: "rival" },
+    { id: "r5",  num: 5,  x: 80, y: 28, color: "#1d4ed8", tipo: "rival" },
+    { id: "r6",  num: 6,  x: 30, y: 45, color: "#1d4ed8", tipo: "rival" },
+    { id: "r7",  num: 7,  x: 50, y: 48, color: "#1d4ed8", tipo: "rival" },
+    { id: "r8",  num: 8,  x: 70, y: 45, color: "#1d4ed8", tipo: "rival" },
+    { id: "r9",  num: 9,  x: 25, y: 65, color: "#1d4ed8", tipo: "rival" },
+    { id: "r10", num: 10, x: 50, y: 70, color: "#1d4ed8", tipo: "rival" },
+    { id: "r11", num: 11, x: 75, y: 65, color: "#1d4ed8", tipo: "rival" },
+  ];
+  const balDefault = tactica.balon || { id: "balon", x: 50, y: 50 };
+
+  // Normalizar keyframes antiguos sin rivales/balon — también antes de usarla
+  const normalizarKeyframes = (kfs, rivs, bal) =>
+    (kfs || []).map(kf => ({
+      ...kf,
+      rivales: kf.rivales || rivs.map(j => ({ ...j, activo: true })),
+      balon:   kf.balon   || { ...bal, activo: true },
+    }));
+
+  const [rivales, setRivales] = useState(rivsDefault);
+  const [balon, setBalon] = useState(balDefault);
+  const [keyframes, setKeyframes] = useState(normalizarKeyframes(tactica.keyframes, rivsDefault, balDefault));
   const [dragging, setDragging] = useState(null);
-  const [frameActivo, setFrameActivo] = useState(null); // null = posición inicial
+  const [frameActivo, setFrameActivo] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [grabando, setGrabando] = useState(false);
   const animFrameRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
-  const posicionesActuales = frameActivo !== null && keyframes[frameActivo]
-    ? keyframes[frameActivo].jugadores
-    : jugadores;
+  const kfActivo = frameActivo !== null ? keyframes[frameActivo] : null;
+  const posLocales = kfActivo ? kfActivo.jugadores : jugadores;
+  const posRivales = kfActivo ? kfActivo.rivales   : rivales;
+  const posBalon   = kfActivo ? kfActivo.balon      : balon;
 
-  // Render canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     dibujarCampo(ctx);
-    if (frameActivo !== null && keyframes[frameActivo]) {
-      // Las flechas parten desde la posición del frame anterior (o inicial si es el primero)
-      const origenFlechas = frameActivo === 0 ? jugadores : keyframes[frameActivo - 1].jugadores;
-      const soloActivos = keyframes[frameActivo].jugadores.filter(j => j.activo !== false);
-      dibujarFlechas(ctx, origenFlechas, soloActivos);
+    if (kfActivo) {
+      const origenLocales = frameActivo === 0 ? jugadores : keyframes[frameActivo - 1].jugadores;
+      const origenRivales = frameActivo === 0 ? rivales   : keyframes[frameActivo - 1].rivales;
+      const soloActivosL  = kfActivo.jugadores.filter(j => j.activo !== false);
+      const soloActivosR  = kfActivo.rivales.filter(j => j.activo !== false);
+      dibujarFlechas(ctx, origenLocales, soloActivosL);
+      dibujarFlechas(ctx, origenRivales, soloActivosR);
+      const bOrigen = frameActivo === 0 ? balon : keyframes[frameActivo - 1].balon;
+      if (kfActivo.balon.activo !== false) dibujarFlechaBalon(ctx, bOrigen, kfActivo.balon);
     }
-    dibujarJugadores(ctx, posicionesActuales);
-  }, [jugadores, keyframes, frameActivo]);
+    dibujarJugadores(ctx, posLocales);
+    dibujarJugadores(ctx, posRivales);
+    dibujarBalon(ctx, posBalon);
+  }, [jugadores, rivales, balon, keyframes, frameActivo]);
 
-  // Cleanup animación al desmontar
   useEffect(() => {
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, []);
 
-  // Drag
   const getPosEnCampo = (e, canvas) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = FIELD_W / rect.width;
@@ -2743,20 +2809,31 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
       x: ((clientX - rect.left) * scaleX / FIELD_W) * 100,
-      y: ((clientY - rect.top) * scaleY / FIELD_H) * 100,
+      y: ((clientY - rect.top)  * scaleY / FIELD_H) * 100,
     };
   };
 
   const onMouseDown = (e) => {
-    if (playing) return; // no arrastrar durante animación
+    if (playing) return;
     const canvas = canvasRef.current;
     const pos = getPosEnCampo(e, canvas);
-    const jug = [...posicionesActuales].reverse().find(j => {
-      if (frameActivo !== null && j.activo === false) return false;
-      const dx = j.x - pos.x; const dy = j.y - pos.y;
-      return Math.sqrt(dx * dx + dy * dy) < 5;
+    const dxB = posBalon.x - pos.x, dyB = posBalon.y - pos.y;
+    if (Math.sqrt(dxB*dxB + dyB*dyB) < 4) {
+      if (kfActivo && kfActivo.balon.activo === false) return;
+      e.preventDefault(); setDragging({ id: "balon", tipo: "balon" }); return;
+    }
+    const jugL = [...posLocales].reverse().find(j => {
+      if (kfActivo && j.activo === false) return false;
+      const dx = j.x - pos.x, dy = j.y - pos.y;
+      return Math.sqrt(dx*dx + dy*dy) < 5;
     });
-    if (jug) { e.preventDefault(); setDragging(jug.id); }
+    if (jugL) { e.preventDefault(); setDragging({ id: jugL.id, tipo: "local" }); return; }
+    const jugR = [...posRivales].reverse().find(j => {
+      if (kfActivo && j.activo === false) return false;
+      const dx = j.x - pos.x, dy = j.y - pos.y;
+      return Math.sqrt(dx*dx + dy*dy) < 5;
+    });
+    if (jugR) { e.preventDefault(); setDragging({ id: jugR.id, tipo: "rival" }); }
   };
 
   const onMouseMove = (e) => {
@@ -2766,32 +2843,40 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     const pos = getPosEnCampo(e, canvas);
     const nx = Math.max(2, Math.min(98, pos.x));
     const ny = Math.max(2, Math.min(98, pos.y));
+    if (dragging.tipo === "balon") {
+      if (frameActivo !== null) {
+        setKeyframes(prev => prev.map((kf, i) =>
+          i === frameActivo ? { ...kf, balon: { ...kf.balon, x: nx, y: ny } } : kf
+        ));
+      } else { setBalon(prev => ({ ...prev, x: nx, y: ny })); }
+      return;
+    }
+    const setter = dragging.tipo === "local" ? setJugadores : setRivales;
+    const kfKey  = dragging.tipo === "local" ? "jugadores"  : "rivales";
     if (frameActivo !== null) {
       setKeyframes(prev => prev.map((kf, i) =>
         i === frameActivo
-          ? { ...kf, jugadores: kf.jugadores.map(j => j.id === dragging ? { ...j, x: nx, y: ny } : j) }
+          ? { ...kf, [kfKey]: kf[kfKey].map(j => j.id === dragging.id ? { ...j, x: nx, y: ny } : j) }
           : kf
       ));
     } else {
-      setJugadores(prev => prev.map(j => j.id === dragging ? { ...j, x: nx, y: ny } : j));
+      setter(prev => prev.map(j => j.id === dragging.id ? { ...j, x: nx, y: ny } : j));
     }
   };
 
   const onMouseUp = () => setDragging(null);
 
-  // Keyframes
   const addKeyframe = () => {
-    // Siempre copiamos el ÚLTIMO keyframe (o posición inicial si no hay ninguno)
-    // para que el nuevo paso siempre parta de donde terminó la animación
-    const ultimoKf = keyframes.length > 0 ? keyframes[keyframes.length - 1] : null;
-    const base = ultimoKf ? ultimoKf.jugadores : jugadores;
+    const ultimo = keyframes.length > 0 ? keyframes[keyframes.length - 1] : null;
     const nuevo = {
       id: Date.now(),
       duracion: 1.5,
-      jugadores: base.map(j => ({ ...j, activo: true })),
+      jugadores: (ultimo ? ultimo.jugadores : jugadores).map(j => ({ ...j, activo: true })),
+      rivales:   (ultimo ? ultimo.rivales   : rivales).map(j =>   ({ ...j, activo: true })),
+      balon:     { ...(ultimo ? ultimo.balon : balon), activo: true },
     };
     setKeyframes(prev => [...prev, nuevo]);
-    setFrameActivo(keyframes.length); // índice del nuevo (= longitud antes del push)
+    setFrameActivo(keyframes.length);
   };
 
   const eliminarKeyframe = (idx) => {
@@ -2804,80 +2889,98 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     });
   };
 
-  const toggleJugadorActivo = (jugId) => {
+  const toggleActivo = (id, tipo) => {
     if (frameActivo === null) return;
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === frameActivo
-        ? { ...kf, jugadores: kf.jugadores.map(j => j.id === jugId ? { ...j, activo: !j.activo } : j) }
-        : kf
-    ));
+    if (tipo === "balon") {
+      setKeyframes(prev => prev.map((kf, i) =>
+        i === frameActivo ? { ...kf, balon: { ...kf.balon, activo: !kf.balon.activo } } : kf
+      ));
+    } else {
+      const kfKey = tipo === "local" ? "jugadores" : "rivales";
+      setKeyframes(prev => prev.map((kf, i) =>
+        i === frameActivo
+          ? { ...kf, [kfKey]: kf[kfKey].map(j => j.id === id ? { ...j, activo: !j.activo } : j) }
+          : kf
+      ));
+    }
   };
 
-  const cambiarDuracion = (nuevaDuracion) => {
+  const cambiarDuracion = (d) => {
     if (frameActivo === null) return;
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === frameActivo ? { ...kf, duracion: nuevaDuracion } : kf
-    ));
+    setKeyframes(prev => prev.map((kf, i) => i === frameActivo ? { ...kf, duracion: d } : kf));
   };
 
-  const cambiarColor = (color) => {
-    setJugadores(prev => prev.map(j => ({ ...j, color })));
-    setKeyframes(prev => prev.map(kf => ({
-      ...kf,
-      jugadores: kf.jugadores.map(j => ({ ...j, color }))
-    })));
+  const cambiarColor = (color, tipo) => {
+    if (tipo === "local") {
+      setJugadores(prev => prev.map(j => ({ ...j, color })));
+      setKeyframes(prev => prev.map(kf => ({ ...kf, jugadores: kf.jugadores.map(j => ({ ...j, color })) })));
+    } else {
+      setRivales(prev => prev.map(j => ({ ...j, color })));
+      setKeyframes(prev => prev.map(kf => ({ ...kf, rivales: kf.rivales.map(j => ({ ...j, color })) })));
+    }
   };
 
-  // Animación
   const playAnimacion = (onFinish) => {
     if (keyframes.length === 0) return;
     setPlaying(true);
     setFrameActivo(null);
-    const FPS = 60;
 
-    // Construir segmentos con duración propia y posición "desde" real para cada jugador
-    // Si un jugador no está activo en el keyframe, su posición destino es igual a la de origen → no se mueve
-    const getPosBase = (idx) => idx < 0 ? jugadores : keyframes[idx].jugadores;
+    const getPosBase = (idx) => ({
+      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
+      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
+      bal:  idx < 0 ? balon     : keyframes[idx].balon,
+    });
 
     const segmentos = keyframes.map((kf, i) => {
-      const fromJugs = getPosBase(i - 1);
-      const duracion = kf.duracion || 1.5;
-      const totalFrames = Math.max(1, Math.round(duracion * FPS)); // mínimo 1 frame
+      const base = getPosBase(i - 1);
+      const durMs = (kf.duracion || 1.5) * 1000;
       const toJugs = kf.jugadores.map(j => {
-        if (!j.activo) {
-          // Jugador quieto: su destino es su posición de origen
-          const origen = fromJugs.find(f => f.id === j.id) || j;
-          return { ...j, x: origen.x, y: origen.y };
-        }
+        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
         return j;
       });
-      return { from: fromJugs, to: toJugs, totalFrames };
+      const toRivs = kf.rivales.map(j => {
+        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
+        return j;
+      });
+      const toBal = kf.balon.activo === false
+        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
+        : kf.balon;
+      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
     });
 
     let segIdx = 0;
-    let frameLocal = 0;
+    let segStartTime = null;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    const step = () => {
+    const step = (timestamp) => {
       if (segIdx >= segmentos.length) {
         setPlaying(false);
         dibujarCampo(ctx);
         dibujarJugadores(ctx, jugadores);
+        dibujarJugadores(ctx, rivales);
+        dibujarBalon(ctx, balon);
         if (onFinish) onFinish();
         return;
       }
-      const { from, to, totalFrames } = segmentos[segIdx];
-      const t = frameLocal >= totalFrames - 1 ? 1 : frameLocal / totalFrames;
-      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const interpoladas = from.map(j => {
-        const dest = to.find(d => d.id === j.id) || j;
-        return { ...j, x: j.x + (dest.x - j.x) * ease, y: j.y + (dest.y - j.y) * ease };
+      if (segStartTime === null) segStartTime = timestamp;
+      const elapsed = timestamp - segStartTime;
+      const { fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs } = segmentos[segIdx];
+      const t = Math.min(1, elapsed / durMs);
+      const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+      const interp = (from, to) => from.map(j => {
+        const d = to.find(x => x.id === j.id)||j;
+        return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
       });
+      const interpBal = { ...fromBal,
+        x: fromBal.x + (toBal.x - fromBal.x)*ease,
+        y: fromBal.y + (toBal.y - fromBal.y)*ease
+      };
       dibujarCampo(ctx);
-      dibujarJugadores(ctx, interpoladas);
-      frameLocal++;
-      if (frameLocal >= totalFrames) { segIdx++; frameLocal = 0; }
+      dibujarJugadores(ctx, interp(fromJugs, toJugs));
+      dibujarJugadores(ctx, interp(fromRivs, toRivs));
+      dibujarBalon(ctx, interpBal);
+      if (t >= 1) { segIdx++; segStartTime = null; }
       animFrameRef.current = requestAnimationFrame(step);
     };
 
@@ -2888,50 +2991,40 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const stopAnimacion = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setPlaying(false);
-    // Si estaba grabando, parar también el MediaRecorder
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop(); // dispara onstop → descarga el vídeo parcial y resetea grabando
-    }
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    dibujarCampo(ctx); dibujarJugadores(ctx, jugadores);
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    const ctx = canvasRef.current.getContext("2d");
+    dibujarCampo(ctx);
+    dibujarJugadores(ctx, jugadores);
+    dibujarJugadores(ctx, rivales);
+    dibujarBalon(ctx, balon);
   };
 
-  // Grabar vídeo
   const grabarVideo = () => {
-    if (keyframes.length === 0) { alert("Añade al menos un keyframe antes de grabar."); return; }
+    if (keyframes.length === 0) { alert("Añade al menos un paso antes de grabar."); return; }
     const canvas = canvasRef.current;
-    // Detectar compatibilidad — iOS Safari no soporta captureStream
     if (typeof canvas.captureStream !== "function") {
-      alert("Tu navegador no soporta grabación de vídeo desde canvas.\n\nPrueba con Chrome en ordenador o Android. En iPhone/iPad esta función no está disponible.");
+      alert("Tu navegador no soporta grabación de vídeo.\n\nUsa Chrome en ordenador o Android. En iPhone/iPad no está disponible.");
       return;
     }
     chunksRef.current = [];
-    const mimeTypes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeTypes = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
     const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
     const stream = canvas.captureStream(30);
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
     mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     mediaRecorderRef.current.onstop = () => {
       setGrabando(false);
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      const blob = new Blob(chunksRef.current, { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const nombreArchivo = nombre
-        .replace(/[/\\:*?"<>|]/g, "") // eliminar caracteres inválidos en nombres de archivo
-        .replace(/\s+/g, "_")         // espacios por guiones bajos
-        .trim() || "tactica";          // fallback si queda vacío
-      a.href = url; a.download = `tactica_${nombreArchivo}.webm`; a.click();
+      const nombreArchivo = nombre.replace(/[\/\\:*?\"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
+      a.href = url; a.download = `tactica_${nombreArchivo}.${ext}`; a.click();
       URL.revokeObjectURL(url);
     };
     setGrabando(true);
-    try {
-      mediaRecorderRef.current.start();
-    } catch (err) {
-      setGrabando(false);
-      alert("Error al iniciar la grabación. Inténtalo de nuevo.");
-      return;
-    }
+    try { mediaRecorderRef.current.start(); }
+    catch (err) { setGrabando(false); alert("Error al iniciar la grabación. Inténtalo de nuevo."); return; }
     playAnimacion(() => {
       setTimeout(() => {
         if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
@@ -2939,16 +3032,18 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     });
   };
 
-  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, keyframes });
+  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => {
+          // Normalizar quitando campos internos (tipo) antes de comparar
+          const normJugs = jugs => jugs.map(({ tipo, ...rest }) => rest);
           const haycambios =
             nombre !== tactica.nombre ||
-            JSON.stringify(jugadores) !== JSON.stringify(tactica.jugadores) ||
+            JSON.stringify(normJugs(jugadores)) !== JSON.stringify(normJugs(tactica.jugadores || [])) ||
+            JSON.stringify(normJugs(rivales))   !== JSON.stringify(normJugs(tactica.rivales  || [])) ||
             JSON.stringify(keyframes) !== JSON.stringify(tactica.keyframes || []);
           if (haycambios && !window.confirm("¿Salir sin guardar? Se perderán los cambios.")) return;
           onCancelar();
@@ -2962,53 +3057,54 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
         <Btn onClick={guardar}>💾 Guardar</Btn>
       </div>
 
-      {/* Instrucciones paso a paso */}
       <Card>
         <p className="text-zinc-400 text-xs font-semibold mb-1">CÓMO CREAR UNA ANIMACIÓN</p>
         <ol className="text-zinc-500 text-xs space-y-0.5 list-decimal list-inside">
-          <li><span className="text-zinc-300">Posición inicial:</span> arrastra los jugadores donde empiezan</li>
-          <li><span className="text-zinc-300">Añadir paso:</span> pulsa el botón para crear un nuevo movimiento</li>
-          <li><span className="text-zinc-300">Activa/desactiva jugadores</span> del paso — solo los activos se moverán</li>
-          <li><span className="text-zinc-300">Elige la duración</span> del paso (1s, 2s, 3s...)</li>
-          <li>Arrastra los jugadores activos a su posición destino en ese paso</li>
-          <li>Repite 2-5 para cada movimiento. Luego <span className="text-zinc-300">▶ Ver animación</span></li>
+          <li><span className="text-zinc-300">Posición inicial:</span> arrastra jugadores, rivales y el balón</li>
+          <li><span className="text-zinc-300">Añadir paso:</span> crea un nuevo movimiento</li>
+          <li><span className="text-zinc-300">Activa/desactiva</span> quién se mueve en ese paso</li>
+          <li><span className="text-zinc-300">Elige duración</span> y arrastra al destino</li>
+          <li>Repite. Luego <span className="text-zinc-300">▶ Ver animación</span></li>
         </ol>
       </Card>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        {/* Panel derecho - arriba en móvil, derecha en escritorio */}
         <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
-          {/* Color equipo */}
+
           <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-2">COLOR EQUIPO</p>
+            <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 COLOR LOCAL</p>
             <div className="flex gap-2 flex-wrap">
-              {["#ef4444","#3b82f6","#22c55e","#f59e0b","#a855f7","#ffffff"].map(color => (
-                <button
-                  key={color}
-                  onClick={() => cambiarColor(color)}
+              {["#ef4444","#f97316","#22c55e","#f59e0b","#a855f7","#ffffff"].map(c => (
+                <button key={c} onClick={() => cambiarColor(c, "local")}
                   className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
-                  style={{ backgroundColor: color }}
-                />
+                  style={{ backgroundColor: c }} />
               ))}
             </div>
           </Card>
 
-          {/* Keyframes */}
+          <Card>
+            <p className="text-zinc-400 text-xs font-semibold mb-1">🔵 COLOR RIVAL</p>
+            <div className="flex gap-2 flex-wrap">
+              {["#1d4ed8","#0891b2","#16a34a","#7c3aed","#db2777","#ffffff"].map(c => (
+                <button key={c} onClick={() => cambiarColor(c, "rival")}
+                  className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
+                  style={{ backgroundColor: c }} />
+              ))}
+            </div>
+          </Card>
+
           <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-2">MOVIMIENTOS</p>
             <div className="space-y-1 mb-2">
-              <button
-                onClick={() => setFrameActivo(null)}
-                className={`w-full text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === null ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}
-              >📍 Posición inicial</button>
+              <button onClick={() => setFrameActivo(null)}
+                className={`w-full text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === null ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
+                📍 Posición inicial
+              </button>
               {keyframes.map((kf, i) => (
                 <div key={kf.id} className="flex items-center gap-1">
-                  <button
-                    onClick={() => setFrameActivo(i)}
-                    className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}
-                  >
-                    🔑 Paso {i + 1}
-                    <span className="text-zinc-500 text-xs ml-1">({kf.duracion || 1.5}s)</span>
+                  <button onClick={() => setFrameActivo(i)}
+                    className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
+                    🔑 Paso {i + 1} <span className="text-zinc-500 text-xs">({kf.duracion || 1.5}s)</span>
                   </button>
                   <button onClick={() => eliminarKeyframe(i)} className="text-zinc-600 hover:text-red-400 text-xs px-1.5 py-1">✕</button>
                 </div>
@@ -3017,76 +3113,66 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
             <Btn small onClick={addKeyframe}>+ Añadir paso</Btn>
           </Card>
 
-          {/* Opciones del keyframe activo */}
-          {frameActivo !== null && keyframes[frameActivo] && (
+          {frameActivo !== null && kfActivo && (
             <Card>
               <p className="text-zinc-400 text-xs font-semibold mb-2">PASO {frameActivo + 1} — OPCIONES</p>
-
-              {/* Duración */}
               <div className="mb-3">
-                <p className="text-zinc-500 text-xs mb-1">⏱ Duración del movimiento</p>
+                <p className="text-zinc-500 text-xs mb-1">⏱ Duración</p>
                 <div className="flex gap-1 flex-wrap">
-                  {[1, 1.5, 2, 3, 4, 5].map(seg => (
-                    <button
-                      key={seg}
-                      onClick={() => cambiarDuracion(seg)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                        (keyframes[frameActivo].duracion || 1.5) === seg
-                          ? "bg-red-700 text-white"
-                          : "bg-zinc-700 text-zinc-400 hover:text-white"
-                      }`}
-                    >{seg}s</button>
+                  {[1, 1.5, 2, 3, 4, 5].map(s => (
+                    <button key={s} onClick={() => cambiarDuracion(s)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${(kfActivo.duracion||1.5)===s ? "bg-red-700 text-white" : "bg-zinc-700 text-zinc-400 hover:text-white"}`}>
+                      {s}s
+                    </button>
                   ))}
                 </div>
               </div>
-
-              {/* Toggle jugadores */}
-              <div>
-                <p className="text-zinc-500 text-xs mb-1.5">👆 Toca para activar/desactivar movimiento</p>
+              <div className="mb-2">
+                <p className="text-zinc-500 text-xs mb-1">🔴 Locales</p>
                 <div className="grid grid-cols-4 gap-1">
-                  {keyframes[frameActivo].jugadores.map(j => {
-                    const esBlanco = j.color === "#ffffff" || j.color === "#fff";
-                    return (
-                      <button
-                        key={j.id}
-                        onClick={() => toggleJugadorActivo(j.id)}
-                        className={`rounded py-1 text-xs font-bold transition-all border ${
-                          j.activo
-                            ? "border-transparent"
-                            : "border-zinc-600 bg-zinc-800 text-zinc-500"
-                        }`}
-                        style={j.activo ? {
-                          backgroundColor: j.color || "#ef4444",
-                          color: esBlanco ? "#111" : "white"
-                        } : {}}
-                        title={j.activo ? "Se mueve — toca para dejar quieto" : "Quieto — toca para mover"}
-                      >
-                        {j.num}
-                      </button>
-                    );
-                  })}
+                  {kfActivo.jugadores.map(j => (
+                    <button key={j.id} onClick={() => toggleActivo(j.id, "local")}
+                      className={`rounded py-1 text-xs font-bold transition-all border ${j.activo ? "border-transparent" : "border-zinc-600 bg-zinc-800 text-zinc-500"}`}
+                      style={j.activo ? { backgroundColor: j.color||"#ef4444", color: j.color==="#ffffff"?"#111":"white" } : {}}>
+                      {j.num}
+                    </button>
+                  ))}
                 </div>
-                <p className="text-zinc-600 text-xs mt-1">
-                  {keyframes[frameActivo].jugadores.filter(j => j.activo).length} de {keyframes[frameActivo].jugadores.length} en movimiento
-                </p>
+              </div>
+              <div className="mb-2">
+                <p className="text-zinc-500 text-xs mb-1">🔵 Rivales</p>
+                <div className="grid grid-cols-4 gap-1">
+                  {kfActivo.rivales.map(j => (
+                    <button key={j.id} onClick={() => toggleActivo(j.id, "rival")}
+                      className={`rounded py-1 text-xs font-bold transition-all border ${j.activo ? "border-transparent" : "border-zinc-600 bg-zinc-800 text-zinc-500"}`}
+                      style={j.activo ? { backgroundColor: j.color||"#1d4ed8", color: j.color==="#ffffff"?"#111":"white" } : {}}>
+                      {j.num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-zinc-500 text-xs mb-1">⚽ Balón</p>
+                <button onClick={() => toggleActivo("balon", "balon")}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all border ${kfActivo.balon.activo !== false ? "bg-white text-black border-transparent" : "bg-zinc-800 text-zinc-500 border-zinc-600"}`}>
+                  {kfActivo.balon.activo !== false ? "Se mueve" : "Quieto"}
+                </button>
               </div>
             </Card>
           )}
 
-          {/* Controles */}
           <div className="flex flex-col gap-2">
             {!playing
               ? <Btn onClick={() => playAnimacion()} disabled={keyframes.length === 0}>▶ Ver animación</Btn>
               : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
             }
             <Btn variant="secondary" onClick={grabarVideo} disabled={grabando || playing || keyframes.length === 0}>
-              {grabando ? "⏺ Grabando..." : "⏺ Grabar vídeo (.webm)"}
+              {grabando ? "⏺ Grabando..." : "⏺ Grabar vídeo"}
             </Btn>
             {grabando && <p className="text-yellow-400 text-xs text-center">Grabando... no cierres la pantalla</p>}
           </div>
         </div>
 
-        {/* Canvas - abajo en móvil, izquierda en escritorio */}
         <div className="flex-1 lg:order-1 flex justify-center">
           <canvas
             ref={canvasRef}
