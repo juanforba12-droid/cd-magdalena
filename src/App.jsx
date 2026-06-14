@@ -2,6 +2,7 @@ import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFich
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
+import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -2707,37 +2708,20 @@ function dibujarBalon(ctx, b) {
   ctx.beginPath(); ctx.arc(px + 2, py + 2, r, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fill();
 
-  // Círculo blanco base
+  // Círculo blanco
   ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = "white"; ctx.fill();
-  ctx.strokeStyle = "#444"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.stroke();
 
-  // Pentágono central negro
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
-    const x = px + Math.cos(angle) * 4;
-    const y = py + Math.sin(angle) * 4;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fillStyle = "#111"; ctx.fill();
+  // Cruz central (estilo balón clásico, limpio en cualquier tamaño)
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
 
-  // 5 manchas hexagonales alrededor
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
-    const mx = px + Math.cos(angle) * 7.5;
-    const my = py + Math.sin(angle) * 7.5;
-    ctx.beginPath();
-    for (let j = 0; j < 6; j++) {
-      const a = (j * Math.PI / 3) + angle;
-      const x = mx + Math.cos(a) * 2.8;
-      const y = my + Math.sin(a) * 2.8;
-      j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = "#111"; ctx.fill();
-  }
+  // 4 cuartos sombreados alternos
+  ctx.fillStyle = "#222";
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, 0, Math.PI/2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, Math.PI, Math.PI*3/2); ctx.closePath(); ctx.fill();
 }
 
 function dibujarFlechaBalon(ctx, origen, destino) {
@@ -3158,6 +3142,117 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     gif.render();
   };
 
+  const grabarMP4 = async () => {
+    if (keyframes.length === 0) { alert("Añade al menos un paso antes de grabar."); return; }
+
+    // Verificar soporte WebCodecs
+    if (typeof VideoEncoder === "undefined") {
+      alert("Tu navegador no soporta grabación de vídeo MP4.\n\nUsa Chrome o Safari actualizados. Puedes usar el botón GIF como alternativa.");
+      return;
+    }
+
+    setGrabando(true);
+    const FPS = 30;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    const getPosBase = (idx) => ({
+      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
+      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
+      bal:  idx < 0 ? balon     : keyframes[idx].balon,
+    });
+
+    const segmentos = keyframes.map((kf, i) => {
+      const base = getPosBase(i - 1);
+      const durMs = (kf.duracion || 1.5) * 1000;
+      const toJugs = kf.jugadores.map(j => {
+        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
+        return j;
+      });
+      const toRivs = kf.rivales.map(j => {
+        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
+        return j;
+      });
+      const toBal = kf.balon.activo === false
+        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
+        : kf.balon;
+      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
+    });
+
+    const interpArr = (from, to, ease) => from.map(j => {
+      const d = to.find(x => x.id === j.id) || j;
+      return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
+    });
+
+    // Crear muxer MP4
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: { codec: "avc", width: FIELD_W, height: FIELD_H },
+      fastStart: "in-memory",
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => { console.error(e); setGrabando(false); },
+    });
+
+    encoder.configure({
+      codec: "avc1.42001f",
+      width: FIELD_W,
+      height: FIELD_H,
+      bitrate: 1_500_000,
+      framerate: FPS,
+    });
+
+    let frameIdx = 0;
+    const MS_POR_FRAME = 1000 / FPS;
+
+    for (const { fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs } of segmentos) {
+      const totalFrames = Math.max(1, Math.round(durMs / MS_POR_FRAME));
+      for (let f = 0; f < totalFrames; f++) {
+        const t = f >= totalFrames - 1 ? 1 : f / totalFrames;
+        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+        const interpBal = {
+          ...fromBal,
+          x: fromBal.x + (toBal.x - fromBal.x)*ease,
+          y: fromBal.y + (toBal.y - fromBal.y)*ease,
+        };
+        dibujarCampo(ctx);
+        dibujarJugadores(ctx, interpArr(fromJugs, toJugs, ease));
+        dibujarJugadores(ctx, interpArr(fromRivs, toRivs, ease));
+        dibujarBalon(ctx, interpBal);
+
+        const videoFrame = new VideoFrame(canvas, {
+          timestamp: Math.round(frameIdx * (1_000_000 / FPS)),
+          duration: Math.round(1_000_000 / FPS),
+        });
+        encoder.encode(videoFrame, { keyFrame: frameIdx % (FPS * 2) === 0 });
+        videoFrame.close();
+        frameIdx++;
+      }
+    }
+
+    await encoder.flush();
+    muxer.finalize();
+
+    const { buffer } = muxer.target;
+    const blob = new Blob([buffer], { type: "video/mp4" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const nombreArchivo = nombre.replace(/[\/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
+    a.href = url;
+    a.download = `tactica_${nombreArchivo}.mp4`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Redibujar posición inicial
+    dibujarCampo(ctx);
+    dibujarJugadores(ctx, jugadores);
+    dibujarJugadores(ctx, rivales);
+    dibujarBalon(ctx, balon);
+    setGrabando(false);
+  };
+
   const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
 
   return (
@@ -3320,10 +3415,13 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
               ? <Btn onClick={() => playAnimacion()} disabled={keyframes.length === 0}>▶ Ver animación</Btn>
               : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
             }
-            <Btn variant="secondary" onClick={generarGif} disabled={grabando || playing || keyframes.length === 0}>
-              {grabando ? "⏳ Generando GIF..." : "🎞️ Descargar GIF"}
+            <Btn variant="secondary" onClick={grabarMP4} disabled={grabando || playing || keyframes.length === 0}>
+              {grabando ? "⏳ Exportando..." : "🎬 Exportar MP4"}
             </Btn>
-            {grabando && <p className="text-yellow-400 text-xs text-center">Generando GIF... espera unos segundos</p>}
+            <Btn variant="secondary" onClick={generarGif} disabled={grabando || playing || keyframes.length === 0}>
+              🎞️ Exportar GIF
+            </Btn>
+            {grabando && <p className="text-yellow-400 text-xs text-center">Exportando... espera</p>}
           </div>
         </div>
 
