@@ -13,6 +13,7 @@
     "@tailwindcss/postcss": "^4.3.0",
     "firebase": "^12.13.0",
     "gif.js": "^0.2.0",
+    "mp4-muxer": "^5.2.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
