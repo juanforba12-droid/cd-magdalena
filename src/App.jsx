@@ -1,6 +1,7 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
+import GIF from "gif.js";
 
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -2700,20 +2701,43 @@ function dibujarFlechas(ctx, jugsBase, jugsDestino) {
 function dibujarBalon(ctx, b) {
   const px = (b.x / 100) * FIELD_W;
   const py = (b.y / 100) * FIELD_H;
+  const r = 11;
+
   // Sombra
-  ctx.beginPath(); ctx.arc(px + 1, py + 1, 9, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
-  // Círculo exterior blanco
-  ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(px + 2, py + 2, r, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fill();
+
+  // Círculo blanco base
+  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = "white"; ctx.fill();
-  ctx.strokeStyle = "#333"; ctx.lineWidth = 1; ctx.stroke();
-  // Manchas negras del balón (hexágonos simplificados)
-  ctx.fillStyle = "#222";
-  ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px - 5, py - 3, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + 5, py - 3, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px - 5, py + 3, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + 5, py + 3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#444"; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Pentágono central negro
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+    const x = px + Math.cos(angle) * 4;
+    const y = py + Math.sin(angle) * 4;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "#111"; ctx.fill();
+
+  // 5 manchas hexagonales alrededor
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+    const mx = px + Math.cos(angle) * 7.5;
+    const my = py + Math.sin(angle) * 7.5;
+    ctx.beginPath();
+    for (let j = 0; j < 6; j++) {
+      const a = (j * Math.PI / 3) + angle;
+      const x = mx + Math.cos(a) * 2.8;
+      const y = my + Math.sin(a) * 2.8;
+      j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "#111"; ctx.fill();
+  }
 }
 
 function dibujarFlechaBalon(ctx, origen, destino) {
@@ -2769,8 +2793,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const [playing, setPlaying] = useState(false);
   const [grabando, setGrabando] = useState(false);
   const animFrameRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
+  const gifRef = useRef(null);
 
   const kfActivo = frameActivo !== null ? keyframes[frameActivo] : null;
   const posLocales = kfActivo ? kfActivo.jugadores : jugadores;
@@ -2817,17 +2840,32 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     if (playing) return;
     const canvas = canvasRef.current;
     const pos = getPosEnCampo(e, canvas);
+
+    // Modo eliminar: toca un jugador y lo elimina
+    if (modoEliminar) {
+      const lista = modoEliminar === "local" ? posLocales : posRivales;
+      const jug = [...lista].reverse().find(j => {
+        const dx = j.x - pos.x, dy = j.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < 5;
+      });
+      if (jug) { e.preventDefault(); eliminarJugador(jug.id, modoEliminar); }
+      return;
+    }
+
+    // Balón
     const dxB = posBalon.x - pos.x, dyB = posBalon.y - pos.y;
-    if (Math.sqrt(dxB*dxB + dyB*dyB) < 4) {
+    if (Math.sqrt(dxB*dxB + dyB*dyB) < 5) {
       if (kfActivo && kfActivo.balon.activo === false) return;
       e.preventDefault(); setDragging({ id: "balon", tipo: "balon" }); return;
     }
+    // Local
     const jugL = [...posLocales].reverse().find(j => {
       if (kfActivo && j.activo === false) return false;
       const dx = j.x - pos.x, dy = j.y - pos.y;
       return Math.sqrt(dx*dx + dy*dy) < 5;
     });
     if (jugL) { e.preventDefault(); setDragging({ id: jugL.id, tipo: "local" }); return; }
+    // Rival
     const jugR = [...posRivales].reverse().find(j => {
       if (kfActivo && j.activo === false) return false;
       const dx = j.x - pos.x, dy = j.y - pos.y;
@@ -2864,7 +2902,48 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     }
   };
 
+  const [modoEliminar, setModoEliminar] = useState(null); // null | "local" | "rival"
+
   const onMouseUp = () => setDragging(null);
+
+  // ── Añadir / eliminar jugadores ──────────────────────────────────────────
+  const añadirJugador = (tipo) => {
+    if (frameActivo !== null) return; // solo en posición inicial
+    const lista = tipo === "local" ? jugadores : rivales;
+    const setter = tipo === "local" ? setJugadores : setRivales;
+    const color = tipo === "local"
+      ? (jugadores[0]?.color || "#ef4444")
+      : (rivales[0]?.color || "#1d4ed8");
+    const numsUsados = lista.map(j => j.num);
+    let nuevoNum = 1;
+    while (numsUsados.includes(nuevoNum)) nuevoNum++;
+    const nuevo = {
+      id: `${tipo[0]}${Date.now()}`,
+      num: nuevoNum,
+      x: 50 + (Math.random() - 0.5) * 20,
+      y: tipo === "local" ? 70 : 30,
+      color,
+      tipo,
+    };
+    setter(prev => [...prev, nuevo]);
+    // Añadir también a todos los keyframes existentes
+    const kfKey = tipo === "local" ? "jugadores" : "rivales";
+    setKeyframes(prev => prev.map(kf => ({
+      ...kf,
+      [kfKey]: [...kf[kfKey], { ...nuevo, activo: true }],
+    })));
+  };
+
+  const eliminarJugador = (id, tipo) => {
+    if (frameActivo !== null) return; // solo en posición inicial
+    const setter = tipo === "local" ? setJugadores : setRivales;
+    const kfKey = tipo === "local" ? "jugadores" : "rivales";
+    setter(prev => prev.filter(j => j.id !== id));
+    setKeyframes(prev => prev.map(kf => ({
+      ...kf,
+      [kfKey]: kf[kfKey].filter(j => j.id !== id),
+    })));
+  };
 
   const addKeyframe = () => {
     const ultimo = keyframes.length > 0 ? keyframes[keyframes.length - 1] : null;
@@ -2991,7 +3070,6 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const stopAnimacion = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setPlaying(false);
-    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     const ctx = canvasRef.current.getContext("2d");
     dibujarCampo(ctx);
     dibujarJugadores(ctx, jugadores);
@@ -2999,37 +3077,85 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     dibujarBalon(ctx, balon);
   };
 
-  const grabarVideo = () => {
-    if (keyframes.length === 0) { alert("Añade al menos un paso antes de grabar."); return; }
+  const generarGif = () => {
+    if (keyframes.length === 0) { alert("Añade al menos un paso antes de generar el GIF."); return; }
+    setGrabando(true);
+
+    const FPS_GIF = 25;
+    const MS_POR_FRAME = 1000 / FPS_GIF;
     const canvas = canvasRef.current;
-    if (typeof canvas.captureStream !== "function") {
-      alert("Tu navegador no soporta grabación de vídeo.\n\nUsa Chrome en ordenador o Android. En iPhone/iPad no está disponible.");
-      return;
-    }
-    chunksRef.current = [];
-    const mimeTypes = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
-    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const stream = canvas.captureStream(30);
-    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
-    mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    mediaRecorderRef.current.onstop = () => {
+    const ctx = canvas.getContext("2d");
+
+    const getPosBase = (idx) => ({
+      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
+      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
+      bal:  idx < 0 ? balon     : keyframes[idx].balon,
+    });
+
+    const segmentos = keyframes.map((kf, i) => {
+      const base = getPosBase(i - 1);
+      const durMs = (kf.duracion || 1.5) * 1000;
+      const toJugs = kf.jugadores.map(j => {
+        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
+        return j;
+      });
+      const toRivs = kf.rivales.map(j => {
+        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
+        return j;
+      });
+      const toBal = kf.balon.activo === false
+        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
+        : kf.balon;
+      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
+    });
+
+    const gif = new GIF({
+      workers: 2,
+      quality: 8,
+      width: FIELD_W,
+      height: FIELD_H,
+      workerScript: "/gif.worker.js",
+    });
+
+    const interpArr = (from, to, ease) => from.map(j => {
+      const d = to.find(x => x.id === j.id) || j;
+      return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
+    });
+
+    segmentos.forEach(({ fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs }) => {
+      const totalFrames = Math.max(1, Math.round(durMs / MS_POR_FRAME));
+      for (let f = 0; f < totalFrames; f++) {
+        const t = f >= totalFrames - 1 ? 1 : f / totalFrames;
+        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+        const interpBal = {
+          ...fromBal,
+          x: fromBal.x + (toBal.x - fromBal.x)*ease,
+          y: fromBal.y + (toBal.y - fromBal.y)*ease,
+        };
+        dibujarCampo(ctx);
+        dibujarJugadores(ctx, interpArr(fromJugs, toJugs, ease));
+        dibujarJugadores(ctx, interpArr(fromRivs, toRivs, ease));
+        dibujarBalon(ctx, interpBal);
+        gif.addFrame(ctx, { copy: true, delay: MS_POR_FRAME });
+      }
+    });
+
+    gif.on("finished", (blob) => {
       setGrabando(false);
-      const blob = new Blob(chunksRef.current, { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const nombreArchivo = nombre.replace(/[\/\\:*?\"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
-      a.href = url; a.download = `tactica_${nombreArchivo}.${ext}`; a.click();
+      const nombreArchivo = nombre.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
+      a.href = url;
+      a.download = `tactica_${nombreArchivo}.gif`;
+      a.click();
       URL.revokeObjectURL(url);
-    };
-    setGrabando(true);
-    try { mediaRecorderRef.current.start(); }
-    catch (err) { setGrabando(false); alert("Error al iniciar la grabación. Inténtalo de nuevo."); return; }
-    playAnimacion(() => {
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-      }, 500);
+      dibujarCampo(ctx);
+      dibujarJugadores(ctx, jugadores);
+      dibujarJugadores(ctx, rivales);
+      dibujarBalon(ctx, balon);
     });
+
+    gif.render();
   };
 
   const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
@@ -3072,37 +3198,65 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
         <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
 
           <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 COLOR LOCAL</p>
-            <div className="flex gap-2 flex-wrap">
+            <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 LOCAL</p>
+            <div className="flex gap-2 flex-wrap mb-2">
               {["#ef4444","#f97316","#22c55e","#f59e0b","#a855f7","#ffffff"].map(c => (
                 <button key={c} onClick={() => cambiarColor(c, "local")}
                   className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
                   style={{ backgroundColor: c }} />
               ))}
             </div>
+            {frameActivo === null && (
+              <div className="flex gap-1.5 flex-wrap">
+                <button onClick={() => añadirJugador("local")}
+                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
+                  + Añadir
+                </button>
+                <button
+                  onClick={() => setModoEliminar(prev => prev === "local" ? null : "local")}
+                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "local" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
+                  {modoEliminar === "local" ? "✕ Toca un jugador" : "− Eliminar"}
+                </button>
+                <span className="text-zinc-600 text-xs self-center">{jugadores.length} jugadores</span>
+              </div>
+            )}
           </Card>
 
           <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-1">🔵 COLOR RIVAL</p>
-            <div className="flex gap-2 flex-wrap">
+            <p className="text-zinc-400 text-xs font-semibold mb-1">🔵 VISITANTE</p>
+            <div className="flex gap-2 flex-wrap mb-2">
               {["#1d4ed8","#0891b2","#16a34a","#7c3aed","#db2777","#ffffff"].map(c => (
                 <button key={c} onClick={() => cambiarColor(c, "rival")}
                   className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
                   style={{ backgroundColor: c }} />
               ))}
             </div>
+            {frameActivo === null && (
+              <div className="flex gap-1.5 flex-wrap">
+                <button onClick={() => añadirJugador("rival")}
+                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
+                  + Añadir
+                </button>
+                <button
+                  onClick={() => setModoEliminar(prev => prev === "rival" ? null : "rival")}
+                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "rival" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
+                  {modoEliminar === "rival" ? "✕ Toca un jugador" : "− Eliminar"}
+                </button>
+                <span className="text-zinc-600 text-xs self-center">{rivales.length} jugadores</span>
+              </div>
+            )}
           </Card>
 
           <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-2">MOVIMIENTOS</p>
             <div className="space-y-1 mb-2">
-              <button onClick={() => setFrameActivo(null)}
+              <button onClick={() => { setFrameActivo(null); setModoEliminar(null); }}
                 className={`w-full text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === null ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
                 📍 Posición inicial
               </button>
               {keyframes.map((kf, i) => (
                 <div key={kf.id} className="flex items-center gap-1">
-                  <button onClick={() => setFrameActivo(i)}
+                  <button onClick={() => { setFrameActivo(i); setModoEliminar(null); }}
                     className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
                     🔑 Paso {i + 1} <span className="text-zinc-500 text-xs">({kf.duracion || 1.5}s)</span>
                   </button>
@@ -3166,10 +3320,10 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
               ? <Btn onClick={() => playAnimacion()} disabled={keyframes.length === 0}>▶ Ver animación</Btn>
               : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
             }
-            <Btn variant="secondary" onClick={grabarVideo} disabled={grabando || playing || keyframes.length === 0}>
-              {grabando ? "⏺ Grabando..." : "⏺ Grabar vídeo"}
+            <Btn variant="secondary" onClick={generarGif} disabled={grabando || playing || keyframes.length === 0}>
+              {grabando ? "⏳ Generando GIF..." : "🎞️ Descargar GIF"}
             </Btn>
-            {grabando && <p className="text-yellow-400 text-xs text-center">Grabando... no cierres la pantalla</p>}
+            {grabando && <p className="text-yellow-400 text-xs text-center">Generando GIF... espera unos segundos</p>}
           </div>
         </div>
 
@@ -3178,8 +3332,14 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
             ref={canvasRef}
             width={FIELD_W}
             height={FIELD_H}
-            className="rounded-lg border border-zinc-700 cursor-grab active:cursor-grabbing"
-            style={{ width: "100%", maxWidth: "380px", touchAction: dragging ? "none" : "pan-y" }}
+            className="rounded-lg border border-zinc-700"
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              touchAction: dragging ? "none" : "pan-y",
+              cursor: modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab"),
+              outline: modoEliminar ? "2px solid #ef4444" : "none",
+            }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
