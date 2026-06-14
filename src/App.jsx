@@ -3145,16 +3145,34 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const grabarMP4 = async () => {
     if (keyframes.length === 0) { alert("Añade al menos un paso antes de grabar."); return; }
 
-    // Verificar soporte WebCodecs
     if (typeof VideoEncoder === "undefined") {
       alert("Tu navegador no soporta grabación de vídeo MP4.\n\nUsa Chrome o Safari actualizados. Puedes usar el botón GIF como alternativa.");
       return;
     }
 
     setGrabando(true);
-    const FPS = 30;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+
+    // Canvas de alta resolución para renderizar (2x del canvas visible)
+    const SCALE = 2;
+    const W = FIELD_W * SCALE;
+    const H = FIELD_H * SCALE;
+    const FPS = 60;
+    const MS_POR_FRAME = 1000 / FPS;
+
+    // Canvas offscreen a 2x resolución
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = W;
+    offCanvas.height = H;
+    const offCtx = offCanvas.getContext("2d");
+    offCtx.scale(SCALE, SCALE); // escalar el contexto → todo se dibuja 2x
+
+    // Funciones de dibujo sobre el canvas offscreen
+    const drawFrame = (jugsL, jugsR, bal) => {
+      dibujarCampo(offCtx);
+      dibujarJugadores(offCtx, jugsL);
+      dibujarJugadores(offCtx, jugsR);
+      dibujarBalon(offCtx, bal);
+    };
 
     const getPosBase = (idx) => ({
       jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
@@ -3184,28 +3202,26 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
       return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
     });
 
-    // Crear muxer MP4
     const muxer = new Muxer({
       target: new ArrayBufferTarget(),
-      video: { codec: "avc", width: FIELD_W, height: FIELD_H },
+      video: { codec: "avc", width: W, height: H },
       fastStart: "in-memory",
     });
 
     const encoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => { console.error(e); setGrabando(false); },
+      error: (e) => { console.error(e); setGrabando(false); alert("Error al exportar el vídeo."); },
     });
 
     encoder.configure({
-      codec: "avc1.42001f",
-      width: FIELD_W,
-      height: FIELD_H,
-      bitrate: 1_500_000,
+      codec: "avc1.4d0028",  // H.264 Main Profile Level 4.0 — alta calidad
+      width: W,
+      height: H,
+      bitrate: 6_000_000,    // 6 Mbps — calidad alta
       framerate: FPS,
     });
 
     let frameIdx = 0;
-    const MS_POR_FRAME = 1000 / FPS;
 
     for (const { fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs } of segmentos) {
       const totalFrames = Math.max(1, Math.round(durMs / MS_POR_FRAME));
@@ -3217,16 +3233,13 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
           x: fromBal.x + (toBal.x - fromBal.x)*ease,
           y: fromBal.y + (toBal.y - fromBal.y)*ease,
         };
-        dibujarCampo(ctx);
-        dibujarJugadores(ctx, interpArr(fromJugs, toJugs, ease));
-        dibujarJugadores(ctx, interpArr(fromRivs, toRivs, ease));
-        dibujarBalon(ctx, interpBal);
+        drawFrame(interpArr(fromJugs, toJugs, ease), interpArr(fromRivs, toRivs, ease), interpBal);
 
-        const videoFrame = new VideoFrame(canvas, {
+        const videoFrame = new VideoFrame(offCanvas, {
           timestamp: Math.round(frameIdx * (1_000_000 / FPS)),
           duration: Math.round(1_000_000 / FPS),
         });
-        encoder.encode(videoFrame, { keyFrame: frameIdx % (FPS * 2) === 0 });
+        encoder.encode(videoFrame, { keyFrame: frameIdx % FPS === 0 }); // keyframe cada segundo
         videoFrame.close();
         frameIdx++;
       }
@@ -3245,7 +3258,8 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     a.click();
     URL.revokeObjectURL(url);
 
-    // Redibujar posición inicial
+    // Redibujar canvas visible en posición inicial
+    const ctx = canvasRef.current.getContext("2d");
     dibujarCampo(ctx);
     dibujarJugadores(ctx, jugadores);
     dibujarJugadores(ctx, rivales);
