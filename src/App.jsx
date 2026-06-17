@@ -2061,9 +2061,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     });
     if (changed) onSave({ ...data, matches: newMatches });
   }, [data.players?.length]);
-
   const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
-  useEffect(() => { if (!isCoord) return; loadFichas(team).then(setFichas); }, [team]);
 
   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
 
