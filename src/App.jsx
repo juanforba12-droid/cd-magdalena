@@ -5447,6 +5447,7 @@ function HomePublica({ onAcceder, club, onVolver }) {
 // PANTALLA: Login con email
 // ══════════════════════════════════════════════════════════════════════════════
 function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club }) {
+  const c = club || CLUBS[0];
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [recordar, setRecordar] = useState(false);
@@ -5525,6 +5526,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
 // PANTALLA: Registro en 2 pasos
 // ══════════════════════════════════════════════════════════════════════════════
 function RegistroScreen({ onVolver, onRegistroOk, club }) {
+  const c = club || CLUBS[0];
   const [paso, setPaso] = useState(1);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
