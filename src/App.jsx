@@ -5963,6 +5963,10 @@ export default function App() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
           >☰</button>
+          <button
+            onClick={() => setAuthState("home")}
+            className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all ml-1"
+          >🏠 Inicio</button>
           <span className="text-white font-semibold">
             {sections.find(s => s.id === activeSection)?.icon} {sections.find(s => s.id === activeSection)?.label}
             <span className="text-zinc-500 font-normal ml-2">— {activeTeam}</span>
