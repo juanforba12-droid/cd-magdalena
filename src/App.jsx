@@ -5444,7 +5444,7 @@ function HomePublica({ onAcceder, club, onVolver }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Login con email
 // ══════════════════════════════════════════════════════════════════════════════
-function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy }) {
+function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [recordar, setRecordar] = useState(false);
@@ -5466,7 +5466,9 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy }) {
   const handleLogin = async () => {
     if (!email || !pass) { setError("Introduce tu email y contrasena."); return; }
     setLoading(true); setError("");
-    const res = await loginUsuario({ email, password: pass });
+    const res = club
+      ? await loginUsuarioClub(club.firebaseConfig, club.firestorePrefix, email, pass)
+      : await loginUsuario({ email, password: pass });
     setLoading(false);
     if (!res.ok) { setError(res.error); return; }
     if (recordar) {
@@ -5520,7 +5522,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Registro en 2 pasos
 // ══════════════════════════════════════════════════════════════════════════════
-function RegistroScreen({ onVolver, onRegistroOk }) {
+function RegistroScreen({ onVolver, onRegistroOk, club }) {
   const [paso, setPaso] = useState(1);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -5887,6 +5889,7 @@ export default function App() {
   if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} />;
   if (authState === "login") return (
     <LoginScreen
+      club={clubActual}
       onVolver={() => setAuthState("home")}
       onLoginOk={handleLoginUsuario}
       onIrRegistro={() => setAuthState("register")}
@@ -5895,6 +5898,7 @@ export default function App() {
   );
   if (authState === "register") return (
     <RegistroScreen
+      club={clubActual}
       onVolver={() => setAuthState("login")}
       onRegistroOk={handleLoginUsuario}
     />

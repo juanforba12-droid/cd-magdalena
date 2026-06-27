@@ -153,3 +153,27 @@ export async function verificarCodigoRol(rol, codigo) {
     return snap.data()[rol] === codigo.trim().toUpperCase();
   } catch (e) { return false; }
 }
+
+// ── Login/registro dinámico por club ─────────────────────────────────────────
+export async function loginUsuarioClub(firebaseConfig, prefix, email, password) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db2, prefix + "_usuarios", emailKey));
+    if (!snap.exists()) return { ok: false, error: "Email no encontrado en este club." };
+    const userData = snap.data();
+    if (userData.passwordHash !== hashSimple(password)) return { ok: false, error: "Contrasena incorrecta." };
+    return { ok: true, user: userData };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+export async function registrarUsuarioClub(firebaseConfig, prefix, datos) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const emailKey = datos.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db2, prefix + "_usuarios", emailKey));
+    if (snap.exists()) return { ok: false, error: "Este email ya esta registrado en este club." };
+    await setDoc(doc(db2, prefix + "_usuarios", emailKey), datos);
+    return { ok: true, user: datos };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
