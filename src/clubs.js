@@ -62,3 +62,4 @@ export const CLUBS = [
 export function getClub(id) {
   return CLUBS.find(c => c.id === id) || CLUBS[0];
 }
+// Sat Jun 27 21:53:48 UTC 2026
