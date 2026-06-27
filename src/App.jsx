@@ -6054,6 +6054,10 @@ export default function App() {
             onClick={() => setAuthState("home")}
             className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all ml-1"
           >🏠 Inicio</button>
+          <button
+            onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState("selector"); setCurrentUser(null); setClubActual(null); setRole(null); }}
+            className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all"
+          >Salir</button>
           <span className="text-white font-semibold">
             {sections.find(s => s.id === activeSection)?.icon} {sections.find(s => s.id === activeSection)?.label}
             <span className="text-zinc-500 font-normal ml-2">— {activeTeam}</span>
