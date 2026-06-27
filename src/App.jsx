@@ -1,4 +1,5 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
+import { CLUBS } from "./clubs";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
@@ -5328,10 +5329,44 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
 
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANTALLA: Selector de clubes
+// ══════════════════════════════════════════════════════════════════════════════
+function SelectorClubes({ onSelect }) {
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">
+      <div className="text-center mb-10">
+        <div className="text-4xl mb-4">🏟️</div>
+        <h1 className="text-white text-2xl font-black mb-2">Gestión Deportiva</h1>
+        <p className="text-zinc-500 text-sm">Selecciona tu club para continuar</p>
+      </div>
+      <div className="w-full max-w-sm space-y-3">
+        {CLUBS.map(club => (
+          <button key={club.id} onClick={() => onSelect(club)}
+            className="w-full flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-600 transition-all text-left">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: club.colorAccent + "33", border: "1px solid " + club.colorAccent + "66" }}>
+              {club.emoji}
+            </div>
+            <div className="flex-1">
+              <div className="text-white font-bold text-sm">{club.nombre}</div>
+              <div className="text-zinc-500 text-xs">{club.deporte} · {club.ciudad}</div>
+            </div>
+            <span className="text-zinc-600 text-lg">→</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-zinc-700 text-xs mt-8">Powered by Gestión Deportiva</p>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Home publica
 // ══════════════════════════════════════════════════════════════════════════════
-function HomePublica({ onAcceder }) {
+function HomePublica({ onAcceder, club }) {
+  const c = club || CLUBS[0];
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
@@ -5610,7 +5645,8 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
 }
 
 export default function App() {
-  const [authState, setAuthState] = useState("home"); // home | login | register | login_legacy | app
+  const [authState, setAuthState] = useState("selector"); // selector | home | login | register | login_legacy | app
+  const [clubActual, setClubActual] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
@@ -5821,7 +5857,10 @@ export default function App() {
     </div>
   );
 
-  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
+  if (authState === "selector") return (
+    <SelectorClubes onSelect={(club) => { setClubActual(club); setAuthState("home"); }} />
+  );
+  if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} />;
   if (authState === "login") return (
     <LoginScreen
       onVolver={() => setAuthState("home")}
