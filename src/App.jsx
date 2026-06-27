@@ -5955,7 +5955,7 @@ export default function App() {
     </div>
   );
 
-  if (clubActual?.id === "amics") return (
+  if (authState === "app" && clubActual?.id === "amics") return (
     <React.Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="text-zinc-400 text-sm animate-pulse">Cargando Amics...</div></div>}>
       <AmicsApp />
     </React.Suspense>
