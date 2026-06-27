@@ -5983,12 +5983,16 @@ export default function App() {
       <div className={`${sidebarOpen ? "w-64" : "w-0 overflow-hidden"} transition-all duration-300 bg-zinc-900 border-r border-zinc-800 flex flex-col shrink-0`}>
         {/* Header */}
         <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-red-700 rounded-full flex items-center justify-center text-sm">⚽</div>
-            <span className="font-black text-white text-sm">CD La Magdalena</span>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm" style={{background: clubActual?.colorAccent || "#b91c1c"}}>{clubActual?.emoji || "⚽"}</div>
+            <div>
+              <div className="font-black text-white text-sm">{clubActual?.nombreCorto || "CD La Magdalena"}</div>
+              <div className="text-xs text-zinc-400">{currentUser?.nombre || coordProfile}</div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge color={isCoord ? "red" : "blue"}>{isCoord ? "Coordinador" : "Entrenador"}</Badge>
+            {currentUser?.equipo && <span className="text-xs text-zinc-500">{currentUser.equipo}</span>}
           </div>
         </div>
 
