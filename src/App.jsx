@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
@@ -7,18 +7,8 @@ import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError(e) { return { hasError: true, errorMsg: e?.message || "Error desconocido" }; }
-  componentDidCatch(e, info) { console.error("Render error:", e); console.error("Component stack:", info); }
-  render() {
-    if (this.state.hasError) {
-      return <div style={{color:"white",padding:20,background:"#111",minHeight:"100vh"}}>
-        <h2>Error al renderizar</h2>
-        <p style={{color:"#f87171",fontSize:14}}>{this.state.errorMsg}</p>
-        <p style={{fontSize:12,color:"#888"}}>Abre la consola (F12) para ver el detalle.</p>
-      </div>;
-    }
-    return this.props.children;
-  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(e) { console.error("Render error:", e); }
   render() { return this.state.hasError ? <div style={{color:'white',padding:20}}>Error al renderizar. Recarga la página.</div> : this.props.children; }
 }
 
@@ -3708,7 +3698,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
   const [viewingTeam, setViewingTeam] = useState(TEAMS[0]);
   const [confirming, setConfirming] = useState(false);
   const [confirmingRestore, setConfirmingRestore] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [ajustesTab, setAjustesTab] = useState("temporadas");
   const [editPwd, setEditPwd] = useState({});
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -5338,8 +5328,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
 
 
 export default function App() {
-  const [authState, setAuthState] = useState("home"); // home | login | register | login_legacy | app
-  const [currentUser, setCurrentUser] = useState(null);
+  const [authState, setAuthState] = useState("login"); // login | app
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
@@ -5496,42 +5485,11 @@ export default function App() {
     await saveData(seasonData);
   };
 
-  const handleLoginUsuario = (user) => {
-    setCurrentUser(user);
-    const r = user.rol || "familiar";
-    if (r === "coordinador") {
-      setRole("coordinator");
-      setTeamAccess(null);
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("resumen");
-      setCoordProfile(user.nombre || "Coordinador");
-      setShowProfilePicker(false);
-      setAuthState("app");
-    } else if (r === "entrenador") {
-      setRole("trainer");
-      setTeamAccess(TEAMS[0]);
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("plantilla");
-      setAuthState("app");
-    } else {
-      setRole("familiar");
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("plantilla");
-      setAuthState("app");
-    }
-  };
-
   const availableTeams = isCoord ? TEAMS : [teamAccess];
 
-  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
-
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center flex-col gap-4">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="text-zinc-400 text-sm animate-pulse">Cargando...</div>
-      <button
-        onClick={() => setLoading(false)}
-        className="text-zinc-600 text-xs underline"
-      >Si tarda mucho, pulsa aqui</button>
     </div>
   );
 
@@ -5555,53 +5513,40 @@ export default function App() {
     </div>
   );
 
-  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
-
   if (authState === "login") return (
-    <LoginScreen
-      onVolver={() => setAuthState("home")}
-      onLoginOk={handleLoginUsuario}
-      onIrRegistro={() => setAuthState("register")}
-      onLoginLegacy={() => setAuthState("login_legacy")}
-    />
-  );
-
-  if (authState === "register") return (
-    <RegistroScreen
-      onVolver={() => setAuthState("login")}
-      onRegistroOk={handleLoginUsuario}
-    />
-  );
-
-  if (authState === "login_legacy") return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+        {/* Logo area */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-700 mb-4 shadow-lg shadow-red-900/50">
             <span className="text-3xl">⚽</span>
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">CD La Magdalena</h1>
-          <p className="text-zinc-500 text-sm mt-1">Acceso con clave de equipo</p>
+          <p className="text-zinc-500 text-sm mt-1">Panel de gestión deportiva</p>
         </div>
+
         <Card className="border-zinc-700">
           <div className="space-y-4">
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
-              <select value={teamInput} onChange={e => setTeamInput(e.target.value)}
-                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">
+              <select
+                value={teamInput}
+                onChange={e => setTeamInput(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full"
+              >
                 {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <Input label="Contraseña" type="password" value={password}
+            <Input
+              label="Contraseña"
+              type="password"
+              value={password}
               onChange={e => { setPassword(e.target.value); setLoginError(""); }}
               onKeyDown={e => e.key === "Enter" && login()}
-              placeholder="Introduce tu clave" />
+              placeholder="Introduce tu clave"
+            />
             {loginError && <p className="text-red-400 text-xs">{loginError}</p>}
             <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
-            <button onClick={() => setAuthState("login")}
-              style={{ width: "100%", fontSize: 12, color: "#71717a", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>
-              ← Volver al login principal
-            </button>
           </div>
         </Card>
       </div>
