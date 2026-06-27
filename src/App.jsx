@@ -5371,8 +5371,8 @@ function HomePublica({ onAcceder, club, onVolver }) {
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
         <div className="flex flex-col leading-none">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
-          <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={onVolver} className="text-zinc-500 text-xs hover:text-white transition-all">← Clubes</button>
@@ -5380,39 +5380,51 @@ function HomePublica({ onAcceder, club, onVolver }) {
         </div>
       </div>
       <div className="bg-black border-b border-zinc-800 py-10 text-center">
-        <div className="text-4xl mb-3">{c.emoji}</div>
         <div className="flex flex-col items-center mb-4">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{c.deporte}</span>
-          <span className="text-white text-4xl font-black uppercase">{c.nombreCorto}</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Club Deportivo</span>
+          <span className="text-white text-4xl font-black uppercase">La Magdalena</span>
         </div>
-        <p className="text-zinc-500 text-sm mb-4">{c.ciudad}</p>
+        <p className="text-zinc-500 text-sm mb-4">Castellon de la Plana · Futbol base y amateur</p>
         <div className="flex gap-2 justify-center flex-wrap">
-          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">{c.emoji} {c.deporte}</span>
-          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">{c.equipos.length} equipos</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Futbol 11</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">5 equipos</span>
           <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Temporada 2025-26</span>
         </div>
       </div>
       <div className="p-5 border-b border-zinc-800">
-        <h2 className="text-sm font-bold text-white mb-3">Nuestros equipos</h2>
-        <div className="grid grid-cols-3 gap-2">
-          {c.equipos.slice(0,6).map(eq => (
-            <Card key={eq} className="text-center">
-              <div className="text-white text-sm font-bold">{eq}</div>
-            </Card>
+        <h2 className="text-sm font-bold text-white mb-3">Resultados recientes</h2>
+        <Card>
+          {[["Infantil","2-1","V"],["Juvenil B","1-1","E"],["Amateur","0-2","D"]].map(([eq,res,r]) => (
+            <div key={eq} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+              <span className="text-zinc-400 text-sm flex-1">{eq}</span>
+              <span className="text-white font-bold text-sm">{res}</span>
+              <Badge color={r==="V"?"green":r==="D"?"red":"yellow"}>{r==="V"?"Victoria":r==="D"?"Derrota":"Empate"}</Badge>
+            </div>
           ))}
-        </div>
+        </Card>
       </div>
       <div className="p-5 border-b border-zinc-800">
         <h2 className="text-sm font-bold text-white mb-3">Ultimas noticias</h2>
         <Card>
-          {[["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
+          {[["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Infantil gana 2-1 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
             <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
-              <div className="text-xs font-semibold mb-0.5" style={{color: c.colorAccent}}>{tag}</div>
+              <div className="text-xs text-red-400 font-semibold mb-0.5">{tag}</div>
               <div className="text-sm font-semibold text-white">{title}</div>
               <div className="text-xs text-zinc-500">{meta}</div>
             </div>
           ))}
         </Card>
+      </div>
+      <div className="p-5 border-b border-zinc-800">
+        <h2 className="text-sm font-bold text-white mb-3">Nuestros equipos</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {[["Infantil","Sub-12"],["Cadete","Sub-14"],["Juvenil A","Sub-18"],["Juvenil B","Sub-18"],["Amateur","Senior"]].map(([name,cat]) => (
+            <Card key={name} className="text-center">
+              <div className="text-white text-sm font-bold">{name}</div>
+              <div className="text-zinc-500 text-xs">{cat}</div>
+            </Card>
+          ))}
+        </div>
       </div>
       <div className="p-5">
         <h2 className="text-sm font-bold text-white mb-3">Inscripcion</h2>
