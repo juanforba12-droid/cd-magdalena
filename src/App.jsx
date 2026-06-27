@@ -5502,15 +5502,19 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
 
   const handleRegistro = async () => {
     setLoading(true); setError("");
-    if (rol !== "familiar") {
-      const ok = await verificarCodigoRol(rol, codigo);
-      if (!ok) { setError("Codigo incorrecto. Pidelo a tu coordinador."); setLoading(false); return; }
+    try {
+      if (rol !== "familiar") {
+        const ok = await verificarCodigoRol(rol, codigo);
+        if (!ok) { setError("Codigo incorrecto. Pidelo a tu coordinador."); setLoading(false); return; }
+      }
+      const res = await registrarUsuario({ nombre, email, password: pass1, rol });
+      if (!res.ok) { setError(res.error); setLoading(false); return; }
+      setRolFinal(rol); setPaso(3);
+      setTimeout(() => onRegistroOk(res.user), 1500);
+    } catch(e) {
+      setError("Error al crear la cuenta: " + e.message);
     }
-    const res = await registrarUsuario({ nombre, email, password: pass1, rol });
     setLoading(false);
-    if (!res.ok) { setError(res.error); return; }
-    setRolFinal(rol); setPaso(3);
-    setTimeout(() => onRegistroOk(res.user), 1500);
   };
 
   const ROLES = [
