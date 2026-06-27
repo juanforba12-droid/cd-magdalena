@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -152,4 +152,74 @@ export async function verificarCodigoRol(rol, codigo) {
     if (!snap.exists()) return false;
     return snap.data()[rol] === codigo.trim().toUpperCase();
   } catch (e) { return false; }
+}
+
+
+// ── Firebase dinámico por club ────────────────────────────────────────────────
+import { initializeApp, getApps, getApp } from "firebase/app";
+
+export function getClubDb(firebaseConfig) {
+  const appName = firebaseConfig.projectId;
+  const app = getApps().find(a => a.name === appName) || initializeApp(firebaseConfig, appName);
+  return getFirestore(app);
+}
+
+export async function loadClubData(firebaseConfig, prefix) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const snap = await getDoc(doc(db2, prefix, "main"));
+    if (!snap.exists()) return null;
+    const raw = snap.data().json;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ? cleanLoaded(parsed) : null;
+  } catch(e) { console.error("loadClubData error", e); return null; }
+}
+
+export async function saveClubData(firebaseConfig, prefix, data) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const json = JSON.stringify(data);
+    await setDoc(doc(db2, prefix, "main"), { json });
+  } catch(e) { console.error("saveClubData error", e); }
+}
+
+export async function loadClubSeasons(firebaseConfig, prefix) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const snap = await getDoc(doc(db2, prefix, "seasons"));
+    if (!snap.exists()) return [];
+    const raw = snap.data().json;
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+export async function saveClubSeasons(firebaseConfig, prefix, seasons) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const json = JSON.stringify(seasons);
+    await setDoc(doc(db2, prefix, "seasons"), { json });
+  } catch(e) { console.error(e); }
+}
+
+export async function registrarUsuarioClub(firebaseConfig, prefix, userData) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const emailKey = userData.email.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const snap = await getDoc(doc(db2, prefix + "_usuarios", emailKey));
+    if (snap.exists()) return { ok: false, error: "Este email ya esta registrado." };
+    await setDoc(doc(db2, prefix + "_usuarios", emailKey), userData);
+    return { ok: true, user: userData };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+export async function loginUsuarioClub(firebaseConfig, prefix, email, passwordHash) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const snap = await getDoc(doc(db2, prefix + "_usuarios", emailKey));
+    if (!snap.exists()) return { ok: false, error: "Email no encontrado." };
+    const userData = snap.data();
+    if (userData.passwordHash !== passwordHash) return { ok: false, error: "Contrasena incorrecta." };
+    return { ok: true, user: userData };
+  } catch(e) { return { ok: false, error: e.message }; }
 }

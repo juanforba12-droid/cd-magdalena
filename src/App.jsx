@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons } from "./firebase";
 import { CLUBS } from "./clubs";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
@@ -5747,8 +5747,10 @@ export default function App() {
   const updateTeamData = async (team, newData) => {
     if (window._setSaving) window._setSaving(true);
     let freshDb;
+    const cfg = clubActual?.firebaseConfig;
+    const prefix = clubActual?.firestorePrefix;
     try {
-      freshDb = await loadData();
+      freshDb = cfg ? await loadClubData(cfg, prefix) : await loadData();
       if (freshDb) setDb(freshDb);
     } catch(e) {
       freshDb = db;
@@ -5777,7 +5779,8 @@ export default function App() {
     });
     const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
     setDb(newDb);
-    await saveData(newDb);
+    if (cfg) await saveClubData(cfg, prefix, newDb);
+    else await saveData(newDb);
     setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
   };
 
@@ -5785,12 +5788,15 @@ export default function App() {
     setGlobalTasks(tasks);
     const newDb = { ...db, __globalTasks: tasks };
     setDb(newDb);
-    await saveData(newDb);
+    const cfg = clubActual?.firebaseConfig;
+    const prefix = clubActual?.firestorePrefix;
+    if (cfg) await saveClubData(cfg, prefix, newDb);
+    else await saveData(newDb);
   };
 
   const savePasswords = async (newPwds) => {
     setTeamPasswords(newPwds);
-    localStorage.setItem("cdmag_passwords", JSON.stringify(newPwds));
+    localStorage.setItem("mgd_passwords_" + (clubActual?.id || "default"), JSON.stringify(newPwds));
   };
 
   const archiveSeason = async () => {
