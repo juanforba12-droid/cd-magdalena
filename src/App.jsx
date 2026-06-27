@@ -5653,8 +5653,8 @@ export default function App() {
       return saved ? CLUBS.find(c => c.id === saved) || null : null;
     } catch(e) { return null; }
   })();
-  const [authState, setAuthState] = useState(savedClub ? "home" : "selector");
-  const [clubActual, setClubActual] = useState(savedClub);
+  const [authState, setAuthState] = useState("selector");
+  const [clubActual, setClubActual] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
