@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -213,4 +213,11 @@ export async function saveClubSeasons(firebaseConfig, prefix, seasons) {
     const json = JSON.stringify(seasons);
     await setDoc(doc(db2, prefix, "seasons"), { json });
   } catch(e) { console.error(e); }
+}
+
+export function getClubDb(firebaseConfig) {
+  const appName = firebaseConfig.projectId;
+  const existingApp = getApps().find(a => a.name === appName);
+  const app2 = existingApp || initializeApp(firebaseConfig, appName);
+  return getFirestore(app2);
 }
