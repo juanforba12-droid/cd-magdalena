@@ -1,5 +1,6 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons } from "./firebase";
 import { CLUBS } from "./clubs";
+import AmicsApp from "./AmicsApp";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
@@ -5948,6 +5949,7 @@ export default function App() {
     </div>
   );
 
+  if (authState === "app" && clubActual?.id === "amics") return <AmicsApp />;
   const teamData = db[activeTeam] || { players: [], trainings: [], matches: [], attendance: [] };
 
   return (
