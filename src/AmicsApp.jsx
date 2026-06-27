@@ -441,7 +441,7 @@ function BC_PlantillaSection({ team, data, onSave, isCoord, seasons }) {
         const getPrincipal = (p) => p.posicionPrincipal || (p.positions || [])[0] || "Sin posición";
         const getPosGroup = (p) => {
           const pp = getPrincipal(p);
-          if (POSITIONS.includes(pp)) return pp;
+          if (BC_POSITIONS.includes(pp)) return pp;
           return "Sin posición";
         };
         const posColor = {
@@ -776,7 +776,7 @@ function BC_Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChan
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{ backgroundColor: PLAYER_COLOR_HEX2[color] || "#16a34a", borderColor: PLAYER_COLOR_HEX2[color] || "#16a34a", fontSize: 10 }}>
+            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{ backgroundColor: BC_PLAYER_COLOR_HEX2[color] || "#16a34a", borderColor: BC_PLAYER_COLOR_HEX2[color] || "#16a34a", fontSize: 10 }}>
               {item.num != null ? item.num : ""}
             </div>
           )
@@ -801,7 +801,7 @@ function BC_Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChan
           <span className="text-xs text-zinc-500 mr-1">Jugadores:</span>
           {BC_PLAYER_COLORS.map(c => (
             <button key={c} onClick={() => setTool(`player_${c}`)}
-              className={`w-7 h-7 rounded-full border-2 transition-all ${PLAYER_COLOR_STYLES[c]} ${tool === `player_${c}` ? "scale-125 ring-2 ring-white" : "opacity-70"}`}
+              className={`w-7 h-7 rounded-full border-2 transition-all ${BC_PLAYER_COLOR_STYLES[c]} ${tool === `player_${c}` ? "scale-125 ring-2 ring-white" : "opacity-70"}`}
             />
           ))}
           {tool.startsWith("player_") && (
@@ -2256,7 +2256,7 @@ function BC_MejoresRivalesSection({ db }) {
 function BC_GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }) {
   const [seasons, setSeasons] = useState([]);
   const [viewingSeason, setViewingSeason] = useState(null);
-  const [viewingTeam, setViewingTeam] = useState(TEAMS[0]);
+  const [viewingTeam, setViewingTeam] = useState(BC_TEAMS[0]);
   const [editPwds, setEditPwds] = useState(false);
   const [pwdInputs, setPwdInputs] = useState({});
   const [archiving, setArchiving] = useState(false);
@@ -2328,7 +2328,7 @@ function BC_GestionSection({ db, onArchive, onRestore, passwords, onSavePassword
 // SECTION: Entrenadores
 // ══════════════════════════════════════════════════════════════════════════════
 function BC_EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
-  const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
+  const [selectedTeam, setSelectedTeam] = useState(BC_TEAMS[0]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -2407,7 +2407,7 @@ function BC_EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 // SECTION: Resumen
 // ══════════════════════════════════════════════════════════════════════════════
 function BC_ResumenSection({ db }) {
-  const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
+  const [selectedTeam, setSelectedTeam] = useState(BC_TEAMS[0]);
   const teamData = db[selectedTeam] || { matches: [] };
   const matches = (teamData.matches || []).sort((a, b) => b.fecha.localeCompare(a.fecha));
 
@@ -2573,7 +2573,7 @@ export default function AmicsApp() {
     if (teamInput === "Coordinador" && password === "AMICS") {
       setRole("coordinator");
       setTeamAccess(null);
-      setActiveTeam(TEAMS[0]);
+      setActiveTeam(BC_TEAMS[0]);
       setActiveSection("resumen");
       setShowProfilePicker(true);
     } else if (teamInput !== "Coordinador" && ({ ...TEAM_PASSWORDS, ...teamPasswords })[teamInput] === password) {
@@ -2646,7 +2646,7 @@ export default function AmicsApp() {
     await saveData(seasonData);
   };
 
-  const availableTeams = isCoord ? TEAMS : [teamAccess];
+  const availableTeams = isCoord ? BC_TEAMS : [teamAccess];
 
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -2690,7 +2690,7 @@ export default function AmicsApp() {
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
               <select value={teamInput} onChange={e => setTeamInput(e.target.value)}
                 className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-green-600 w-full">
-                {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
+                {["Coordinador", ...BC_TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <BC_Input label="Contraseña" type="password" value={password}
