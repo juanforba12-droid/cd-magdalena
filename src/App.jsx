@@ -5645,8 +5645,24 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
 }
 
 export default function App() {
-  const [authState, setAuthState] = useState("selector"); // selector | home | login | register | login_legacy | app
-  const [clubActual, setClubActual] = useState(null);
+  const getSavedClub = () => {
+    try {
+      const saved = localStorage.getItem("mgd_club");
+      if (saved) {
+        const { CLUBS: C } = require ? { CLUBS } : { CLUBS };
+        return CLUBS.find(c => c.id === saved) || null;
+      }
+    } catch(e) {}
+    return null;
+  };
+  const savedClub = (() => {
+    try {
+      const saved = localStorage.getItem("mgd_club");
+      return saved ? CLUBS.find(c => c.id === saved) || null : null;
+    } catch(e) { return null; }
+  })();
+  const [authState, setAuthState] = useState(savedClub ? "home" : "selector");
+  const [clubActual, setClubActual] = useState(savedClub);
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
@@ -5858,7 +5874,11 @@ export default function App() {
   );
 
   if (authState === "selector") return (
-    <SelectorClubes onSelect={(club) => { setClubActual(club); setAuthState("home"); }} />
+    <SelectorClubes onSelect={(club) => {
+      setClubActual(club);
+      try { localStorage.setItem("mgd_club", club.id); } catch(e) {}
+      setAuthState("home");
+    }} />
   );
   if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} />;
   if (authState === "login") return (
