@@ -1,6 +1,5 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
 import { CLUBS } from "./clubs";
-const AmicsApp = React.lazy(() => import("./AmicsApp"));
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
