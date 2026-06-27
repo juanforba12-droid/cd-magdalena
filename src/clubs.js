@@ -34,7 +34,8 @@ export const CLUBS = [
     deporte: "Baloncesto",
     ciudad: "Castellón de la Plana",
     color: "#052e16",
-    colorAccent: "#16a34a",
+    colorAccent: "#f97316",
+    colorSecundario: "#16a34a",
     emoji: "🏀",
     firebaseConfig: {
       apiKey: "AIzaSyBXNq-oZDJfMLUY8C2zvv80o98N-ER-hKs",
