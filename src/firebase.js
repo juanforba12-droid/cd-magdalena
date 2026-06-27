@@ -177,3 +177,40 @@ export async function registrarUsuarioClub(firebaseConfig, prefix, datos) {
     return { ok: true, user: datos };
   } catch(e) { return { ok: false, error: e.message }; }
 }
+
+export async function loadClubData(firebaseConfig, prefix) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const snap = await getDoc(doc(db2, prefix, "main"));
+    if (!snap.exists()) return null;
+    const raw = snap.data().json;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ? cleanLoaded(parsed) : null;
+  } catch(e) { console.error("loadClubData error", e); return null; }
+}
+
+export async function saveClubData(firebaseConfig, prefix, data) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const json = JSON.stringify(data);
+    await setDoc(doc(db2, prefix, "main"), { json });
+  } catch(e) { console.error("saveClubData error", e); }
+}
+
+export async function loadClubSeasons(firebaseConfig, prefix) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const snap = await getDoc(doc(db2, prefix, "seasons"));
+    if (!snap.exists()) return [];
+    const raw = snap.data().json;
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+export async function saveClubSeasons(firebaseConfig, prefix, seasons) {
+  try {
+    const db2 = getClubDb(firebaseConfig);
+    const json = JSON.stringify(seasons);
+    await setDoc(doc(db2, prefix, "seasons"), { json });
+  } catch(e) { console.error(e); }
+}
