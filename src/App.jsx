@@ -5550,15 +5550,11 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
     setLoading(true); setError("");
     try {
       if (rol !== "familiar") {
-        const CODIGOS_EQUIPO = {
-          "Escoleta":"KFW","Prebenjamin":"ZBN","Benjamin C":"TXR","Benjamin B":"PLH","Benjamin A":"DJV",
-          "Alevin B":"WCQ","Alevin A":"NYS","Transicion":"HQV","Infantil B":"RGK","Infantil A":"BTP",
-          "Cadete":"XMJ","Juvenil":"FVL"
-        };
-        const COORD_PWD = "MGD2026";
+        const codigosEquipo = c.passwords?.equipos || {};
+        const coordPwd = c.passwords?.coordinador || "";
         const codigoOk = rol === "coordinador"
-          ? codigo.trim().toUpperCase() === COORD_PWD
-          : codigo.trim().toUpperCase() === (CODIGOS_EQUIPO[equipoSel] || "");
+          ? codigo.trim().toUpperCase() === coordPwd
+          : codigo.trim().toUpperCase() === (codigosEquipo[equipoSel] || "");
         if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
       }
       const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null });
