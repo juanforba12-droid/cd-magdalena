@@ -1,6 +1,5 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
 import { CLUBS } from "./clubs";
-import AmicsApp from "./AmicsApp";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
@@ -5653,8 +5652,8 @@ export default function App() {
       return saved ? CLUBS.find(c => c.id === saved) || null : null;
     } catch(e) { return null; }
   })();
-  const [authState, setAuthState] = useState("selector");
-  const [clubActual, setClubActual] = useState(null);
+  const [authState, setAuthState] = useState(savedClub ? "home" : "selector");
+  const [clubActual, setClubActual] = useState(savedClub);
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
@@ -5748,10 +5747,8 @@ export default function App() {
   const updateTeamData = async (team, newData) => {
     if (window._setSaving) window._setSaving(true);
     let freshDb;
-    const cfg = clubActual?.firebaseConfig;
-    const prefix = clubActual?.firestorePrefix;
     try {
-      freshDb = cfg ? await loadClubData(cfg, prefix) : await loadData();
+      freshDb = await loadData();
       if (freshDb) setDb(freshDb);
     } catch(e) {
       freshDb = db;
@@ -5780,8 +5777,7 @@ export default function App() {
     });
     const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
     setDb(newDb);
-    if (cfg) await saveClubData(cfg, prefix, newDb);
-    else await saveData(newDb);
+    await saveData(newDb);
     setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
   };
 
@@ -5789,15 +5785,12 @@ export default function App() {
     setGlobalTasks(tasks);
     const newDb = { ...db, __globalTasks: tasks };
     setDb(newDb);
-    const cfg = clubActual?.firebaseConfig;
-    const prefix = clubActual?.firestorePrefix;
-    if (cfg) await saveClubData(cfg, prefix, newDb);
-    else await saveData(newDb);
+    await saveData(newDb);
   };
 
   const savePasswords = async (newPwds) => {
     setTeamPasswords(newPwds);
-    localStorage.setItem("mgd_passwords_" + (clubActual?.id || "default"), JSON.stringify(newPwds));
+    localStorage.setItem("cdmag_passwords", JSON.stringify(newPwds));
   };
 
   const archiveSeason = async () => {
@@ -5949,7 +5942,6 @@ export default function App() {
     </div>
   );
 
-  if (authState === "app" && clubActual?.id === "amics") return <AmicsApp />;
   const teamData = db[activeTeam] || { players: [], trainings: [], matches: [], attendance: [] };
 
   return (
