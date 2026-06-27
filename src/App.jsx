@@ -5697,7 +5697,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handler = () => { setAuthState("selector"); setClubActual(null); };
+    const handler = () => { setAuthState("home"); };
     window.addEventListener("volverSelector", handler);
     return () => window.removeEventListener("volverSelector", handler);
   }, []);
