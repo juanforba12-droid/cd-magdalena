@@ -10,7 +10,7 @@ const firebaseConfig = {
   appId: "1:803606875688:web:bcb392a3005fb0f3f62f1d"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig, "amics-castello");
 export const db = getFirestore(app);
 
 function cleanLoaded(obj) {
