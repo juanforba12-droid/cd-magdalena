@@ -7,8 +7,18 @@ import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(e) { console.error("Render error:", e); }
+  static getDerivedStateFromError(e) { return { hasError: true, errorMsg: e?.message || "Error desconocido" }; }
+  componentDidCatch(e, info) { console.error("Render error:", e); console.error("Component stack:", info); }
+  render() {
+    if (this.state.hasError) {
+      return <div style={{color:"white",padding:20,background:"#111",minHeight:"100vh"}}>
+        <h2>Error al renderizar</h2>
+        <p style={{color:"#f87171",fontSize:14}}>{this.state.errorMsg}</p>
+        <p style={{fontSize:12,color:"#888"}}>Abre la consola (F12) para ver el detalle.</p>
+      </div>;
+    }
+    return this.props.children;
+  }
   render() { return this.state.hasError ? <div style={{color:'white',padding:20}}>Error al renderizar. Recarga la página.</div> : this.props.children; }
 }
 
