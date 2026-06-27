@@ -5372,8 +5372,8 @@ function HomePublica({ onAcceder, club, onVolver }) {
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
         <div className="flex flex-col leading-none">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
-          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={onVolver} className="text-zinc-500 text-xs hover:text-white transition-all">← Clubes</button>
@@ -5382,10 +5382,10 @@ function HomePublica({ onAcceder, club, onVolver }) {
       </div>
       <div className="bg-black border-b border-zinc-800 py-10 text-center">
         <div className="flex flex-col items-center mb-4">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Club Deportivo</span>
-          <span className="text-white text-4xl font-black uppercase">La Magdalena</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{c.deporte}</span>
+          <span className="text-white text-4xl font-black uppercase">{c.nombreCorto}</span>
         </div>
-        <p className="text-zinc-500 text-sm mb-4">Castellon de la Plana · Futbol base y amateur</p>
+        <p className="text-zinc-500 text-sm mb-4">{c.ciudad}</p>
         <div className="flex gap-2 justify-center flex-wrap">
           <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Futbol 11</span>
           <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">5 equipos</span>
@@ -5481,8 +5481,8 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy }) {
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
         <div className="flex flex-col leading-none">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
-          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
         </div>
         <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>
       </div>
@@ -5575,8 +5575,8 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
         <div className="flex flex-col leading-none">
-          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
-          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
         </div>
         <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>
       </div>
