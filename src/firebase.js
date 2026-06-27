@@ -156,8 +156,6 @@ export async function verificarCodigoRol(rol, codigo) {
 
 
 // ── Firebase dinámico por club ────────────────────────────────────────────────
-import { initializeApp, getApps, getApp } from "firebase/app";
-
 export function getClubDb(firebaseConfig) {
   const appName = firebaseConfig.projectId;
   const app = getApps().find(a => a.name === appName) || initializeApp(firebaseConfig, appName);
