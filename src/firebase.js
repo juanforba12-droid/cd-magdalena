@@ -115,3 +115,63 @@ export async function deleteFicha(team, playerId) {
     return { ok: false, error: e.message };
   }
 }
+
+
+// ── Usuarios (registro/login sin Firebase Auth) ─────────────────────────────
+function hashSimple(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + c;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+export async function registrarUsuario({ nombre, email, password, rol }) {
+  try {
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
+    if (snap.exists()) return { ok: false, error: "Este email ya está registrado." };
+    const userData = {
+      nombre,
+      email: email.toLowerCase(),
+      passwordHash: hashSimple(password),
+      rol,
+      creadoEn: new Date().toISOString(),
+    };
+    await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), userData);
+    return { ok: true, user: userData };
+  } catch (e) {
+    console.error("registrarUsuario error", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function loginUsuario({ email, password }) {
+  try {
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
+    if (!snap.exists()) return { ok: false, error: "Email no encontrado." };
+    const userData = snap.data();
+    if (userData.passwordHash !== hashSimple(password)) {
+      return { ok: false, error: "Contraseña incorrecta." };
+    }
+    return { ok: true, user: userData };
+  } catch (e) {
+    console.error("loginUsuario error", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function verificarCodigoRol(rol, codigo) {
+  try {
+    const snap = await getDoc(doc(db, "cdmagdalena_config", "roles"));
+    if (!snap.exists()) return false;
+    const codigos = snap.data();
+    return codigos[rol] === codigo.trim().toUpperCase();
+  } catch (e) {
+    console.error("verificarCodigoRol error", e);
+    return false;
+  }
+}

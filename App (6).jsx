@@ -1,8 +1,6 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
-import GIF from "gif.js";
-import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -32,8 +30,8 @@ function initState() {
 }
 
 // ── Tiny UI components ───────────────────────────────────────────────────────
-const Btn = ({ children, onClick, variant = "primary", small, className = "", disabled = false }) => {
-  const base = "font-bold rounded transition-all duration-150 border-0 ";
+const Btn = ({ children, onClick, variant = "primary", small, className = "" }) => {
+  const base = "font-bold rounded transition-all duration-150 cursor-pointer border-0 ";
   const sizes = small ? "px-3 py-1 text-xs" : "px-5 py-2 text-sm";
   const variants = {
     primary: "bg-red-600 hover:bg-red-500 text-white",
@@ -41,16 +39,7 @@ const Btn = ({ children, onClick, variant = "primary", small, className = "", di
     danger: "bg-zinc-800 hover:bg-red-800 text-red-400 border border-red-900",
     ghost: "bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-white",
   };
-  const disabledClass = disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : "cursor-pointer";
-  return (
-    <button
-      className={`${base}${sizes} ${variants[variant]} ${disabledClass} ${className}`}
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
+  return <button className={`${base}${sizes} ${variants[variant]} ${className}`} onClick={onClick}>{children}</button>;
 };
 
 const Input = ({ label, ...props }) => (
@@ -117,8 +106,8 @@ function AttendanceChart({ present, late, absent }) {
 
 // SECTION: Plantilla
 // ══════════════════════════════════════════════════════════════════════════════
-function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
-  const [tab, setTab] = useState("oficial"); // "oficial" | "probando" | "convocatoria"
+function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
+  const [tab, setTab] = useState("oficial"); // "oficial" | "probando"
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -127,13 +116,9 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
   const [posicionPrincipal, setPosicionPrincipal] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
-  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [statsPlayer, setStatsPlayer] = useState(null);
   const [attPlayer, setAttPlayer] = useState(null);
   const [search, setSearch] = useState("");
-  const [fichaUploading, setFichaUploading] = useState({});
-  const [fichaVisor, setFichaVisor] = useState(null);
-  const [fichas, setFichas] = useState(null);
 
   // ── Historial de partidos ─────────────────────────────────────────────────
   const getPlayerMatchHistory = (playerId) => {
@@ -160,8 +145,6 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
     }).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
     return { present, late, absent, total, detail };
   };
-
-  useEffect(() => { if (!isCoord) return; loadFichas(team).then(setFichas); }, [team]);
 
   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
   const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
@@ -204,14 +187,13 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
     setPosicionPrincipal(p ? (p.posicionPrincipal || (p.positions||[])[0] || "") : "");
     setTelefono(p ? (p.telefono || "") : "");
     setDni(p ? (p.dni || "") : "");
-    setFechaNacimiento(p ? (p.fechaNacimiento || "") : "");
     setShowForm(true);
   };
 
   const save = () => {
     if (!name.trim()) return;
     const players = [...(data.players || [])];
-    const playerData = { name, dorsal, positions, posicionPrincipal, ...(isCoord ? { telefono, dni, fechaNacimiento } : {}) };
+    const playerData = { name, dorsal, positions, posicionPrincipal, ...(isCoord ? { telefono, dni } : {}) };
     if (editing) {
       const idx = players.findIndex(p => p.id === editing.id);
       players[idx] = { ...editing, ...playerData };
@@ -223,46 +205,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
   };
 
   const del = (id) => {
-    if (!window.confirm("¿Eliminar jugador?\nSe eliminarán también sus datos, informes y ficha PDF si tiene.")) return;
-    if (fichas?.[id]) deleteFicha(team, id).catch(() => {});
-    setFichas(prev => { const n = { ...(prev||{}) }; delete n[id]; return n; });
+    if (!window.confirm("¿Eliminar jugador?")) return;
     onSave({ ...data, players: data.players.filter(p => p.id !== id) });
-  };
-
-  const handleFichaUpload = async (player, file) => {
-    if (!file || file.type !== "application/pdf") {
-      alert("Solo se admiten archivos PDF.");
-      return;
-    }
-    if (file.size > 700 * 1024) {
-      alert("El PDF no puede superar 700 KB.\nUsa ilovepdf.com para reducir el tamaño.");
-      return;
-    }
-    setFichaUploading(prev => ({ ...prev, [player.id]: true }));
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result;
-      const result = await saveFicha(team, player.id, base64, file.name);
-      setFichaUploading(prev => ({ ...prev, [player.id]: false }));
-      if (result.ok) {
-        setFichas(prev => ({ ...(prev||{}), [String(player.id)]: { base64, nombre: file.name } }));
-      } else {
-        alert("Error al guardar la ficha: " + result.error);
-      }
-    };
-    reader.onerror = () => {
-      setFichaUploading(prev => ({ ...prev, [player.id]: false }));
-      alert("Error al leer el archivo.");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFichaDelete = async (player) => {
-    if (!window.confirm(`¿Eliminar la ficha PDF de ${player.name}?`)) return;
-    setFichaUploading(prev => ({ ...prev, [player.id]: true }));
-    await deleteFicha(team, player.id);
-    setFichaUploading(prev => ({ ...prev, [player.id]: false }));
-    setFichas(prev => { const n = { ...(prev||{}) }; delete n[String(player.id)]; return n; });
   };
 
   const togglePos = (pos) => {
@@ -303,13 +247,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
           onClick={() => { setTab("probando"); setShowForm(false); }}
           className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${tab === "probando" ? "border-blue-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >🔍 Probando {(data.probando||[]).length > 0 && <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/50 px-1.5 py-0.5 rounded-full">{(data.probando||[]).length}</span>}</button>
-        <button
-          onClick={() => { setTab("convocatoria"); setShowForm(false); }}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "convocatoria" ? "border-orange-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
-        >📋 Convocatoria</button>
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
-      {tab === "convocatoria" && <ConvocatoriaContent team={team} data={data} onSave={onSave} isCoord={isCoord} db={db || {}} />}
       {tab === "oficial" && <>
 
       {/* Add/Edit Form */}
@@ -324,7 +263,6 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Input label="Teléfono" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
               <Input label="DNI" value={dni} onChange={e => setDni(e.target.value)} />
-              <Input label="Fecha de nacimiento" type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} />
             </div>
           )}
           <div className="mb-4">
@@ -382,8 +320,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden sm:table-cell">Posición</th>
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden md:table-cell">Posiciones alt.</th>
                         <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Estado</th>
-                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">DNI</th>}
-                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Ficha</th>}
+                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden lg:table-cell">Teléfono</th>}
+                        {isCoord && <th className="text-left px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider hidden lg:table-cell">DNI</th>}
                         <th className="text-right px-3 py-2.5 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Acciones</th>
                       </tr>
                     </thead>
@@ -432,65 +370,13 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
                               </div>
                             </td>
                             {isCoord && (
-                              <td className="px-3 py-3">
-                                <span className="text-zinc-300 text-sm font-mono">{p.dni || <span className="text-zinc-600">—</span>}</span>
+                              <td className="px-3 py-3 hidden lg:table-cell">
+                                <span className="text-zinc-300 text-sm font-mono">{p.telefono || <span className="text-zinc-600">—</span>}</span>
                               </td>
                             )}
                             {isCoord && (
-                              <td className="px-3 py-3">
-                                {fichaUploading[p.id] ? (
-                                  <span className="text-xs text-zinc-400 animate-pulse">⏳ Guardando...</span>
-                                ) : fichas === null ? (
-                                  <span className="text-xs text-zinc-600">...</span>
-                                ) : fichas[String(p.id)] ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => {
-                                        const b64 = fichas[String(p.id)].base64;
-                                        const byteStr = atob(b64.split(",")[1]);
-                                        const arr = new Uint8Array(byteStr.length);
-                                        for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
-                                        const blob = new Blob([arr], { type: "application/pdf" });
-                                        const blobUrl = URL.createObjectURL(blob);
-                                        setFichaVisor({ blobUrl, blob, nombre: fichas[String(p.id)].nombre || "ficha.pdf" });
-                                      }}
-                                      title={fichas[String(p.id)].nombre || "Ver ficha PDF"}
-                                      className="text-xs px-2 py-1 rounded bg-blue-900/40 border border-blue-700/50 text-blue-300 hover:bg-blue-900/70 transition-all font-medium"
-                                    >
-                                      📄 Ver
-                                    </button>
-                                    <label
-                                      title="Reemplazar PDF"
-                                      className="text-xs px-1.5 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all cursor-pointer"
-                                    >
-                                      🔄
-                                      <input
-                                        type="file"
-                                        accept="application/pdf"
-                                        className="hidden"
-                                        onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }}
-                                      />
-                                    </label>
-                                    <button
-                                      onClick={() => handleFichaDelete(p)}
-                                      title="Eliminar ficha"
-                                      className="text-xs px-1.5 py-1 rounded bg-zinc-800 border border-red-900/50 text-red-500 hover:bg-red-900/30 hover:border-red-700 transition-all"
-                                    >✕</button>
-                                  </div>
-                                ) : (
-                                  <label
-                                    title="Subir ficha PDF"
-                                    className="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all cursor-pointer flex items-center gap-1 w-fit"
-                                  >
-                                    ⬆️ Subir
-                                    <input
-                                      type="file"
-                                      accept="application/pdf"
-                                      className="hidden"
-                                      onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }}
-                                    />
-                                  </label>
-                                )}
+                              <td className="px-3 py-3 hidden lg:table-cell">
+                                <span className="text-zinc-300 text-sm font-mono">{p.dni || <span className="text-zinc-600">—</span>}</span>
                               </td>
                             )}
                             <td className="px-3 py-3">
@@ -523,31 +409,6 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
       )}
 
       </>}
-      {fichaVisor && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">
-          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
-            <span className="text-white font-semibold text-sm truncate max-w-xs">{fichaVisor.nombre}</span>
-            <div className="flex gap-2">
-              {navigator.share && (
-                <button onClick={async () => {
-                  try {
-                    const file = new File([fichaVisor.blob], fichaVisor.nombre, { type: "application/pdf" });
-                    await navigator.share({ files: [file], title: fichaVisor.nombre });
-                  } catch(e) { if (e.name !== "AbortError") alert("Error: " + e.message); }
-                }} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-white text-sm font-semibold">
-                  📤 Compartir
-                </button>
-              )}
-              <button onClick={() => { URL.revokeObjectURL(fichaVisor.blobUrl); setFichaVisor(null); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold">
-                ✕ Cerrar
-              </button>
-            </div>
-          </div>
-          <iframe src={fichaVisor.blobUrl} className="flex-1 w-full border-0" title={fichaVisor.nombre} />
-        </div>
-      )}
-
       {/* ── Modal: Asistencia a entrenamientos ────────────────────────────── */}
       {attPlayer && (() => {
         const att = getPlayerAttHistory(attPlayer.id);
@@ -2061,8 +1922,8 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     });
     if (changed) onSave({ ...data, matches: newMatches });
   }, [data.players?.length]);
-  const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
 
+  const statusColor = { titular: "green", suplente: "blue", no_conv: "zinc" };
   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
 
   if (view === "form") return (
@@ -2522,943 +2383,6 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
           );
         })}
         {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SECTION: Tácticas Animadas
-// ══════════════════════════════════════════════════════════════════════════════
-function TacticasSection({ team, data, onSave }) {
-  const tacticas = data.tacticas || [];
-  const [view, setView] = useState("lista"); // "lista" | "editor"
-  const [editando, setEditando] = useState(null);
-
-  const nuevaTactica = () => {
-    setEditando({
-      id: Date.now(),
-      nombre: "Nueva táctica",
-      jugadores: [
-        { id: 1, num: 1, x: 50, y: 88, color: "#ef4444" },
-        { id: 2, num: 2, x: 20, y: 72, color: "#ef4444" },
-        { id: 3, num: 3, x: 35, y: 72, color: "#ef4444" },
-        { id: 4, num: 4, x: 65, y: 72, color: "#ef4444" },
-        { id: 5, num: 5, x: 80, y: 72, color: "#ef4444" },
-        { id: 6, num: 6, x: 30, y: 55, color: "#ef4444" },
-        { id: 7, num: 7, x: 50, y: 52, color: "#ef4444" },
-        { id: 8, num: 8, x: 70, y: 55, color: "#ef4444" },
-        { id: 9, num: 9, x: 25, y: 35, color: "#ef4444" },
-        { id: 10, num: 10, x: 50, y: 30, color: "#ef4444" },
-        { id: 11, num: 11, x: 75, y: 35, color: "#ef4444" },
-      ],
-      keyframes: [], // [{id, duracion, jugadores: [{...j, activo}]}]
-    });
-    setView("editor");
-  };
-
-  const guardarTactica = (t) => {
-    const existe = tacticas.find(x => x.id === t.id);
-    const nuevas = existe
-      ? tacticas.map(x => x.id === t.id ? t : x)
-      : [...tacticas, t];
-    onSave({ ...data, tacticas: nuevas });
-    setView("lista");
-    setEditando(null);
-  };
-
-  const eliminarTactica = (id) => {
-    if (!window.confirm("¿Eliminar esta táctica?")) return;
-    onSave({ ...data, tacticas: tacticas.filter(t => t.id !== id) });
-  };
-
-  const abrirEditor = (t) => {
-    setEditando(JSON.parse(JSON.stringify(t))); // copia profunda
-    setView("editor");
-  };
-
-  if (view === "editor" && editando) {
-    return (
-      <TacticaEditor
-        tactica={editando}
-        onGuardar={guardarTactica}
-        onCancelar={() => { setView("lista"); setEditando(null); }}
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-white font-bold text-lg">🎬 Tácticas Animadas</h2>
-        <Btn onClick={nuevaTactica}>+ Nueva táctica</Btn>
-      </div>
-
-      {tacticas.length === 0 && (
-        <Card>
-          <p className="text-zinc-400 text-center py-6">
-            No hay tácticas guardadas. Crea una nueva para empezar.
-          </p>
-        </Card>
-      )}
-
-      {tacticas.map(t => (
-        <Card key={t.id} className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-white font-semibold">{t.nombre}</p>
-            <p className="text-zinc-500 text-sm">
-              {t.jugadores?.length || 11} jugadores
-              {t.keyframes?.length > 0 ? ` · ${t.keyframes.length} paso${t.keyframes.length > 1 ? "s" : ""}` : " · sin animación"}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Btn small onClick={() => abrirEditor(t)}>✏️ Editar</Btn>
-            <Btn small variant="danger" onClick={() => eliminarTactica(t.id)}>🗑️</Btn>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ── Funciones de dibujo (fuera del componente para evitar re-renders) ─────────
-const FIELD_W = 400;
-const FIELD_H = 560;
-
-function dibujarCampo(ctx) {
-  ctx.fillStyle = "#2d6a2d";
-  ctx.fillRect(0, 0, FIELD_W, FIELD_H);
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(20, 20, FIELD_W - 40, FIELD_H - 40);
-  ctx.beginPath(); ctx.moveTo(20, FIELD_H / 2); ctx.lineTo(FIELD_W - 20, FIELD_H / 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(FIELD_W / 2, FIELD_H / 2, 40, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(FIELD_W / 2, FIELD_H / 2, 3, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill();
-  const fw = FIELD_W - 40; const fh = FIELD_H - 40;
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
-  ctx.strokeRect(20 + fw * 0.15, 20, fw * 0.7, fh * 0.2);
-  ctx.strokeRect(20 + fw * 0.3, 20, fw * 0.4, fh * 0.1);
-  ctx.strokeRect(20 + fw * 0.15, FIELD_H - 20 - fh * 0.2, fw * 0.7, fh * 0.2);
-  ctx.strokeRect(20 + fw * 0.3, FIELD_H - 20 - fh * 0.1, fw * 0.4, fh * 0.1);
-  ctx.strokeRect(20 + fw * 0.38, 14, fw * 0.24, 6);
-  ctx.strokeRect(20 + fw * 0.38, FIELD_H - 20, fw * 0.24, 6);
-}
-
-function dibujarJugadores(ctx, jugs) {
-  jugs.forEach(j => {
-    const px = (j.x / 100) * FIELD_W;
-    const py = (j.y / 100) * FIELD_H;
-    const inactivo = j.activo === false;
-    const colorFondo = inactivo ? "#3f3f46" : (j.color || "#ef4444");
-    // El número debe ser negro si el fondo es blanco o muy claro
-    const colorTexto = (!inactivo && (j.color === "#ffffff" || j.color === "#fff")) ? "#111" : (inactivo ? "#a1a1aa" : "white");
-
-    // Establecer globalAlpha ANTES de dibujar cualquier cosa de este jugador
-    ctx.globalAlpha = inactivo ? 0.5 : 1;
-
-    // Sombra
-    ctx.beginPath(); ctx.arc(px + 1, py + 1, 14, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
-
-    // Círculo jugador
-    ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
-    ctx.fillStyle = colorFondo; ctx.fill();
-    ctx.strokeStyle = inactivo ? "#71717a" : "white";
-    ctx.lineWidth = inactivo ? 1 : 2; ctx.stroke();
-
-    // Número
-    ctx.fillStyle = colorTexto;
-    ctx.font = `${inactivo ? "normal" : "bold"} 11px sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(j.num, px, py);
-
-    ctx.globalAlpha = 1; // resetear siempre al final
-  });
-}
-
-function dibujarFlechas(ctx, jugsBase, jugsDestino) {
-  if (!jugsDestino) return;
-  jugsBase.forEach(j => {
-    const dest = jugsDestino.find(d => d.id === j.id);
-    if (!dest) return;
-    const x1 = (j.x / 100) * FIELD_W; const y1 = (j.y / 100) * FIELD_H;
-    const x2 = (dest.x / 100) * FIELD_W; const y2 = (dest.y / 100) * FIELD_H;
-    if (Math.abs(x1 - x2) < 2 && Math.abs(y1 - y2) < 2) return;
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = "rgba(255,255,100,0.6)"; ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - 10 * Math.cos(angle - 0.4), y2 - 10 * Math.sin(angle - 0.4));
-    ctx.lineTo(x2 - 10 * Math.cos(angle + 0.4), y2 - 10 * Math.sin(angle + 0.4));
-    ctx.closePath(); ctx.fillStyle = "rgba(255,255,100,0.8)"; ctx.fill();
-  });
-}
-
-function dibujarBalon(ctx, b) {
-  const px = (b.x / 100) * FIELD_W;
-  const py = (b.y / 100) * FIELD_H;
-  const r = 11;
-
-  // Sombra
-  ctx.beginPath(); ctx.arc(px + 2, py + 2, r, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fill();
-
-  // Círculo blanco
-  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-  ctx.fillStyle = "white"; ctx.fill();
-  ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.stroke();
-
-  // Cruz central (estilo balón clásico, limpio en cualquier tamaño)
-  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
-
-  // 4 cuartos sombreados alternos
-  ctx.fillStyle = "#222";
-  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, 0, Math.PI/2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, Math.PI, Math.PI*3/2); ctx.closePath(); ctx.fill();
-}
-
-function dibujarFlechaBalon(ctx, origen, destino) {
-  if (!origen || !destino) return;
-  const x1 = (origen.x / 100) * FIELD_W, y1 = (origen.y / 100) * FIELD_H;
-  const x2 = (destino.x / 100) * FIELD_W, y2 = (destino.y / 100) * FIELD_H;
-  if (Math.abs(x1 - x2) < 2 && Math.abs(y1 - y2) < 2) return;
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-  ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
-  ctx.setLineDash([5, 3]); ctx.stroke(); ctx.setLineDash([]);
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - 10 * Math.cos(angle - 0.4), y2 - 10 * Math.sin(angle - 0.4));
-  ctx.lineTo(x2 - 10 * Math.cos(angle + 0.4), y2 - 10 * Math.sin(angle + 0.4));
-  ctx.closePath(); ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fill();
-}
-
-function TacticaEditor({ tactica, onGuardar, onCancelar }) {
-  const canvasRef = useRef(null);
-  const [nombre, setNombre] = useState(tactica.nombre);
-  const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j, tipo: j.tipo || "local" })));
-
-  // Valores por defecto — se declaran ANTES de los useState que los usan
-  const rivsDefault = tactica.rivales || [
-    { id: "r1",  num: 1,  x: 50, y: 12, color: "#1d4ed8", tipo: "rival" },
-    { id: "r2",  num: 2,  x: 20, y: 28, color: "#1d4ed8", tipo: "rival" },
-    { id: "r3",  num: 3,  x: 35, y: 28, color: "#1d4ed8", tipo: "rival" },
-    { id: "r4",  num: 4,  x: 65, y: 28, color: "#1d4ed8", tipo: "rival" },
-    { id: "r5",  num: 5,  x: 80, y: 28, color: "#1d4ed8", tipo: "rival" },
-    { id: "r6",  num: 6,  x: 30, y: 45, color: "#1d4ed8", tipo: "rival" },
-    { id: "r7",  num: 7,  x: 50, y: 48, color: "#1d4ed8", tipo: "rival" },
-    { id: "r8",  num: 8,  x: 70, y: 45, color: "#1d4ed8", tipo: "rival" },
-    { id: "r9",  num: 9,  x: 25, y: 65, color: "#1d4ed8", tipo: "rival" },
-    { id: "r10", num: 10, x: 50, y: 70, color: "#1d4ed8", tipo: "rival" },
-    { id: "r11", num: 11, x: 75, y: 65, color: "#1d4ed8", tipo: "rival" },
-  ];
-  const balDefault = tactica.balon || { id: "balon", x: 50, y: 50 };
-
-  // Normalizar keyframes antiguos sin rivales/balon — también antes de usarla
-  const normalizarKeyframes = (kfs, rivs, bal) =>
-    (kfs || []).map(kf => ({
-      ...kf,
-      rivales: kf.rivales || rivs.map(j => ({ ...j, activo: true })),
-      balon:   kf.balon   || { ...bal, activo: true },
-    }));
-
-  const [rivales, setRivales] = useState(rivsDefault);
-  const [balon, setBalon] = useState(balDefault);
-  const [keyframes, setKeyframes] = useState(normalizarKeyframes(tactica.keyframes, rivsDefault, balDefault));
-  const [dragging, setDragging] = useState(null);
-  const [frameActivo, setFrameActivo] = useState(null);
-  const [playing, setPlaying] = useState(false);
-  const [grabando, setGrabando] = useState(false);
-  const animFrameRef = useRef(null);
-  const gifRef = useRef(null);
-
-  const kfActivo = frameActivo !== null ? keyframes[frameActivo] : null;
-  const posLocales = kfActivo ? kfActivo.jugadores : jugadores;
-  const posRivales = kfActivo ? kfActivo.rivales   : rivales;
-  const posBalon   = kfActivo ? kfActivo.balon      : balon;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    dibujarCampo(ctx);
-    if (kfActivo) {
-      const origenLocales = frameActivo === 0 ? jugadores : keyframes[frameActivo - 1].jugadores;
-      const origenRivales = frameActivo === 0 ? rivales   : keyframes[frameActivo - 1].rivales;
-      const soloActivosL  = kfActivo.jugadores.filter(j => j.activo !== false);
-      const soloActivosR  = kfActivo.rivales.filter(j => j.activo !== false);
-      dibujarFlechas(ctx, origenLocales, soloActivosL);
-      dibujarFlechas(ctx, origenRivales, soloActivosR);
-      const bOrigen = frameActivo === 0 ? balon : keyframes[frameActivo - 1].balon;
-      if (kfActivo.balon.activo !== false) dibujarFlechaBalon(ctx, bOrigen, kfActivo.balon);
-    }
-    dibujarJugadores(ctx, posLocales);
-    dibujarJugadores(ctx, posRivales);
-    dibujarBalon(ctx, posBalon);
-  }, [jugadores, rivales, balon, keyframes, frameActivo]);
-
-  useEffect(() => {
-    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, []);
-
-  const getPosEnCampo = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = FIELD_W / rect.width;
-    const scaleY = FIELD_H / rect.height;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: ((clientX - rect.left) * scaleX / FIELD_W) * 100,
-      y: ((clientY - rect.top)  * scaleY / FIELD_H) * 100,
-    };
-  };
-
-  const onMouseDown = (e) => {
-    if (playing) return;
-    const canvas = canvasRef.current;
-    const pos = getPosEnCampo(e, canvas);
-
-    // Modo eliminar: toca un jugador y lo elimina
-    if (modoEliminar) {
-      const lista = modoEliminar === "local" ? posLocales : posRivales;
-      const jug = [...lista].reverse().find(j => {
-        const dx = j.x - pos.x, dy = j.y - pos.y;
-        return Math.sqrt(dx*dx + dy*dy) < 5;
-      });
-      if (jug) { e.preventDefault(); eliminarJugador(jug.id, modoEliminar); }
-      return;
-    }
-
-    // Balón
-    const dxB = posBalon.x - pos.x, dyB = posBalon.y - pos.y;
-    if (Math.sqrt(dxB*dxB + dyB*dyB) < 5) {
-      if (kfActivo && kfActivo.balon.activo === false) return;
-      e.preventDefault(); setDragging({ id: "balon", tipo: "balon" }); return;
-    }
-    // Local
-    const jugL = [...posLocales].reverse().find(j => {
-      if (kfActivo && j.activo === false) return false;
-      const dx = j.x - pos.x, dy = j.y - pos.y;
-      return Math.sqrt(dx*dx + dy*dy) < 5;
-    });
-    if (jugL) { e.preventDefault(); setDragging({ id: jugL.id, tipo: "local" }); return; }
-    // Rival
-    const jugR = [...posRivales].reverse().find(j => {
-      if (kfActivo && j.activo === false) return false;
-      const dx = j.x - pos.x, dy = j.y - pos.y;
-      return Math.sqrt(dx*dx + dy*dy) < 5;
-    });
-    if (jugR) { e.preventDefault(); setDragging({ id: jugR.id, tipo: "rival" }); }
-  };
-
-  const onMouseMove = (e) => {
-    if (!dragging) return;
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    const pos = getPosEnCampo(e, canvas);
-    const nx = Math.max(2, Math.min(98, pos.x));
-    const ny = Math.max(2, Math.min(98, pos.y));
-    if (dragging.tipo === "balon") {
-      if (frameActivo !== null) {
-        setKeyframes(prev => prev.map((kf, i) =>
-          i === frameActivo ? { ...kf, balon: { ...kf.balon, x: nx, y: ny } } : kf
-        ));
-      } else { setBalon(prev => ({ ...prev, x: nx, y: ny })); }
-      return;
-    }
-    const setter = dragging.tipo === "local" ? setJugadores : setRivales;
-    const kfKey  = dragging.tipo === "local" ? "jugadores"  : "rivales";
-    if (frameActivo !== null) {
-      setKeyframes(prev => prev.map((kf, i) =>
-        i === frameActivo
-          ? { ...kf, [kfKey]: kf[kfKey].map(j => j.id === dragging.id ? { ...j, x: nx, y: ny } : j) }
-          : kf
-      ));
-    } else {
-      setter(prev => prev.map(j => j.id === dragging.id ? { ...j, x: nx, y: ny } : j));
-    }
-  };
-
-  const [modoEliminar, setModoEliminar] = useState(null); // null | "local" | "rival"
-
-  const onMouseUp = () => setDragging(null);
-
-  // ── Añadir / eliminar jugadores ──────────────────────────────────────────
-  const añadirJugador = (tipo) => {
-    if (frameActivo !== null) return; // solo en posición inicial
-    const lista = tipo === "local" ? jugadores : rivales;
-    const setter = tipo === "local" ? setJugadores : setRivales;
-    const color = tipo === "local"
-      ? (jugadores[0]?.color || "#ef4444")
-      : (rivales[0]?.color || "#1d4ed8");
-    const numsUsados = lista.map(j => j.num);
-    let nuevoNum = 1;
-    while (numsUsados.includes(nuevoNum)) nuevoNum++;
-    const nuevo = {
-      id: `${tipo[0]}${Date.now()}`,
-      num: nuevoNum,
-      x: 50 + (Math.random() - 0.5) * 20,
-      y: tipo === "local" ? 70 : 30,
-      color,
-      tipo,
-    };
-    setter(prev => [...prev, nuevo]);
-    // Añadir también a todos los keyframes existentes
-    const kfKey = tipo === "local" ? "jugadores" : "rivales";
-    setKeyframes(prev => prev.map(kf => ({
-      ...kf,
-      [kfKey]: [...kf[kfKey], { ...nuevo, activo: true }],
-    })));
-  };
-
-  const eliminarJugador = (id, tipo) => {
-    if (frameActivo !== null) return; // solo en posición inicial
-    const setter = tipo === "local" ? setJugadores : setRivales;
-    const kfKey = tipo === "local" ? "jugadores" : "rivales";
-    setter(prev => prev.filter(j => j.id !== id));
-    setKeyframes(prev => prev.map(kf => ({
-      ...kf,
-      [kfKey]: kf[kfKey].filter(j => j.id !== id),
-    })));
-  };
-
-  const addKeyframe = () => {
-    const ultimo = keyframes.length > 0 ? keyframes[keyframes.length - 1] : null;
-    const nuevo = {
-      id: Date.now(),
-      duracion: 1.5,
-      jugadores: (ultimo ? ultimo.jugadores : jugadores).map(j => ({ ...j, activo: true })),
-      rivales:   (ultimo ? ultimo.rivales   : rivales).map(j =>   ({ ...j, activo: true })),
-      balon:     { ...(ultimo ? ultimo.balon : balon), activo: true },
-    };
-    setKeyframes(prev => [...prev, nuevo]);
-    setFrameActivo(keyframes.length);
-  };
-
-  const eliminarKeyframe = (idx) => {
-    setKeyframes(prev => prev.filter((_, i) => i !== idx));
-    setFrameActivo(prev => {
-      if (prev === null) return null;
-      if (prev === idx) return null;
-      if (prev > idx) return prev - 1;
-      return prev;
-    });
-  };
-
-  const toggleActivo = (id, tipo) => {
-    if (frameActivo === null) return;
-    if (tipo === "balon") {
-      setKeyframes(prev => prev.map((kf, i) =>
-        i === frameActivo ? { ...kf, balon: { ...kf.balon, activo: !kf.balon.activo } } : kf
-      ));
-    } else {
-      const kfKey = tipo === "local" ? "jugadores" : "rivales";
-      setKeyframes(prev => prev.map((kf, i) =>
-        i === frameActivo
-          ? { ...kf, [kfKey]: kf[kfKey].map(j => j.id === id ? { ...j, activo: !j.activo } : j) }
-          : kf
-      ));
-    }
-  };
-
-  const cambiarDuracion = (d) => {
-    if (frameActivo === null) return;
-    setKeyframes(prev => prev.map((kf, i) => i === frameActivo ? { ...kf, duracion: d } : kf));
-  };
-
-  const cambiarColor = (color, tipo) => {
-    if (tipo === "local") {
-      setJugadores(prev => prev.map(j => ({ ...j, color })));
-      setKeyframes(prev => prev.map(kf => ({ ...kf, jugadores: kf.jugadores.map(j => ({ ...j, color })) })));
-    } else {
-      setRivales(prev => prev.map(j => ({ ...j, color })));
-      setKeyframes(prev => prev.map(kf => ({ ...kf, rivales: kf.rivales.map(j => ({ ...j, color })) })));
-    }
-  };
-
-  const playAnimacion = (onFinish) => {
-    if (keyframes.length === 0) return;
-    setPlaying(true);
-    setFrameActivo(null);
-
-    const getPosBase = (idx) => ({
-      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
-      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
-      bal:  idx < 0 ? balon     : keyframes[idx].balon,
-    });
-
-    const segmentos = keyframes.map((kf, i) => {
-      const base = getPosBase(i - 1);
-      const durMs = (kf.duracion || 1.5) * 1000;
-      const toJugs = kf.jugadores.map(j => {
-        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toRivs = kf.rivales.map(j => {
-        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toBal = kf.balon.activo === false
-        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
-        : kf.balon;
-      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
-    });
-
-    let segIdx = 0;
-    let segStartTime = null;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const step = (timestamp) => {
-      if (segIdx >= segmentos.length) {
-        setPlaying(false);
-        dibujarCampo(ctx);
-        dibujarJugadores(ctx, jugadores);
-        dibujarJugadores(ctx, rivales);
-        dibujarBalon(ctx, balon);
-        if (onFinish) onFinish();
-        return;
-      }
-      if (segStartTime === null) segStartTime = timestamp;
-      const elapsed = timestamp - segStartTime;
-      const { fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs } = segmentos[segIdx];
-      const t = Math.min(1, elapsed / durMs);
-      const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
-      const interp = (from, to) => from.map(j => {
-        const d = to.find(x => x.id === j.id)||j;
-        return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
-      });
-      const interpBal = { ...fromBal,
-        x: fromBal.x + (toBal.x - fromBal.x)*ease,
-        y: fromBal.y + (toBal.y - fromBal.y)*ease
-      };
-      dibujarCampo(ctx);
-      dibujarJugadores(ctx, interp(fromJugs, toJugs));
-      dibujarJugadores(ctx, interp(fromRivs, toRivs));
-      dibujarBalon(ctx, interpBal);
-      if (t >= 1) { segIdx++; segStartTime = null; }
-      animFrameRef.current = requestAnimationFrame(step);
-    };
-
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    animFrameRef.current = requestAnimationFrame(step);
-  };
-
-  const stopAnimacion = () => {
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    setPlaying(false);
-    const ctx = canvasRef.current.getContext("2d");
-    dibujarCampo(ctx);
-    dibujarJugadores(ctx, jugadores);
-    dibujarJugadores(ctx, rivales);
-    dibujarBalon(ctx, balon);
-  };
-
-  const generarGif = () => {
-    if (keyframes.length === 0) { alert("Añade al menos un paso antes de generar el GIF."); return; }
-    setGrabando(true);
-
-    const FPS_GIF = 25;
-    const MS_POR_FRAME = 1000 / FPS_GIF;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const getPosBase = (idx) => ({
-      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
-      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
-      bal:  idx < 0 ? balon     : keyframes[idx].balon,
-    });
-
-    const segmentos = keyframes.map((kf, i) => {
-      const base = getPosBase(i - 1);
-      const durMs = (kf.duracion || 1.5) * 1000;
-      const toJugs = kf.jugadores.map(j => {
-        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toRivs = kf.rivales.map(j => {
-        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toBal = kf.balon.activo === false
-        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
-        : kf.balon;
-      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
-    });
-
-    const gif = new GIF({
-      workers: 2,
-      quality: 8,
-      width: FIELD_W,
-      height: FIELD_H,
-      workerScript: "/gif.worker.js",
-    });
-
-    const interpArr = (from, to, ease) => from.map(j => {
-      const d = to.find(x => x.id === j.id) || j;
-      return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
-    });
-
-    segmentos.forEach(({ fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs }) => {
-      const totalFrames = Math.max(1, Math.round(durMs / MS_POR_FRAME));
-      for (let f = 0; f < totalFrames; f++) {
-        const t = f >= totalFrames - 1 ? 1 : f / totalFrames;
-        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
-        const interpBal = {
-          ...fromBal,
-          x: fromBal.x + (toBal.x - fromBal.x)*ease,
-          y: fromBal.y + (toBal.y - fromBal.y)*ease,
-        };
-        dibujarCampo(ctx);
-        dibujarJugadores(ctx, interpArr(fromJugs, toJugs, ease));
-        dibujarJugadores(ctx, interpArr(fromRivs, toRivs, ease));
-        dibujarBalon(ctx, interpBal);
-        gif.addFrame(ctx, { copy: true, delay: MS_POR_FRAME });
-      }
-    });
-
-    gif.on("finished", (blob) => {
-      setGrabando(false);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const nombreArchivo = nombre.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
-      a.href = url;
-      a.download = `tactica_${nombreArchivo}.gif`;
-      a.click();
-      URL.revokeObjectURL(url);
-      dibujarCampo(ctx);
-      dibujarJugadores(ctx, jugadores);
-      dibujarJugadores(ctx, rivales);
-      dibujarBalon(ctx, balon);
-    });
-
-    gif.render();
-  };
-
-  const grabarMP4 = async () => {
-    if (keyframes.length === 0) { alert("Añade al menos un paso antes de grabar."); return; }
-
-    if (typeof VideoEncoder === "undefined") {
-      alert("Tu navegador no soporta grabación de vídeo MP4.\n\nUsa Chrome o Safari actualizados. Puedes usar el botón GIF como alternativa.");
-      return;
-    }
-
-    setGrabando(true);
-
-    // Canvas de alta resolución para renderizar (2x del canvas visible)
-    const SCALE = 2;
-    const W = FIELD_W * SCALE;
-    const H = FIELD_H * SCALE;
-    const FPS = 60;
-    const MS_POR_FRAME = 1000 / FPS;
-
-    // Canvas offscreen a 2x resolución
-    const offCanvas = document.createElement("canvas");
-    offCanvas.width = W;
-    offCanvas.height = H;
-    const offCtx = offCanvas.getContext("2d");
-    offCtx.scale(SCALE, SCALE); // escalar el contexto → todo se dibuja 2x
-
-    // Funciones de dibujo sobre el canvas offscreen
-    const drawFrame = (jugsL, jugsR, bal) => {
-      dibujarCampo(offCtx);
-      dibujarJugadores(offCtx, jugsL);
-      dibujarJugadores(offCtx, jugsR);
-      dibujarBalon(offCtx, bal);
-    };
-
-    const getPosBase = (idx) => ({
-      jugs: idx < 0 ? jugadores : keyframes[idx].jugadores,
-      rivs: idx < 0 ? rivales   : keyframes[idx].rivales,
-      bal:  idx < 0 ? balon     : keyframes[idx].balon,
-    });
-
-    const segmentos = keyframes.map((kf, i) => {
-      const base = getPosBase(i - 1);
-      const durMs = (kf.duracion || 1.5) * 1000;
-      const toJugs = kf.jugadores.map(j => {
-        if (!j.activo) { const o = base.jugs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toRivs = kf.rivales.map(j => {
-        if (!j.activo) { const o = base.rivs.find(f => f.id === j.id)||j; return {...j, x:o.x, y:o.y}; }
-        return j;
-      });
-      const toBal = kf.balon.activo === false
-        ? { ...kf.balon, x: base.bal.x, y: base.bal.y }
-        : kf.balon;
-      return { fromJugs: base.jugs, fromRivs: base.rivs, fromBal: base.bal, toJugs, toRivs, toBal, durMs };
-    });
-
-    const interpArr = (from, to, ease) => from.map(j => {
-      const d = to.find(x => x.id === j.id) || j;
-      return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
-    });
-
-    const muxer = new Muxer({
-      target: new ArrayBufferTarget(),
-      video: { codec: "avc", width: W, height: H },
-      fastStart: "in-memory",
-    });
-
-    const encoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => { console.error(e); setGrabando(false); alert("Error al exportar el vídeo."); },
-    });
-
-    encoder.configure({
-      codec: "avc1.4d0028",  // H.264 Main Profile Level 4.0 — alta calidad
-      width: W,
-      height: H,
-      bitrate: 6_000_000,    // 6 Mbps — calidad alta
-      framerate: FPS,
-    });
-
-    let frameIdx = 0;
-
-    for (const { fromJugs, fromRivs, fromBal, toJugs, toRivs, toBal, durMs } of segmentos) {
-      const totalFrames = Math.max(1, Math.round(durMs / MS_POR_FRAME));
-      for (let f = 0; f < totalFrames; f++) {
-        const t = f >= totalFrames - 1 ? 1 : f / totalFrames;
-        const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
-        const interpBal = {
-          ...fromBal,
-          x: fromBal.x + (toBal.x - fromBal.x)*ease,
-          y: fromBal.y + (toBal.y - fromBal.y)*ease,
-        };
-        drawFrame(interpArr(fromJugs, toJugs, ease), interpArr(fromRivs, toRivs, ease), interpBal);
-
-        const videoFrame = new VideoFrame(offCanvas, {
-          timestamp: Math.round(frameIdx * (1_000_000 / FPS)),
-          duration: Math.round(1_000_000 / FPS),
-        });
-        encoder.encode(videoFrame, { keyFrame: frameIdx % FPS === 0 }); // keyframe cada segundo
-        videoFrame.close();
-        frameIdx++;
-      }
-    }
-
-    await encoder.flush();
-    muxer.finalize();
-
-    const { buffer } = muxer.target;
-    const blob = new Blob([buffer], { type: "video/mp4" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const nombreArchivo = nombre.replace(/[\/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
-    a.href = url;
-    a.download = `tactica_${nombreArchivo}.mp4`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    // Redibujar canvas visible en posición inicial
-    const ctx = canvasRef.current.getContext("2d");
-    dibujarCampo(ctx);
-    dibujarJugadores(ctx, jugadores);
-    dibujarJugadores(ctx, rivales);
-    dibujarBalon(ctx, balon);
-    setGrabando(false);
-  };
-
-  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={() => {
-          // Normalizar quitando campos internos (tipo) antes de comparar
-          const normJugs = jugs => jugs.map(({ tipo, ...rest }) => rest);
-          const haycambios =
-            nombre !== tactica.nombre ||
-            JSON.stringify(normJugs(jugadores)) !== JSON.stringify(normJugs(tactica.jugadores || [])) ||
-            JSON.stringify(normJugs(rivales))   !== JSON.stringify(normJugs(tactica.rivales  || [])) ||
-            JSON.stringify(keyframes) !== JSON.stringify(tactica.keyframes || []);
-          if (haycambios && !window.confirm("¿Salir sin guardar? Se perderán los cambios.")) return;
-          onCancelar();
-        }} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
-        <input
-          value={nombre}
-          onChange={e => setNombre(e.target.value)}
-          className="bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-white text-sm flex-1 min-w-40"
-          placeholder="Nombre de la táctica"
-        />
-        <Btn onClick={guardar}>💾 Guardar</Btn>
-      </div>
-
-      <Card>
-        <p className="text-zinc-400 text-xs font-semibold mb-1">CÓMO CREAR UNA ANIMACIÓN</p>
-        <ol className="text-zinc-500 text-xs space-y-0.5 list-decimal list-inside">
-          <li><span className="text-zinc-300">Posición inicial:</span> arrastra jugadores, rivales y el balón</li>
-          <li><span className="text-zinc-300">Añadir paso:</span> crea un nuevo movimiento</li>
-          <li><span className="text-zinc-300">Activa/desactiva</span> quién se mueve en ese paso</li>
-          <li><span className="text-zinc-300">Elige duración</span> y arrastra al destino</li>
-          <li>Repite. Luego <span className="text-zinc-300">▶ Ver animación</span></li>
-        </ol>
-      </Card>
-
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
-
-          <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 LOCAL</p>
-            <div className="flex gap-2 flex-wrap mb-2">
-              {["#ef4444","#f97316","#22c55e","#f59e0b","#a855f7","#ffffff"].map(c => (
-                <button key={c} onClick={() => cambiarColor(c, "local")}
-                  className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
-                  style={{ backgroundColor: c }} />
-              ))}
-            </div>
-            {frameActivo === null && (
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => añadirJugador("local")}
-                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
-                  + Añadir
-                </button>
-                <button
-                  onClick={() => setModoEliminar(prev => prev === "local" ? null : "local")}
-                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "local" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
-                  {modoEliminar === "local" ? "✕ Toca un jugador" : "− Eliminar"}
-                </button>
-                <span className="text-zinc-600 text-xs self-center">{jugadores.length} jugadores</span>
-              </div>
-            )}
-          </Card>
-
-          <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-1">🔵 VISITANTE</p>
-            <div className="flex gap-2 flex-wrap mb-2">
-              {["#1d4ed8","#0891b2","#16a34a","#7c3aed","#db2777","#ffffff"].map(c => (
-                <button key={c} onClick={() => cambiarColor(c, "rival")}
-                  className="w-7 h-7 rounded-full border-2 border-zinc-600 hover:border-white transition-all"
-                  style={{ backgroundColor: c }} />
-              ))}
-            </div>
-            {frameActivo === null && (
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => añadirJugador("rival")}
-                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
-                  + Añadir
-                </button>
-                <button
-                  onClick={() => setModoEliminar(prev => prev === "rival" ? null : "rival")}
-                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "rival" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
-                  {modoEliminar === "rival" ? "✕ Toca un jugador" : "− Eliminar"}
-                </button>
-                <span className="text-zinc-600 text-xs self-center">{rivales.length} jugadores</span>
-              </div>
-            )}
-          </Card>
-
-          <Card>
-            <p className="text-zinc-400 text-xs font-semibold mb-2">MOVIMIENTOS</p>
-            <div className="space-y-1 mb-2">
-              <button onClick={() => { setFrameActivo(null); setModoEliminar(null); }}
-                className={`w-full text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === null ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
-                📍 Posición inicial
-              </button>
-              {keyframes.map((kf, i) => (
-                <div key={kf.id} className="flex items-center gap-1">
-                  <button onClick={() => { setFrameActivo(i); setModoEliminar(null); }}
-                    className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
-                    🔑 Paso {i + 1} <span className="text-zinc-500 text-xs">({kf.duracion || 1.5}s)</span>
-                  </button>
-                  <button onClick={() => eliminarKeyframe(i)} className="text-zinc-600 hover:text-red-400 text-xs px-1.5 py-1">✕</button>
-                </div>
-              ))}
-            </div>
-            <Btn small onClick={addKeyframe}>+ Añadir paso</Btn>
-          </Card>
-
-          {frameActivo !== null && kfActivo && (
-            <Card>
-              <p className="text-zinc-400 text-xs font-semibold mb-2">PASO {frameActivo + 1} — OPCIONES</p>
-              <div className="mb-3">
-                <p className="text-zinc-500 text-xs mb-1">⏱ Duración</p>
-                <div className="flex gap-1 flex-wrap">
-                  {[1, 1.5, 2, 3, 4, 5].map(s => (
-                    <button key={s} onClick={() => cambiarDuracion(s)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${(kfActivo.duracion||1.5)===s ? "bg-red-700 text-white" : "bg-zinc-700 text-zinc-400 hover:text-white"}`}>
-                      {s}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-2">
-                <p className="text-zinc-500 text-xs mb-1">🔴 Locales</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {kfActivo.jugadores.map(j => (
-                    <button key={j.id} onClick={() => toggleActivo(j.id, "local")}
-                      className={`rounded py-1 text-xs font-bold transition-all border ${j.activo ? "border-transparent" : "border-zinc-600 bg-zinc-800 text-zinc-500"}`}
-                      style={j.activo ? { backgroundColor: j.color||"#ef4444", color: j.color==="#ffffff"?"#111":"white" } : {}}>
-                      {j.num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-2">
-                <p className="text-zinc-500 text-xs mb-1">🔵 Rivales</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {kfActivo.rivales.map(j => (
-                    <button key={j.id} onClick={() => toggleActivo(j.id, "rival")}
-                      className={`rounded py-1 text-xs font-bold transition-all border ${j.activo ? "border-transparent" : "border-zinc-600 bg-zinc-800 text-zinc-500"}`}
-                      style={j.activo ? { backgroundColor: j.color||"#1d4ed8", color: j.color==="#ffffff"?"#111":"white" } : {}}>
-                      {j.num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-zinc-500 text-xs mb-1">⚽ Balón</p>
-                <button onClick={() => toggleActivo("balon", "balon")}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all border ${kfActivo.balon.activo !== false ? "bg-white text-black border-transparent" : "bg-zinc-800 text-zinc-500 border-zinc-600"}`}>
-                  {kfActivo.balon.activo !== false ? "Se mueve" : "Quieto"}
-                </button>
-              </div>
-            </Card>
-          )}
-
-          <div className="flex flex-col gap-2">
-            {!playing
-              ? <Btn onClick={() => playAnimacion()} disabled={keyframes.length === 0}>▶ Ver animación</Btn>
-              : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
-            }
-            <Btn variant="secondary" onClick={grabarMP4} disabled={grabando || playing || keyframes.length === 0}>
-              {grabando ? "⏳ Exportando..." : "🎬 Exportar MP4"}
-            </Btn>
-            <Btn variant="secondary" onClick={generarGif} disabled={grabando || playing || keyframes.length === 0}>
-              🎞️ Exportar GIF
-            </Btn>
-            {grabando && <p className="text-yellow-400 text-xs text-center">Exportando... espera</p>}
-          </div>
-        </div>
-
-        <div className="flex-1 lg:order-1 flex justify-center">
-          <canvas
-            ref={canvasRef}
-            width={FIELD_W}
-            height={FIELD_H}
-            className="rounded-lg border border-zinc-700"
-            style={{
-              width: "100%",
-              maxWidth: "380px",
-              touchAction: dragging ? "none" : "pan-y",
-              cursor: modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab"),
-              outline: modoEliminar ? "2px solid #ef4444" : "none",
-            }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onTouchStart={onMouseDown}
-            onTouchMove={onMouseMove}
-            onTouchEnd={onMouseUp}
-          />
-        </div>
       </div>
     </div>
   );
@@ -4626,373 +3550,6 @@ function InformesSection({ player, team, data, onSave, onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SECTION: Convocatoria
-// ══════════════════════════════════════════════════════════════════════════════
-function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
-  const TEAMS = ["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"];
-  const [convocatorias, setConvocatorias] = React.useState([]);
-  const [vista, setVista] = React.useState("lista"); // "lista" | "nueva" | "ver"
-  const [nombre, setNombre] = React.useState("");
-  const [fechaConv, setFechaConv] = React.useState(new Date().toISOString().split("T")[0]);
-  const [equipoFiltro, setEquipoFiltro] = React.useState(team);
-  const [seleccionados, setSeleccionados] = React.useState([]);
-  const [convActual, setConvActual] = React.useState(null);
-  const [mostrarDorsal, setMostrarDorsal] = React.useState(true);
-  const [mostrarTelefono, setMostrarTelefono] = React.useState(false);
-  const [mostrarDNI, setMostrarDNI] = React.useState(false);
-  const [mostrarFechaNac, setMostrarFechaNac] = React.useState(false);
-
-  const convocatoriasGuardadas = data.convocatorias || [];
-
-  const jugadoresEquipo = (eq) => (db[eq]?.players || []).map(p => ({ ...p, equipo: eq }));
-
-  const toggleJugador = (p) => {
-    const key = p.equipo + "_" + p.id;
-    setSeleccionados(prev =>
-      prev.find(s => s.equipo + "_" + s.id === key)
-        ? prev.filter(s => s.equipo + "_" + s.id !== key)
-        : [...prev, p]
-    );
-  };
-
-  const isSelected = (p) => !!seleccionados.find(s => s.equipo + "_" + s.id === p.equipo + "_" + p.id);
-
-  const guardar = () => {
-    if (!nombre.trim() || seleccionados.length === 0) return;
-    const nueva = { id: Date.now(), nombre, fecha: fechaConv, jugadores: seleccionados.map(p => ({ id: p.id, equipo: p.equipo })) };
-    const updated = [...convocatoriasGuardadas, nueva];
-    onSave({ ...data, convocatorias: updated });
-    setVista("lista");
-    setNombre("");
-    setSeleccionados([]);
-  };
-
-  const eliminar = (id) => {
-    if (!window.confirm("¿Eliminar convocatoria?")) return;
-    onSave({ ...data, convocatorias: convocatoriasGuardadas.filter(c => c.id !== id) });
-  };
-
-  const resolveJugadores = (conv) => {
-    return (conv.jugadores || []).map(ref => {
-      const jugador = (db[ref.equipo]?.players || []).find(p => p.id === ref.id);
-      return jugador ? { ...jugador, equipo: ref.equipo } : null;
-    }).filter(Boolean);
-  };
-
-  const generarPDF = (conv) => {
-    const jugadoresResueltos = resolveJugadores(conv);
-    conv = { ...conv, jugadores: jugadoresResueltos };
-    const campos = [];
-    if (mostrarDorsal) campos.push("Dorsal");
-    if (mostrarTelefono) campos.push("Teléfono");
-    if (mostrarDNI) campos.push("DNI");
-    if (mostrarFechaNac) campos.push("F. Nacimiento");
-
-    const equipos = [...new Set(conv.jugadores.map(j => j.equipo))];
-    let html = `<html><head><style>
-      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
-      h1 { font-size: 20px; margin-bottom: 4px; }
-      h2 { font-size: 13px; color: #666; margin-bottom: 16px; font-weight: normal; }
-      h3 { font-size: 14px; margin: 16px 0 6px; color: #c00; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-      th { background: #f0f0f0; text-align: left; padding: 6px 8px; font-size: 12px; }
-      td { padding: 5px 8px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
-      tr:nth-child(even) td { background: #fafafa; }
-    </style></head><body>
-    <h1>📋 ${conv.nombre}</h1>
-    <h2>Fecha: ${conv.fecha} · Total jugadores: ${conv.jugadores.length}</h2>`;
-
-    equipos.forEach(eq => {
-      const jEq = conv.jugadores.filter(j => j.equipo === eq);
-      html += `<h3>${eq} (${jEq.length})</h3><table><tr><th>Nombre</th><th>Posición</th>`;
-      campos.forEach(c => { html += `<th>${c}</th>`; });
-      html += `</tr>`;
-      jEq.forEach(j => {
-        html += `<tr><td>${j.name}</td><td>${j.posicionPrincipal || (j.positions||[])[0] || "—"}</td>`;
-        if (mostrarDorsal) html += `<td>${j.dorsal || "—"}</td>`;
-        if (mostrarTelefono) html += `<td>${j.telefono || "—"}</td>`;
-        if (mostrarDNI) html += `<td>${j.dni || "—"}</td>`;
-        if (mostrarFechaNac) html += `<td>${j.fechaNacimiento || "—"}</td>`;
-        html += `</tr>`;
-      });
-      html += `</table>`;
-    });
-    html += `</body></html>`;
-
-    const w = window.open("", "_blank");
-    w.document.write(html);
-    w.document.close();
-    w.print();
-  };
-
-  // ── VISTA LISTA ─────────────────────────────────────────────────────────
-  if (vista === "lista") return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold text-white">Convocatorias guardadas</h2>
-        {isCoord && <button onClick={() => setVista("nueva")} className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Nueva convocatoria</button>}
-      </div>
-      {convocatoriasGuardadas.length === 0 ? (
-        <div className="text-zinc-500 text-sm text-center py-12">No hay convocatorias guardadas aún.</div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {convocatoriasGuardadas.map(c => (
-            <div key={c.id} className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-white">{c.nombre}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{c.fecha} · {resolveJugadores(c).length} jugadores</div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => { setConvActual(c); setVista("ver"); }} className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Ver</button>
-                {isCoord && <button onClick={() => {
-                  setNombre(c.nombre);
-                  setFechaConv(c.fecha);
-                  setSeleccionados(c.jugadores);
-                  setConvActual(c);
-                  setVista("editar");
-                }} className="bg-blue-900/50 hover:bg-blue-800 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-semibold">Editar</button>}
-                {isCoord && <button onClick={() => eliminar(c.id)} className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded-lg text-xs font-semibold">Eliminar</button>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const guardarEdicion = () => {
-    if (!nombre.trim() || seleccionados.length === 0) return;
-    const updated = convocatoriasGuardadas.map(c =>
-      c.id === convActual.id ? { ...c, nombre, fecha: fechaConv, jugadores: seleccionados.map(p => ({ id: p.id, equipo: p.equipo })) } : c
-    );
-    onSave({ ...data, convocatorias: updated });
-    setVista("lista");
-    setNombre("");
-    setSeleccionados([]);
-    setConvActual(null);
-  };
-
-  // ── VISTA NUEVA ─────────────────────────────────────────────────────────
-  if (vista === "nueva") return (
-    <div className="p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
-        <h2 className="text-lg font-bold text-white">Nueva convocatoria</h2>
-      </div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Nombre</label>
-          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Torneo 2026, Jornada 1..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
-        </div>
-        <div>
-          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Fecha</label>
-          <input type="date" value={fechaConv} onChange={e => setFechaConv(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
-        </div>
-      </div>
-
-      <div className="mb-3">
-        <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Filtrar por equipo</label>
-        <div className="flex flex-wrap gap-2">
-          {["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"].map(eq => (
-            <button key={eq} onClick={() => setEquipoFiltro(eq)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${equipoFiltro === eq ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
-              {eq}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Jugadores de {equipoFiltro} — Seleccionados: {seleccionados.length}</div>
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {jugadoresEquipo(equipoFiltro).length === 0 ? (
-            <div className="text-zinc-600 text-sm py-4 text-center">No hay jugadores en este equipo</div>
-          ) : jugadoresEquipo(equipoFiltro).map(p => (
-            <div key={p.id} onClick={() => toggleJugador(p)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer border transition-all ${isSelected(p) ? "bg-orange-900/30 border-orange-600" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"}`}>
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected(p) ? "bg-orange-500 border-orange-500" : "border-zinc-500"}`}>
-                {isSelected(p) && <span className="text-white text-xs">✓</span>}
-              </div>
-              <span className="text-white text-sm font-medium">{p.name}</span>
-              <span className="text-zinc-400 text-xs">{p.posicionPrincipal || (p.positions||[])[0] || "—"}</span>
-              {p.dorsal && <span className="text-zinc-500 text-xs ml-auto">#{p.dorsal}</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {seleccionados.length > 0 && (
-        <div className="mb-4 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3">
-          <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Seleccionados ({seleccionados.length})</div>
-          <div className="flex flex-wrap gap-2">
-            {seleccionados.map(p => (
-              <span key={p.equipo+"_"+p.id} className="bg-orange-900/40 border border-orange-700 text-orange-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                {p.name} <span className="text-orange-500 text-xs">({p.equipo})</span>
-                <button onClick={() => toggleJugador(p)} className="ml-1 text-orange-400 hover:text-white">×</button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <button onClick={guardar} disabled={!nombre.trim() || seleccionados.length === 0}
-          className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-semibold">
-          💾 Guardar convocatoria
-        </button>
-        <button onClick={() => { setVista("lista"); setNombre(""); setSeleccionados([]); }}
-          className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg text-sm">
-          Cancelar
-        </button>
-      </div>
-    </div>
-  );
-
-  // ── VISTA EDITAR ────────────────────────────────────────────────────────
-  if (vista === "editar") return (
-    <div className="p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
-        <h2 className="text-lg font-bold text-white">Editar convocatoria</h2>
-      </div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Nombre</label>
-          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
-        </div>
-        <div>
-          <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Fecha</label>
-          <input type="date" value={fechaConv} onChange={e => setFechaConv(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
-        </div>
-      </div>
-      <div className="mb-3">
-        <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Filtrar por equipo</label>
-        <div className="flex flex-wrap gap-2">
-          {["Escoleta","Prebenjamín","Benjamín C","Benjamín B","Benjamín A","Alevín B","Alevín A","Transición","Infantil B","Infantil A","Cadete","Juvenil"].map(eq => (
-            <button key={eq} onClick={() => setEquipoFiltro(eq)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${equipoFiltro === eq ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
-              {eq}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="mb-4">
-        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Jugadores de {equipoFiltro} — Seleccionados: {seleccionados.length}</div>
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {jugadoresEquipo(equipoFiltro).length === 0 ? (
-            <div className="text-zinc-600 text-sm py-4 text-center">No hay jugadores en este equipo</div>
-          ) : jugadoresEquipo(equipoFiltro).map(p => (
-            <div key={p.id} onClick={() => toggleJugador(p)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer border transition-all ${isSelected(p) ? "bg-orange-900/30 border-orange-600" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"}`}>
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected(p) ? "bg-orange-500 border-orange-500" : "border-zinc-500"}`}>
-                {isSelected(p) && <span className="text-white text-xs">✓</span>}
-              </div>
-              <span className="text-white text-sm font-medium">{p.name}</span>
-              <span className="text-zinc-400 text-xs">{p.posicionPrincipal || (p.positions||[])[0] || "—"}</span>
-              {p.dorsal && <span className="text-zinc-500 text-xs ml-auto">#{p.dorsal}</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-      {seleccionados.length > 0 && (
-        <div className="mb-4 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3">
-          <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Seleccionados ({seleccionados.length})</div>
-          <div className="flex flex-wrap gap-2">
-            {seleccionados.map(p => (
-              <span key={p.equipo+"_"+p.id} className="bg-orange-900/40 border border-orange-700 text-orange-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                {p.name} <span className="text-orange-500 text-xs">({p.equipo})</span>
-                <button onClick={() => toggleJugador(p)} className="ml-1 text-orange-400 hover:text-white">×</button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="flex gap-3">
-        <button onClick={guardarEdicion} disabled={!nombre.trim() || seleccionados.length === 0}
-          className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-semibold">
-          💾 Guardar cambios
-        </button>
-        <button onClick={() => { setVista("lista"); setNombre(""); setSeleccionados([]); setConvActual(null); }}
-          className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg text-sm">
-          Cancelar
-        </button>
-      </div>
-    </div>
-  );
-
-  // ── VISTA VER ────────────────────────────────────────────────────────────
-  const jugadoresResueltos = convActual ? resolveJugadores(convActual) : [];
-  if (vista === "ver" && convActual) return (
-    <div className="p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setVista("lista")} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
-        <div>
-          <h2 className="text-lg font-bold text-white">{convActual.nombre}</h2>
-          <div className="text-xs text-zinc-400">{convActual.fecha} · {jugadoresResueltos.length} jugadores</div>
-        </div>
-      </div>
-
-      <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 mb-4">
-        <div className="text-xs text-zinc-400 uppercase tracking-wider mb-3">Campos en el PDF</div>
-        <div className="flex flex-wrap gap-3">
-          {[
-            { label: "Dorsal", val: mostrarDorsal, set: setMostrarDorsal },
-            { label: "Teléfono", val: mostrarTelefono, set: setMostrarTelefono },
-            { label: "DNI", val: mostrarDNI, set: setMostrarDNI },
-            { label: "F. Nacimiento", val: mostrarFechaNac, set: setMostrarFechaNac },
-          ].map(({ label, val, set }) => (
-            <button key={label} onClick={() => set(!val)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${val ? "bg-orange-600 border-orange-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
-              {val ? "✓" : "+"} {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {[...new Set(jugadoresResueltos.map(j => j.equipo))].map(eq => (
-        <div key={eq} className="mb-4">
-          <div className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">{eq} ({jugadoresResueltos.filter(j => j.equipo === eq).length})</div>
-          <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-zinc-700">
-                  <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Nombre</th>
-                  <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Posición</th>
-                  {mostrarDorsal && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Dorsal</th>}
-                  {mostrarTelefono && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">Teléfono</th>}
-                  {mostrarDNI && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">DNI</th>}
-                  {mostrarFechaNac && <th className="text-left px-3 py-2 text-xs text-zinc-500 font-semibold uppercase">F. Nac.</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {jugadoresResueltos.filter(j => j.equipo === eq).map(j => (
-                  <tr key={j.id} className="border-b border-zinc-700/50">
-                    <td className="px-3 py-2 text-sm text-white">{j.name}</td>
-                    <td className="px-3 py-2 text-sm text-zinc-300">{j.posicionPrincipal || (j.positions||[])[0] || "—"}</td>
-                    {mostrarDorsal && <td className="px-3 py-2 text-sm text-zinc-300">{j.dorsal || "—"}</td>}
-                    {mostrarTelefono && <td className="px-3 py-2 text-sm text-zinc-300">{j.telefono || "—"}</td>}
-                    {mostrarDNI && <td className="px-3 py-2 text-sm text-zinc-300">{j.dni || "—"}</td>}
-                    {mostrarFechaNac && <td className="px-3 py-2 text-sm text-zinc-300">{j.fechaNacimiento || "—"}</td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-
-      <button onClick={() => generarPDF(convActual)}
-        className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-semibold text-sm mt-2">
-        📄 Generar PDF
-      </button>
-    </div>
-  );
-
-  return null;
-}
-
 // SECTION: Jugadores Probando
 // ══════════════════════════════════════════════════════════════════════════════
 function ProbandoContent({ team, data, onSave, isCoord }) {
@@ -5004,7 +3561,6 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
   const [posicionPrincipal, setPosicionPrincipal] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
-  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [fechaPrueba, setFechaPrueba] = useState(new Date().toISOString().split("T")[0]);
   const [estadoPrueba, setEstadoPrueba] = useState("pendiente");
   const [notas, setNotas] = useState("");
@@ -5051,7 +3607,6 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
     setPosicionPrincipal(p ? (p.posicionPrincipal || "") : "");
     setTelefono(p ? (p.telefono || "") : "");
     setDni(p ? (p.dni || "") : "");
-    setFechaNacimiento(p ? (p.fechaNacimiento || "") : "");
     setFechaPrueba(p ? (p.fechaPrueba || new Date().toISOString().split("T")[0]) : new Date().toISOString().split("T")[0]);
     setEstadoPrueba(p ? (p.estadoPrueba || "pendiente") : "pendiente");
     setNotas(p ? (p.notas || "") : "");
@@ -5061,7 +3616,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
   const save = () => {
     if (!name.trim()) return;
     const probando = [...(data.probando || [])];
-    const playerData = { name, dorsal, positions, posicionPrincipal, telefono, dni, fechaNacimiento, fechaPrueba, estadoPrueba, notas };
+    const playerData = { name, dorsal, positions, posicionPrincipal, telefono, dni, fechaPrueba, estadoPrueba, notas };
     if (editing) {
       const idx = probando.findIndex(p => p.id === editing.id);
       probando[idx] = { ...editing, ...playerData };
@@ -5156,7 +3711,6 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
             <Input label="DNI" value={dni} onChange={e => setDni(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <Input label="Fecha de nacimiento" type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} />
             <Input label="Fecha de prueba" type="date" value={fechaPrueba} onChange={e => setFechaPrueba(e.target.value)} />
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Estado</label>
@@ -5328,8 +3882,7 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
 
 
 export default function App() {
-  const [authState, setAuthState] = useState("home"); // home | login | register | login_legacy | app
-  const [currentUser, setCurrentUser] = useState(null);
+  const [authState, setAuthState] = useState("login"); // login | app
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
@@ -5371,7 +3924,6 @@ export default function App() {
     { id: "partidos", label: "Partidos", icon: "⚽" },
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
-    { id: "tacticas", label: "Tácticas", icon: "🎬" },
   ];
 
   useEffect(() => {
@@ -5486,31 +4038,6 @@ export default function App() {
     await saveData(seasonData);
   };
 
-  const handleLoginUsuario = (user) => {
-    setCurrentUser(user);
-    const r = user.rol || "familiar";
-    if (r === "coordinador") {
-      setRole("coordinator");
-      setTeamAccess(null);
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("resumen");
-      setCoordProfile(user.nombre || "Coordinador");
-      setShowProfilePicker(false);
-      setAuthState("app");
-    } else if (r === "entrenador") {
-      setRole("trainer");
-      setTeamAccess(TEAMS[0]);
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("plantilla");
-      setAuthState("app");
-    } else {
-      setRole("familiar");
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("plantilla");
-      setAuthState("app");
-    }
-  };
-
   const availableTeams = isCoord ? TEAMS : [teamAccess];
 
   if (loading) return (
@@ -5539,53 +4066,40 @@ export default function App() {
     </div>
   );
 
-  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
-
   if (authState === "login") return (
-    <LoginScreen
-      onVolver={() => setAuthState("home")}
-      onLoginOk={handleLoginUsuario}
-      onIrRegistro={() => setAuthState("register")}
-      onLoginLegacy={() => setAuthState("login_legacy")}
-    />
-  );
-
-  if (authState === "register") return (
-    <RegistroScreen
-      onVolver={() => setAuthState("login")}
-      onRegistroOk={handleLoginUsuario}
-    />
-  );
-
-  if (authState === "login_legacy") return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+        {/* Logo area */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-700 mb-4 shadow-lg shadow-red-900/50">
             <span className="text-3xl">⚽</span>
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">CD La Magdalena</h1>
-          <p className="text-zinc-500 text-sm mt-1">Acceso con clave de equipo</p>
+          <p className="text-zinc-500 text-sm mt-1">Panel de gestión deportiva</p>
         </div>
+
         <Card className="border-zinc-700">
           <div className="space-y-4">
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
-              <select value={teamInput} onChange={e => setTeamInput(e.target.value)}
-                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">
+              <select
+                value={teamInput}
+                onChange={e => setTeamInput(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full"
+              >
                 {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <Input label="Contraseña" type="password" value={password}
+            <Input
+              label="Contraseña"
+              type="password"
+              value={password}
               onChange={e => { setPassword(e.target.value); setLoginError(""); }}
               onKeyDown={e => e.key === "Enter" && login()}
-              placeholder="Introduce tu clave" />
+              placeholder="Introduce tu clave"
+            />
             {loginError && <p className="text-red-400 text-xs">{loginError}</p>}
             <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
-            <button onClick={() => setAuthState("login")}
-              style={{ width: "100%", fontSize: 12, color: "#71717a", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>
-              ← Volver al login principal
-            </button>
           </div>
         </Card>
       </div>
@@ -5707,7 +4221,7 @@ export default function App() {
               <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
             )}
             {activeSection === "plantilla" && (
-              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} />
+              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} />
             )}
 
             {activeSection === "informes" && informesPlayer && (
@@ -5733,9 +4247,6 @@ export default function App() {
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
-            )}
-            {activeSection === "tacticas" && (
-              <TacticasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
             )}
           </div>
         </div>
