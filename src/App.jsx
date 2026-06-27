@@ -5881,6 +5881,10 @@ export default function App() {
 
   if (authState === "selector") return (
     <SelectorClubes onSelect={(club) => {
+      if (club.id === "amics") {
+        window.location.href = "https://amics-castello-app.vercel.app";
+        return;
+      }
       setClubActual(club);
       try { localStorage.setItem("mgd_club", club.id); } catch(e) {}
       setAuthState("home");
