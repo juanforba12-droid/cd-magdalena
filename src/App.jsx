@@ -5469,9 +5469,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
   const handleLogin = async () => {
     if (!email || !pass) { setError("Introduce tu email y contrasena."); return; }
     setLoading(true); setError("");
-    const res = club
-      ? await loginUsuarioClub(club.firebaseConfig, club.firestorePrefix, email, pass)
-      : await loginUsuario({ email, password: pass });
+    const res = await loginUsuario({ email, password: pass });
     setLoading(false);
     if (!res.ok) { setError(res.error); return; }
     if (recordar) {
@@ -5557,7 +5555,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
           : codigo.trim().toUpperCase() === (codigosEquipo[equipoSel] || "");
         if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
       }
-      const res = await registrarUsuarioClub(c.firebaseConfig, c.firestorePrefix, { nombre, email: email.toLowerCase(), password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, creadoEn: new Date().toISOString() });
+      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c.id });
       if (!res.ok) { setError(res.error); setLoading(false); return; }
       setRolFinal(rol); setPaso(3);
       setTimeout(() => onRegistroOk(res.user), 1500);
