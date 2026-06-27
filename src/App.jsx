@@ -5365,7 +5365,7 @@ function SelectorClubes({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Home publica
 // ══════════════════════════════════════════════════════════════════════════════
-function HomePublica({ onAcceder, club }) {
+function HomePublica({ onAcceder, club, onVolver }) {
   const c = club || CLUBS[0];
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
@@ -5374,7 +5374,10 @@ function HomePublica({ onAcceder, club }) {
           <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
           <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
         </div>
-        <button onClick={onAcceder} className="text-xs text-white border border-zinc-600 px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all">Acceder</button>
+        <div className="flex items-center gap-3">
+          <button onClick={onVolver} className="text-zinc-500 text-xs hover:text-white transition-all">← Clubes</button>
+          <button onClick={onAcceder} className="text-xs text-white border border-zinc-600 px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all">Acceder</button>
+        </div>
       </div>
       <div className="bg-black border-b border-zinc-800 py-10 text-center">
         <div className="flex flex-col items-center mb-4">
@@ -5880,7 +5883,7 @@ export default function App() {
       setAuthState("home");
     }} />
   );
-  if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} />;
+  if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} />;
   if (authState === "login") return (
     <LoginScreen
       onVolver={() => setAuthState("home")}
