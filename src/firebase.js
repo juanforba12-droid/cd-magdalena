@@ -115,3 +115,41 @@ export async function deleteFicha(team, playerId) {
     return { ok: false, error: e.message };
   }
 }
+
+// ── Usuarios ─────────────────────────────────────────────────────────────────
+function hashSimple(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + c;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+export async function registrarUsuario({ nombre, email, password, rol }) {
+  try {
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
+    if (snap.exists()) return { ok: false, error: "Este email ya esta registrado." };
+    const userData = { nombre, email: email.toLowerCase(), passwordHash: hashSimple(password), rol, creadoEn: new Date().toISOString() };
+    await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), userData);
+    return { ok: true, user: userData };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function loginUsuario({ email, password }) {
+  try {
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
+    if (!snap.exists()) return { ok: false, error: "Email no encontrado." };
+    const userData = snap.data();
+    if (userData.passwordHash !== hashSimple(password)) return { ok: false, error: "Contrasena incorrecta." };
+    return { ok: true, user: userData };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function verificarCodigoRol(rol, codigo) {
+  try {
+    const snap = await getDoc(doc(db, "cdmagdalena_config", "roles"));
+    if (!snap.exists()) return false;
+    return snap.data()[rol] === codigo.trim().toUpperCase();
+  } catch (e) { return false; }
+}

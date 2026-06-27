@@ -3698,7 +3698,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
   const [viewingTeam, setViewingTeam] = useState(TEAMS[0]);
   const [confirming, setConfirming] = useState(false);
   const [confirmingRestore, setConfirmingRestore] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [ajustesTab, setAjustesTab] = useState("temporadas");
   const [editPwd, setEditPwd] = useState({});
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -5327,8 +5327,270 @@ function ProbandoContent({ team, data, onSave, isCoord }) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANTALLA: Home publica
+// ══════════════════════════════════════════════════════════════════════════════
+function HomePublica({ onAcceder }) {
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+        <div className="flex flex-col leading-none">
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+        </div>
+        <button onClick={onAcceder} className="text-xs text-white border border-zinc-600 px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all">Acceder</button>
+      </div>
+      <div className="bg-black border-b border-zinc-800 py-10 text-center">
+        <div className="flex flex-col items-center mb-4">
+          <span className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Club Deportivo</span>
+          <span className="text-white text-4xl font-black uppercase">La Magdalena</span>
+        </div>
+        <p className="text-zinc-500 text-sm mb-4">Castellon de la Plana · Futbol base y amateur</p>
+        <div className="flex gap-2 justify-center flex-wrap">
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Futbol 11</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">5 equipos</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Temporada 2025-26</span>
+        </div>
+      </div>
+      <div className="p-5 border-b border-zinc-800">
+        <h2 className="text-sm font-bold text-white mb-3">Resultados recientes</h2>
+        <Card>
+          {[["Infantil","2-1","V"],["Juvenil B","1-1","E"],["Amateur","0-2","D"]].map(([eq,res,r]) => (
+            <div key={eq} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+              <span className="text-zinc-400 text-sm flex-1">{eq}</span>
+              <span className="text-white font-bold text-sm">{res}</span>
+              <Badge color={r==="V"?"green":r==="D"?"red":"yellow"}>{r==="V"?"Victoria":r==="D"?"Derrota":"Empate"}</Badge>
+            </div>
+          ))}
+        </Card>
+      </div>
+      <div className="p-5 border-b border-zinc-800">
+        <h2 className="text-sm font-bold text-white mb-3">Ultimas noticias</h2>
+        <Card>
+          {[["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Infantil gana 2-1 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
+            <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
+              <div className="text-xs text-red-400 font-semibold mb-0.5">{tag}</div>
+              <div className="text-sm font-semibold text-white">{title}</div>
+              <div className="text-xs text-zinc-500">{meta}</div>
+            </div>
+          ))}
+        </Card>
+      </div>
+      <div className="p-5 border-b border-zinc-800">
+        <h2 className="text-sm font-bold text-white mb-3">Nuestros equipos</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {[["Infantil","Sub-12"],["Cadete","Sub-14"],["Juvenil A","Sub-18"],["Juvenil B","Sub-18"],["Amateur","Senior"]].map(([name,cat]) => (
+            <Card key={name} className="text-center">
+              <div className="text-white text-sm font-bold">{name}</div>
+              <div className="text-zinc-500 text-xs">{cat}</div>
+            </Card>
+          ))}
+        </div>
+      </div>
+      <div className="p-5">
+        <h2 className="text-sm font-bold text-white mb-3">Inscripcion</h2>
+        <Card className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-white font-semibold text-sm">Inscripcion abierta 2026-27</div>
+            <div className="text-zinc-500 text-xs">Plazas limitadas en todas las categorias</div>
+          </div>
+          <Btn onClick={onAcceder}>Apuntarse</Btn>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANTALLA: Login con email
+// ══════════════════════════════════════════════════════════════════════════════
+function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy }) {
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [recordar, setRecordar] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mgd_remember");
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.email) setEmail(d.email);
+        if (d.password) setPass(d.password);
+        setRecordar(true);
+      }
+    } catch(e) {}
+  }, []);
+
+  const handleLogin = async () => {
+    if (!email || !pass) { setError("Introduce tu email y contrasena."); return; }
+    setLoading(true); setError("");
+    const res = await loginUsuario({ email, password: pass });
+    setLoading(false);
+    if (!res.ok) { setError(res.error); return; }
+    if (recordar) {
+      try { localStorage.setItem("mgd_remember", JSON.stringify({ email, password: pass })); } catch(e) {}
+    } else {
+      try { localStorage.removeItem("mgd_remember"); } catch(e) {}
+    }
+    onLoginOk(res.user);
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+        <div className="flex flex-col leading-none">
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+        </div>
+        <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-6">
+            <h1 className="text-white text-xl font-bold mb-1">Accede a tu cuenta</h1>
+            <p className="text-zinc-500 text-sm">Introduce tus credenciales</p>
+          </div>
+          {error && <div className="bg-red-900/40 border border-red-800 text-red-300 text-xs p-3 rounded-lg mb-4">{error}</div>}
+          <div className="space-y-3">
+            <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
+            <Input label="Contrasena" type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={recordar} onChange={e => setRecordar(e.target.checked)} className="w-4 h-4" />
+              <span className="text-zinc-400 text-xs">Recordar email y contrasena</span>
+            </label>
+            <Btn onClick={handleLogin} disabled={loading} className="w-full justify-center">
+              {loading ? "Entrando..." : "Entrar"}
+            </Btn>
+          </div>
+          <div className="text-center mt-4">
+            <span className="text-zinc-500 text-xs">No tienes cuenta? </span>
+            <button onClick={onIrRegistro} className="text-red-400 text-xs hover:text-red-300">Registrate</button>
+          </div>
+          <div className="text-center mt-2">
+            <button onClick={onLoginLegacy} className="text-zinc-600 text-xs hover:text-zinc-400">Acceso con clave de equipo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANTALLA: Registro en 2 pasos
+// ══════════════════════════════════════════════════════════════════════════════
+function RegistroScreen({ onVolver, onRegistroOk }) {
+  const [paso, setPaso] = useState(1);
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [pass1, setPass1] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [rol, setRol] = useState("familiar");
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [rolFinal, setRolFinal] = useState(null);
+
+  const irPaso2 = () => {
+    if (!nombre.trim() || !email.trim()) { setError("Rellena nombre y email."); return; }
+    if (pass1.length < 6) { setError("La contrasena debe tener al menos 6 caracteres."); return; }
+    if (pass1 !== pass2) { setError("Las contrasenas no coinciden."); return; }
+    setError(""); setPaso(2);
+  };
+
+  const handleRegistro = async () => {
+    setLoading(true); setError("");
+    if (rol !== "familiar") {
+      const ok = await verificarCodigoRol(rol, codigo);
+      if (!ok) { setError("Codigo incorrecto. Pidelo a tu coordinador."); setLoading(false); return; }
+    }
+    const res = await registrarUsuario({ nombre, email, password: pass1, rol });
+    setLoading(false);
+    if (!res.ok) { setError(res.error); return; }
+    setRolFinal(rol); setPaso(3);
+    setTimeout(() => onRegistroOk(res.user), 1500);
+  };
+
+  const ROLES = [
+    { val: "familiar", label: "Jugador / familia", desc: "Sin codigo - acceso libre" },
+    { val: "entrenador", label: "Entrenador", desc: "Requiere codigo de entrenador" },
+    { val: "coordinador", label: "Coordinador", desc: "Requiere codigo de coordinador" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+        <div className="flex flex-col leading-none">
+          <span className="text-zinc-500 text-xs uppercase tracking-widest">Club Deportivo</span>
+          <span className="text-white text-lg font-black uppercase tracking-wide">La Magdalena</span>
+        </div>
+        <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <div className="flex items-center gap-2 mb-6">
+            {[1,2,3].map((n,i) => (
+              <React.Fragment key={n}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${paso > n ? "bg-red-600 text-white" : paso === n ? "bg-red-700 text-white" : "bg-zinc-800 text-zinc-500"}`}>
+                  {paso > n ? "✓" : n}
+                </div>
+                {i < 2 && <div className={`flex-1 h-0.5 ${paso > n ? "bg-red-600" : "bg-zinc-800"}`} />}
+              </React.Fragment>
+            ))}
+          </div>
+          {error && <div className="bg-red-900/40 border border-red-800 text-red-300 text-xs p-3 rounded-lg mb-4">{error}</div>}
+          {paso === 1 && (
+            <div className="space-y-3">
+              <h1 className="text-white text-lg font-bold mb-1">Crea tu cuenta</h1>
+              <Input label="Nombre completo" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Juan Garcia" />
+              <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
+              <Input label="Contrasena" type="password" value={pass1} onChange={e => setPass1(e.target.value)} placeholder="Minimo 6 caracteres" />
+              <Input label="Repite la contrasena" type="password" value={pass2} onChange={e => setPass2(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && irPaso2()} />
+              <Btn onClick={irPaso2} className="w-full justify-center">Siguiente</Btn>
+            </div>
+          )}
+          {paso === 2 && (
+            <div className="space-y-3">
+              <h1 className="text-white text-lg font-bold mb-1">Cual es tu rol?</h1>
+              <div className="space-y-2">
+                {ROLES.map(r => (
+                  <div key={r.val} onClick={() => { setRol(r.val); setCodigo(""); }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${rol === r.val ? "border-red-600 bg-red-900/20" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}>
+                    <div className="flex-1">
+                      <div className="text-white text-sm font-semibold">{r.label}</div>
+                      <div className="text-zinc-500 text-xs">{r.desc}</div>
+                    </div>
+                    {rol === r.val && <span className="text-red-400 text-sm">✓</span>}
+                  </div>
+                ))}
+              </div>
+              {rol !== "familiar" && (
+                <Input label="Codigo de acceso" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="Pidelo a tu coordinador" />
+              )}
+              <Btn onClick={handleRegistro} disabled={loading} className="w-full justify-center">
+                {loading ? "Creando cuenta..." : "Crear cuenta"}
+              </Btn>
+              <Btn variant="secondary" onClick={() => { setPaso(1); setError(""); }} className="w-full justify-center">Atras</Btn>
+            </div>
+          )}
+          {paso === 3 && (
+            <div className="text-center py-4">
+              <div className="w-14 h-14 bg-red-700 rounded-full flex items-center justify-center text-white text-2xl mx-auto mb-4">✓</div>
+              <h1 className="text-white text-xl font-bold mb-2">Cuenta creada!</h1>
+              <p className="text-zinc-500 text-sm">Entrando al club...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const [authState, setAuthState] = useState("login"); // login | app
+  const [authState, setAuthState] = useState("home"); // home | login | register | login_legacy | app
+  const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
@@ -5485,6 +5747,30 @@ export default function App() {
     await saveData(seasonData);
   };
 
+  const handleLoginUsuario = (user) => {
+    setCurrentUser(user);
+    const r = user.rol || "familiar";
+    if (r === "coordinador") {
+      setRole("coordinator");
+      setTeamAccess(null);
+      setActiveTeam(TEAMS[0]);
+      setActiveSection("resumen");
+      setCoordProfile(user.nombre || "Coordinador");
+      setShowProfilePicker(false);
+      setAuthState("app");
+    } else if (r === "entrenador") {
+      setRole("trainer");
+      setTeamAccess(TEAMS[0]);
+      setActiveTeam(TEAMS[0]);
+      setActiveSection("plantilla");
+      setAuthState("app");
+    } else {
+      setRole("familiar");
+      setActiveTeam(TEAMS[0]);
+      setActiveSection("plantilla");
+      setAuthState("app");
+    }
+  };
   const availableTeams = isCoord ? TEAMS : [teamAccess];
 
   if (loading) return (
@@ -5513,40 +5799,49 @@ export default function App() {
     </div>
   );
 
+  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
   if (authState === "login") return (
+    <LoginScreen
+      onVolver={() => setAuthState("home")}
+      onLoginOk={handleLoginUsuario}
+      onIrRegistro={() => setAuthState("register")}
+      onLoginLegacy={() => setAuthState("login_legacy")}
+    />
+  );
+  if (authState === "register") return (
+    <RegistroScreen
+      onVolver={() => setAuthState("login")}
+      onRegistroOk={handleLoginUsuario}
+    />
+  );
+  if (authState === "login_legacy") return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo area */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-700 mb-4 shadow-lg shadow-red-900/50">
             <span className="text-3xl">⚽</span>
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">CD La Magdalena</h1>
-          <p className="text-zinc-500 text-sm mt-1">Panel de gestión deportiva</p>
+          <p className="text-zinc-500 text-sm mt-1">Acceso con clave de equipo</p>
         </div>
-
         <Card className="border-zinc-700">
           <div className="space-y-4">
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
-              <select
-                value={teamInput}
-                onChange={e => setTeamInput(e.target.value)}
-                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full"
-              >
+              <select value={teamInput} onChange={e => setTeamInput(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">
                 {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <Input
-              label="Contraseña"
-              type="password"
-              value={password}
+            <Input label="Contrasena" type="password" value={password}
               onChange={e => { setPassword(e.target.value); setLoginError(""); }}
               onKeyDown={e => e.key === "Enter" && login()}
-              placeholder="Introduce tu clave"
-            />
+              placeholder="Introduce tu clave" />
             {loginError && <p className="text-red-400 text-xs">{loginError}</p>}
             <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
+            <button onClick={() => setAuthState("login")} className="w-full text-xs text-zinc-600 hover:text-zinc-400 text-center">
+              Volver al login principal
+            </button>
           </div>
         </Card>
       </div>
