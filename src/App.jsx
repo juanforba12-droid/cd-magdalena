@@ -5492,6 +5492,7 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [rolFinal, setRolFinal] = useState(null);
+  const [equipoSel, setEquipoSel] = useState(TEAMS[0]);
 
   const irPaso2 = () => {
     if (!nombre.trim() || !email.trim()) { setError("Rellena nombre y email."); return; }
@@ -5504,10 +5505,18 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
     setLoading(true); setError("");
     try {
       if (rol !== "familiar") {
-        const ok = await verificarCodigoRol(rol, codigo);
-        if (!ok) { setError("Codigo incorrecto. Pidelo a tu coordinador."); setLoading(false); return; }
+        const CODIGOS_EQUIPO = {
+          "Escoleta":"KFW","Prebenjamin":"ZBN","Benjamin C":"TXR","Benjamin B":"PLH","Benjamin A":"DJV",
+          "Alevin B":"WCQ","Alevin A":"NYS","Transicion":"HQV","Infantil B":"RGK","Infantil A":"BTP",
+          "Cadete":"XMJ","Juvenil":"FVL"
+        };
+        const COORD_PWD = "MGD";
+        const codigoOk = rol === "coordinador"
+          ? codigo.trim().toUpperCase() === COORD_PWD
+          : codigo.trim().toUpperCase() === (CODIGOS_EQUIPO[equipoSel] || "");
+        if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
       }
-      const res = await registrarUsuario({ nombre, email, password: pass1, rol });
+      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null });
       if (!res.ok) { setError(res.error); setLoading(false); return; }
       setRolFinal(rol); setPaso(3);
       setTimeout(() => onRegistroOk(res.user), 1500);
@@ -5571,7 +5580,15 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
                 ))}
               </div>
               {rol !== "familiar" && (
-                <Input label="Codigo de acceso" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="Pidelo a tu coordinador" />
+                <div className="space-y-2">
+                  <Input label="Codigo de acceso" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="Pidelo a tu coordinador" />
+                  {rol === "entrenador" && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-zinc-400 uppercase tracking-wider">Tu equipo</label>
+                      <select value={equipoSel} onChange={e => setEquipoSel(e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{TEAMS.map(t => <option key={t}>{t}</option>)}</select>
+                    </div>
+                  )}
+                </div>
               )}
               <Btn onClick={handleRegistro} disabled={loading} className="w-full justify-center">
                 {loading ? "Creando cuenta..." : "Crear cuenta"}
