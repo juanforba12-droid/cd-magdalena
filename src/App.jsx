@@ -5477,6 +5477,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
     } else {
       try { localStorage.removeItem("mgd_remember"); } catch(e) {}
     }
+    try { localStorage.setItem("mgd_session", JSON.stringify({ user: res.user, clubId: club?.id || "magdalena" })); } catch(e) {}
     onLoginOk(res.user);
   };
 
@@ -5667,7 +5668,7 @@ export default function App() {
   })();
   const [authState, setAuthState] = useState(savedClub ? "home" : "selector");
   const [clubActual, setClubActual] = useState(savedClub);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
   const [password, setPassword] = useState("");
