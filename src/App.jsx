@@ -5666,8 +5666,11 @@ export default function App() {
       return saved ? CLUBS.find(c => c.id === saved) || null : null;
     } catch(e) { return null; }
   })();
-  const [authState, setAuthState] = useState(savedClub ? "home" : "selector");
-  const [clubActual, setClubActual] = useState(savedClub);
+  const savedSession = (() => {
+    try { return JSON.parse(localStorage.getItem("mgd_session")); } catch(e) { return null; }
+  })();
+  const [authState, setAuthState] = useState(savedSession ? "app" : "selector");
+  const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : null);
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
   const [role, setRole] = useState(null); // coordinator | trainer
   const [teamAccess, setTeamAccess] = useState(null);
