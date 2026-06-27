@@ -1,6 +1,7 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol } from "./firebase";
 import { CLUBS } from "./clubs";
-const AmicsApp = React.lazy(() => import("./AmicsApp"));
+import AmicsApp from "./AmicsApp";
+
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
@@ -5970,11 +5971,7 @@ export default function App() {
       </ErrorBoundary>
     </React.Suspense>
   );
-  if (authState === "app" && clubActual?.id === "amics") return (
-    <React.Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="text-zinc-400 text-sm animate-pulse">Cargando Amics...</div></div>}>
-      <AmicsApp />
-    </React.Suspense>
-  );
+  if (authState === "app" && clubActual?.id === "amics") return <AmicsApp />;
   const teamData = db[activeTeam] || { players: [], trainings: [], matches: [], attendance: [] };
 
   return (
