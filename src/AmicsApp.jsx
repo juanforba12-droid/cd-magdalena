@@ -122,7 +122,7 @@ const Badge = ({ children, color = "zinc" }) => {
 };
 
 // ── Attendance mini-bar chart ──────────────────────────────────────────────────
-function AttendanceChart({ present, late, absent }) {
+function A_AttendanceChart({ present, late, absent }) {
   const total = present + late + absent || 1;
   const bars = [
     { label: "Asistió", val: present, color: "bg-green-500" },
@@ -284,21 +284,21 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => setStatsPlayer(null)}>← Volver</Btn>
+          <A_Btn variant="ghost" onClick={() => setStatsPlayer(null)}>← Volver</A_Btn>
           <h2 className="text-xl font-bold text-white">📊 {statsPlayer.name}</h2>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
           {[["Puntos", totalPuntos, "text-green-400"], ["Asistencias", totalAsist, "text-blue-400"], ["Rebotes", totalRebotes, "text-yellow-400"], ["Tapones", totalTapones, "text-purple-400"], ["Robos", totalRobos, "text-red-400"], ["Minutos", totalMin, "text-zinc-300"], ["Eficiencia", eficiencia, "text-green-300"], ["Nota media", avgNota, "text-yellow-300"]].map(([label, val, cls]) => (
-            <Card key={label} className="text-center">
+            <A_Card key={label} className="text-center">
               <div className={`text-2xl font-black ${cls}`}>{val}</div>
               <div className="text-xs text-zinc-500 mt-1">{label}</div>
-            </Card>
+            </A_Card>
           ))}
         </div>
         <div className="space-y-2">
           {history.length === 0 && <p className="text-zinc-500 text-sm">Sin partidos valorados todavía.</p>}
           {history.map((h, i) => (
-            <Card key={i} className="flex flex-wrap items-center gap-4">
+            <A_Card key={i} className="flex flex-wrap items-center gap-4">
               <div className="flex-1">
                 <div className="text-white font-semibold">vs {h.rival}</div>
                 <div className="text-xs text-zinc-400">{h.fecha}</div>
@@ -310,10 +310,10 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                 <span className="text-purple-400">{h.tapones || 0}tap</span>
                 <span className="text-red-400">{h.robos || 0}rob</span>
                 <span className="text-zinc-400">{h.minutos || 0}min</span>
-                {h.nota !== "" && h.nota !== undefined && <Badge color="green">Nota: {h.nota}</Badge>}
-                <Badge color={statusColor[h.status] || "zinc"}>{statusLabel[h.status] || h.status}</Badge>
+                {h.nota !== "" && h.nota !== undefined && <A_Badge color="green">Nota: {h.nota}</A_Badge>}
+                <A_Badge color={statusColor[h.status] || "zinc"}>{statusLabel[h.status] || h.status}</A_Badge>
               </div>
-            </Card>
+            </A_Card>
           ))}
         </div>
       </div>
@@ -325,37 +325,37 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => setNotesPlayer(null)}>← Volver</Btn>
+          <A_Btn variant="ghost" onClick={() => setNotesPlayer(null)}>← Volver</A_Btn>
           <h2 className="text-xl font-bold text-white">📝 {notesPlayer.name}</h2>
         </div>
-        <Card className="border-green-900/50">
+        <A_Card className="border-green-900/50">
           <h3 className="text-sm font-bold text-zinc-300 mb-3">{editingReport ? "Editar informe" : "Nuevo informe"}</h3>
           <div className="space-y-3">
-            <Input label="Título (opcional)" value={reportTitle} onChange={e => setReportTitle(e.target.value)} />
-            <Input label="Fecha" type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} />
-            <Textarea label="Contenido" value={reportText} onChange={e => setReportText(e.target.value)} placeholder="Observaciones sobre el jugador..." />
+            <A_Input label="Título (opcional)" value={reportTitle} onChange={e => setReportTitle(e.target.value)} />
+            <A_Input label="Fecha" type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} />
+            <A_Textarea label="Contenido" value={reportText} onChange={e => setReportText(e.target.value)} placeholder="Observaciones sobre el jugador..." />
           </div>
           <div className="flex gap-2 mt-3">
-            <Btn onClick={saveReport}>Guardar</Btn>
-            {editingReport && <Btn variant="secondary" onClick={() => { setEditingReport(null); setReportTitle(""); setReportText(""); }}>Cancelar edición</Btn>}
+            <A_Btn onClick={saveReport}>Guardar</A_Btn>
+            {editingReport && <A_Btn variant="secondary" onClick={() => { setEditingReport(null); setReportTitle(""); setReportText(""); }}>Cancelar edición</A_Btn>}
           </div>
-        </Card>
+        </A_Card>
         <div className="space-y-2">
           {((data.players||[]).find(p=>p.id===notesPlayer.id)?.reports || []).length === 0 && <p className="text-zinc-500 text-sm">Sin informes todavía.</p>}
           {((data.players||[]).find(p=>p.id===notesPlayer.id)?.reports || []).map(r => (
-            <Card key={r.id}>
+            <A_Card key={r.id}>
               <div className="flex justify-between items-start mb-2">
                 <div>
                   {r.title && <div className="text-white font-semibold">{r.title}</div>}
                   <div className="text-xs text-zinc-400">{r.fecha}</div>
                 </div>
                 <div className="flex gap-1">
-                  <Btn small variant="secondary" onClick={() => openEditReport(r)}>✏️</Btn>
-                  <Btn small variant="danger" onClick={() => delReport(notesPlayer.id, r.id)}>🗑️</Btn>
+                  <A_Btn small variant="secondary" onClick={() => openEditReport(r)}>✏️</A_Btn>
+                  <A_Btn small variant="danger" onClick={() => delReport(notesPlayer.id, r.id)}>🗑️</A_Btn>
                 </div>
               </div>
               <p className="text-zinc-300 text-sm whitespace-pre-wrap">{r.text}</p>
-            </Card>
+            </A_Card>
           ))}
         </div>
       </div>
@@ -367,15 +367,15 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Plantilla — {team}</h2>
         <div className="flex gap-2">
-          <Btn variant="secondary" onClick={() => setShowAllReports(!showAllReports)}>📋 Informes</Btn>
-          <Btn onClick={() => open()}>+ Añadir jugador</Btn>
+          <A_Btn variant="secondary" onClick={() => setShowAllReports(!showAllReports)}>📋 Informes</A_Btn>
+          <A_Btn onClick={() => open()}>+ Añadir jugador</A_Btn>
         </div>
       </div>
       {showAllReports && (
-        <Card className="border-zinc-700">
+        <A_Card className="border-zinc-700">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-sm font-bold text-zinc-300">📋 Todos los informes</h3>
-            <Btn small variant="secondary" onClick={() => setShowAllReports(false)}>← Volver a plantilla</Btn>
+            <A_Btn small variant="secondary" onClick={() => setShowAllReports(false)}>← Volver a plantilla</A_Btn>
           </div>
           {(data.players || []).every(p => (p.reports || []).length === 0) && <p className="text-zinc-500 text-sm">No hay informes todavía.</p>}
           {(data.players || []).flatMap(p => (p.reports || []).map(r => ({ ...r, playerName: p.name, playerId: p.id }))).sort((a,b) => (b.fecha||"").localeCompare(a.fecha||"")).map(r => (
@@ -387,24 +387,24 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                   <p className="text-zinc-400 text-xs">{r.fecha}</p>
                   {r.text && <p className="text-zinc-300 text-sm mt-1 whitespace-pre-wrap">{r.text}</p>}
                 </div>
-                <Btn small variant="danger" onClick={() => {
+                <A_Btn small variant="danger" onClick={() => {
                   const players = (data.players || []).map(p =>
                     p.id !== r.playerId ? p : { ...p, reports: (p.reports || []).filter(x => x.id !== r.id) }
                   );
                   onSave({ ...data, players });
-                }}>🗑️</Btn>
+                }}>🗑️</A_Btn>
               </div>
             </div>
           ))}
-        </Card>
+        </A_Card>
       )}
 
       {showForm && (
-        <Card className="border-green-900/50">
+        <A_Card className="border-green-900/50">
           <h3 className="text-sm font-bold text-zinc-300 mb-4">{editing ? "Editar jugador" : "Nuevo jugador"}</h3>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <Input label="Nombre" value={name} onChange={e => setName(e.target.value)} />
-            <Input label="Dorsal" type="number" value={dorsal} onChange={e => setDorsal(e.target.value)} />
+            <A_Input label="Nombre" value={name} onChange={e => setName(e.target.value)} />
+            <A_Input label="Dorsal" type="number" value={dorsal} onChange={e => setDorsal(e.target.value)} />
           </div>
           <div className="mb-4">
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posición principal</label>
@@ -427,13 +427,13 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Btn onClick={save}>Guardar</Btn>
-            <Btn variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Btn>
+            <A_Btn onClick={save}>Guardar</A_Btn>
+            <A_Btn variant="secondary" onClick={() => setShowForm(false)}>Cancelar</A_Btn>
           </div>
-        </Card>
+        </A_Card>
       )}
 
-      <Input placeholder="🔍 Buscar jugador por nombre..." value={search} onChange={e => setSearch(e.target.value)} />
+      <A_Input placeholder="🔍 Buscar jugador por nombre..." value={search} onChange={e => setSearch(e.target.value)} />
 
       {(() => {
         const POSICIONES_ORDEN = ["Base (1)", "Escolta (2)", "Alero (3)", "Ala-Pívot (4)", "Pívot (5)", "Base-Escolta", "Alero-Escolta", "Ala-Pívot-Alero", "Pívot-Ala", "Sin posición"];
@@ -468,12 +468,12 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                   <p className={`text-xs uppercase tracking-wider font-bold ${posColor[pos] || "text-zinc-400"}`}>{pos.replace(/ \(\d\)/, "")} ({grupo.length})</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {grupo.map(p => (
-                      <Card key={p.id} className={`flex justify-between items-start border ${statusStyle(p.status || "disponible")}`}>
+                      <A_Card key={p.id} className={`flex justify-between items-start border ${statusStyle(p.status || "disponible")}`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {p.dorsal && <span className="text-green-500 font-bold text-lg">#{p.dorsal}</span>}
                             <span className="text-white font-semibold">{p.name}</span>
-                            <Badge color="zinc">{getPrincipal(p)}</Badge>
+                            <A_Badge color="zinc">{getPrincipal(p)}</A_Badge>
                           </div>
                           {/* Estado */}
                           <div className="flex flex-wrap gap-1 mb-2">
@@ -485,12 +485,12 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
                           </div>
                         </div>
                         <div className="flex gap-1 ml-2 shrink-0">
-                          <Btn small variant="ghost" onClick={() => setStatsPlayer(p)}>📊 Stats</Btn>
-                          <Btn small variant="ghost" onClick={() => openNotes(p)}>📝 Notas</Btn>
-                          <Btn small variant="secondary" onClick={() => open(p)}>✏️ Editar</Btn>
-                          <Btn small variant="danger" onClick={() => del(p.id)}>🗑️ Borrar</Btn>
+                          <A_Btn small variant="ghost" onClick={() => setStatsPlayer(p)}>📊 Stats</A_Btn>
+                          <A_Btn small variant="ghost" onClick={() => openNotes(p)}>📝 Notas</A_Btn>
+                          <A_Btn small variant="secondary" onClick={() => open(p)}>✏️ Editar</A_Btn>
+                          <A_Btn small variant="danger" onClick={() => del(p.id)}>🗑️ Borrar</A_Btn>
                         </div>
-                      </Card>
+                      </A_Card>
                     ))}
                   </div>
                 </div>
@@ -932,12 +932,12 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
       <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-2xl my-4">
         <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
           <h3 className="text-white font-bold text-lg">{task?.id ? "Editar ejercicio" : "Nuevo ejercicio"}</h3>
-          <Btn small variant="secondary" onClick={onClose}>✕</Btn>
+          <A_Btn small variant="secondary" onClick={onClose}>✕</A_Btn>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Nombre del ejercicio" value={nombre} onChange={e => setNombre(e.target.value)} />
-            <Input label="Duración (min)" type="number" value={minutos} onChange={e => setMinutos(Number(e.target.value))} />
+            <A_Input label="Nombre del ejercicio" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <A_Input label="Duración (min)" type="number" value={minutos} onChange={e => setMinutos(Number(e.target.value))} />
           </div>
           <div>
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Categoría</label>
@@ -949,16 +949,16 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
               ))}
             </div>
           </div>
-          <Textarea label="Descripción / Instrucciones" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe el ejercicio..." />
+          <A_Textarea label="Descripción / Instrucciones" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe el ejercicio..." />
           <div>
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra táctica</label>
             <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
           </div>
         </div>
         <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap">
-          <Btn onClick={handleSave}>Guardar ejercicio</Btn>
-          {saveToLibrary && <Btn variant="secondary" onClick={() => saveToLibrary({ id: task?.id || Date.now(), nombre, minutos, desc, categoria, pizarra: pizarra.filter(el => el != null && el.type), fieldType })}>💾 Guardar en biblioteca</Btn>}
-          <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
+          <A_Btn onClick={handleSave}>Guardar ejercicio</A_Btn>
+          {saveToLibrary && <A_Btn variant="secondary" onClick={() => saveToLibrary({ id: task?.id || Date.now(), nombre, minutos, desc, categoria, pizarra: pizarra.filter(el => el != null && el.type), fieldType })}>💾 Guardar en biblioteca</A_Btn>}
+          <A_Btn variant="ghost" onClick={onClose}>Cancelar</A_Btn>
         </div>
       </div>
     </div>
@@ -1016,7 +1016,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
       )}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Ejercicios — {team}</h2>
-        <Btn onClick={openNew}>+ Nuevo ejercicio</Btn>
+        <A_Btn onClick={openNew}>+ Nuevo ejercicio</A_Btn>
       </div>
       <div className="flex gap-2">
         {["equipo", "biblioteca"].map(tab => (
@@ -1030,21 +1030,21 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
         {activeTasks.map(t => {
           const cat = TASK_CATEGORIES.find(c => c.id === t.categoria);
           return (
-            <Card key={t.id} className="hover:border-zinc-600 transition-colors">
+            <A_Card key={t.id} className="hover:border-zinc-600 transition-colors">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="text-white font-semibold">{t.nombre}</span>
-                    {cat && <Badge color={cat.color}>{cat.label}</Badge>}
-                    <Badge color="zinc">⏱ {t.minutos} min</Badge>
+                    {cat && <A_Badge color={cat.color}>{cat.label}</A_Badge>}
+                    <A_Badge color="zinc">⏱ {t.minutos} min</A_Badge>
                   </div>
                   {t.desc && <p className="text-zinc-400 text-sm">{t.desc}</p>}
                 </div>
                 <div className="flex gap-1 ml-3 shrink-0">
-                  {libTab === "biblioteca" && <Btn small variant="secondary" onClick={() => addFromLibrary(t)}>➕ Añadir</Btn>}
-                  <Btn small variant="ghost" onClick={() => setViewingTask(viewingTask?.id === t.id ? null : t)}>👁</Btn>
-                  <Btn small variant="secondary" onClick={() => openEdit(t)}>✏️</Btn>
-                  {libTab === "equipo" && <Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</Btn>}
+                  {libTab === "biblioteca" && <A_Btn small variant="secondary" onClick={() => addFromLibrary(t)}>➕ Añadir</A_Btn>}
+                  <A_Btn small variant="ghost" onClick={() => setViewingTask(viewingTask?.id === t.id ? null : t)}>👁</A_Btn>
+                  <A_Btn small variant="secondary" onClick={() => openEdit(t)}>✏️</A_Btn>
+                  {libTab === "equipo" && <A_Btn small variant="danger" onClick={() => delTask(t.id)}>🗑️</A_Btn>}
                 </div>
                 {viewingTask?.id === t.id && (
                   <div className="mt-3 border-t border-zinc-700 pt-3">
@@ -1057,7 +1057,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
                   </div>
                 )}
               </div>
-            </Card>
+            </A_Card>
           );
         })}
       </div>
@@ -1272,24 +1272,24 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
   if (view === "form") return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Btn variant="ghost" onClick={() => setView("list")}>← Volver</Btn>
+        <A_Btn variant="ghost" onClick={() => setView("list")}>← Volver</A_Btn>
         <h2 className="text-xl font-bold text-white">{editing ? "Editar sesión" : "Nueva sesión"}</h2>
       </div>
-      <Card>
+      <A_Card>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
-          <Input label="Hora" type="time" value={hora} onChange={e => setHora(e.target.value)} />
-          <Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
-          <Input label="Duración sesión (min)" type="number" value={duracion} onChange={e => setDuracion(Number(e.target.value))} />
+          <A_Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+          <A_Input label="Hora" type="time" value={hora} onChange={e => setHora(e.target.value)} />
+          <A_Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
+          <A_Input label="Duración sesión (min)" type="number" value={duracion} onChange={e => setDuracion(Number(e.target.value))} />
         </div>
         <div className="mt-3">
-          <Textarea label="Notas / Descripción" value={desc} onChange={e => setDesc(e.target.value)} />
+          <A_Textarea label="Notas / Descripción" value={desc} onChange={e => setDesc(e.target.value)} />
         </div>
         <div className="flex gap-2 mt-4">
-          <Btn onClick={saveSession}>Guardar sesión</Btn>
-          <Btn variant="secondary" onClick={() => setView("list")}>Cancelar</Btn>
+          <A_Btn onClick={saveSession}>Guardar sesión</A_Btn>
+          <A_Btn variant="secondary" onClick={() => setView("list")}>Cancelar</A_Btn>
         </div>
-      </Card>
+      </A_Card>
     </div>
   );
 
@@ -1313,15 +1313,15 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
           />
         )}
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => setDetailSession(null)}>← Volver</Btn>
+          <A_Btn variant="ghost" onClick={() => setDetailSession(null)}>← Volver</A_Btn>
           <h2 className="text-xl font-bold text-white">🏀 {session.fecha} {session.hora && `· ${session.hora}`}</h2>
         </div>
-        {session.desc && <Card><p className="text-zinc-300 text-sm">{session.desc}</p></Card>}
+        {session.desc && <A_Card><p className="text-zinc-300 text-sm">{session.desc}</p></A_Card>}
         <div className="flex justify-between items-center">
           <p className="text-sm font-semibold text-zinc-300">Ejercicios de la sesión</p>
           <div className="flex gap-2">
-            <Btn small variant="secondary" onClick={() => setShowLibPicker(!showLibPicker)}>📚 Desde biblioteca</Btn>
-            <Btn small onClick={() => { setShowLibPicker(false); setTaskEditor({}); }}>+ Nuevo ejercicio</Btn>
+            <A_Btn small variant="secondary" onClick={() => setShowLibPicker(!showLibPicker)}>📚 Desde biblioteca</A_Btn>
+            <A_Btn small onClick={() => { setShowLibPicker(false); setTaskEditor({}); }}>+ Nuevo ejercicio</A_Btn>
           </div>
         </div>
         {showLibPicker && (
@@ -1336,14 +1336,14 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                     <span className="text-white text-sm font-semibold">{t.nombre}</span>
                     <span className="text-zinc-500 text-xs ml-2">⏱ {t.minutos} min</span>
                   </div>
-                  <Btn small onClick={() => {
+                  <A_Btn small onClick={() => {
                     const newTask = { ...t, id: Date.now() };
                     const updated = [...sessionTasks, newTask];
                     const trainings = (data.trainings || []).map(tr => tr.id === session.id ? { ...tr, tasks: updated } : tr);
                     onSave({ ...data, trainings });
                     setDetailSession({ ...session, tasks: updated });
                     setShowLibPicker(false);
-                  }}>➕ Añadir</Btn>
+                  }}>➕ Añadir</A_Btn>
                 </div>
               );
             })}
@@ -1353,19 +1353,19 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
         {sessionTasks.map((t, idx) => {
           const cat = TASK_CATEGORIES.find(c => c.id === t.categoria);
           return (
-            <Card key={t.id}>
+            <A_Card key={t.id}>
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex gap-2 flex-wrap mb-1">
                     <span className="text-zinc-500 font-bold text-sm">#{idx + 1}</span>
                     <span className="text-white font-semibold">{t.nombre}</span>
-                    {cat && <Badge color={cat.color}>{cat.label}</Badge>}
-                    <Badge color="zinc">⏱ {t.minutos} min</Badge>
+                    {cat && <A_Badge color={cat.color}>{cat.label}</A_Badge>}
+                    <A_Badge color="zinc">⏱ {t.minutos} min</A_Badge>
                   </div>
                   {t.desc && <p className="text-zinc-400 text-sm">{t.desc}</p>}
                 </div>
                 <div className="flex gap-1">
-                  <Btn small variant="ghost" onClick={() => {
+                  <A_Btn small variant="ghost" onClick={() => {
                     const i = sessionTasks.findIndex(x => x.id === t.id);
                     if (i === 0) return;
                     const updated = [...sessionTasks];
@@ -1373,8 +1373,8 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                     const trainings = (data.trainings||[]).map(tr => tr.id === session.id ? {...tr, tasks: updated} : tr);
                     onSave({...data, trainings});
                     setDetailSession({...session, tasks: updated});
-                  }}>↑</Btn>
-                  <Btn small variant="ghost" onClick={() => {
+                  }}>↑</A_Btn>
+                  <A_Btn small variant="ghost" onClick={() => {
                     const i = sessionTasks.findIndex(x => x.id === t.id);
                     if (i === sessionTasks.length - 1) return;
                     const updated = [...sessionTasks];
@@ -1382,14 +1382,14 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                     const trainings = (data.trainings||[]).map(tr => tr.id === session.id ? {...tr, tasks: updated} : tr);
                     onSave({...data, trainings});
                     setDetailSession({...session, tasks: updated});
-                  }}>↓</Btn>
-                  <Btn small variant="secondary" onClick={() => setTaskEditor(t)}>✏️</Btn>
-                  <Btn small variant="danger" onClick={() => {
+                  }}>↓</A_Btn>
+                  <A_Btn small variant="secondary" onClick={() => setTaskEditor(t)}>✏️</A_Btn>
+                  <A_Btn small variant="danger" onClick={() => {
                     const updated = sessionTasks.filter(x => x.id !== t.id);
                     const trainings = (data.trainings || []).map(tr => tr.id === session.id ? { ...tr, tasks: updated } : tr);
                     onSave({ ...data, trainings });
                     setDetailSession({ ...session, tasks: updated });
-                  }}>🗑️</Btn>
+                  }}>🗑️</A_Btn>
                 </div>
               </div>
               {t.pizarra && t.pizarra.length > 0 && (
@@ -1397,7 +1397,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                   <Pizarra value={t.pizarra} onChange={() => {}} fieldType={t.fieldType || "full"} />
                 </div>
               )}
-            </Card>
+            </A_Card>
           );
         })}
       </div>
@@ -1408,17 +1408,17 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Entrenamientos — {team}</h2>
-        <Btn onClick={() => openForm()}>+ Nueva sesión</Btn>
+        <A_Btn onClick={() => openForm()}>+ Nueva sesión</A_Btn>
       </div>
       <div className="space-y-3">
         {(data.trainings || []).length === 0 && <p className="text-zinc-500 text-sm">No hay sesiones registradas.</p>}
         {(data.trainings || []).map(s => (
-          <Card key={s.id} className="hover:border-zinc-600 transition-colors">
+          <A_Card key={s.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-white font-semibold">🏀 {s.fecha}</span>
-                  {s.hora && <Badge color="zinc">⏰ {s.hora}</Badge>}
+                  {s.hora && <A_Badge color="zinc">⏰ {s.hora}</A_Badge>}
                   {s.lugar && <span className="text-zinc-400 text-sm">📍 {s.lugar}</span>}
                 </div>
                 {s.desc && <p className="text-zinc-500 text-sm truncate max-w-xs">{s.desc}</p>}
@@ -1448,15 +1448,15 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                 })()}
               </div>
               <div className="flex gap-1 ml-3" onClick={e => e.stopPropagation()}>
-                <Btn small variant="primary" onClick={() => setDetailSession(s)}>📋 Ver sesión</Btn>
-                <Btn small variant="secondary" onClick={() => { const t = (data.trainings||[]).find(x=>x.id===s.id)||s; printTraining(t); }}>🖨️ PDF</Btn>
-                <Btn small variant="secondary" onClick={() => setAttSession(s)}>👥 Jugadores</Btn>
-                {(data.coaches || []).length > 0 && isCoord && <Btn small variant="secondary" onClick={() => setCoachAttSession(s)}>🧑‍🏫</Btn>}
-                <Btn small variant="secondary" onClick={() => openForm(s)}>✏️</Btn>
-                <Btn small variant="danger" onClick={() => delSession(s.id)}>🗑️</Btn>
+                <A_Btn small variant="primary" onClick={() => setDetailSession(s)}>📋 Ver sesión</A_Btn>
+                <A_Btn small variant="secondary" onClick={() => { const t = (data.trainings||[]).find(x=>x.id===s.id)||s; printTraining(t); }}>🖨️ PDF</A_Btn>
+                <A_Btn small variant="secondary" onClick={() => setAttSession(s)}>👥 Jugadores</A_Btn>
+                {(data.coaches || []).length > 0 && isCoord && <A_Btn small variant="secondary" onClick={() => setCoachAttSession(s)}>🧑‍🏫</A_Btn>}
+                <A_Btn small variant="secondary" onClick={() => openForm(s)}>✏️</A_Btn>
+                <A_Btn small variant="danger" onClick={() => delSession(s.id)}>🗑️</A_Btn>
               </div>
             </div>
-          </Card>
+          </A_Card>
         ))}
       </div>
 
@@ -1469,7 +1469,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                 <h3 className="text-white font-bold text-lg">Asistencia jugadores</h3>
                 <p className="text-zinc-400 text-sm">{attSession.fecha} · {attSession.lugar}</p>
               </div>
-              <Btn small variant="secondary" onClick={() => setAttSession(null)}>✕</Btn>
+              <A_Btn small variant="secondary" onClick={() => setAttSession(null)}>✕</A_Btn>
             </div>
             <div className="p-5 space-y-2">
               {(data.players || []).length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
@@ -1485,7 +1485,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                           className={`text-xs px-2 py-1 rounded border transition-all ${statusBtnClass(rec?.status, opt.val, opt.color)}`}
                         >{opt.label}</button>
                       ))}
-                      {rec && <Btn small variant="danger" onClick={() => delAttRecord(sessionId, p.id)}>✕</Btn>}
+                      {rec && <A_Btn small variant="danger" onClick={() => delAttRecord(sessionId, p.id)}>✕</A_Btn>}
                     </div>
                   </div>
                 );
@@ -1504,7 +1504,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                 <h3 className="text-white font-bold text-lg">🧑‍🏫 Entrenadores</h3>
                 <p className="text-zinc-400 text-sm">{coachAttSession.fecha}</p>
               </div>
-              <Btn small variant="secondary" onClick={() => setCoachAttSession(null)}>✕</Btn>
+              <A_Btn small variant="secondary" onClick={() => setCoachAttSession(null)}>✕</A_Btn>
             </div>
             <div className="p-5 space-y-2">
               {(data.coaches || []).map(c => {
@@ -1519,7 +1519,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
                           className={`text-xs px-2 py-1 rounded border transition-all ${coachAttBtnClass(rec?.status, opt.val, opt.color)}`}
                         >{opt.label}</button>
                       ))}
-                      {rec && <Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</Btn>}
+                      {rec && <A_Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</A_Btn>}
                     </div>
                   </div>
                 );
@@ -1677,24 +1677,24 @@ function PartidosSection({ team, data, onSave, isCoord }) {
 
   const getResultBadge = (resultado) => {
     const parts = parseResult(resultado);
-    if (!parts) return <Badge color="zinc">Sin resultado</Badge>;
+    if (!parts) return <A_Badge color="zinc">Sin resultado</A_Badge>;
     const [pf, pc] = parts;
-    if (pf > pc) return <Badge color="green">Victoria</Badge>;
-    if (pf < pc) return <Badge color="red">Derrota</Badge>;
-    return <Badge color="yellow">Empate</Badge>;
+    if (pf > pc) return <A_Badge color="green">Victoria</A_Badge>;
+    if (pf < pc) return <A_Badge color="red">Derrota</A_Badge>;
+    return <A_Badge color="yellow">Empate</A_Badge>;
   };
 
   if (view === "form") return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Btn variant="ghost" onClick={() => setView("list")}>← Volver</Btn>
+        <A_Btn variant="ghost" onClick={() => setView("list")}>← Volver</A_Btn>
         <h2 className="text-xl font-bold text-white">{editing ? "Editar partido" : "Nuevo partido"}</h2>
       </div>
-      <Card>
+      <A_Card>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Rival" value={rival} onChange={e => setRival(e.target.value)} />
-          <Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
-          <Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+          <A_Input label="Rival" value={rival} onChange={e => setRival(e.target.value)} />
+          <A_Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
+          <A_Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
           <div className="flex flex-col gap-1">
             <label className="text-xs text-zinc-400 uppercase tracking-wider">Resultado</label>
             <div className="flex items-center gap-2">
@@ -1709,11 +1709,11 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           </div>
         </div>
         <div className="flex gap-2 mt-4">
-          <Btn onClick={saveMatch}>Guardar partido</Btn>
-          <Btn variant="secondary" onClick={() => setView("list")}>Cancelar</Btn>
+          <A_Btn onClick={saveMatch}>Guardar partido</A_Btn>
+          <A_Btn variant="secondary" onClick={() => setView("list")}>Cancelar</A_Btn>
         </div>
-      </Card>
-      <Card>
+      </A_Card>
+      <A_Card>
         <p className="text-white font-semibold mb-1">⭐ Mejores jugadores rivales</p>
         <p className="text-zinc-400 text-sm mb-3">Los dos jugadores más destacados del equipo rival.</p>
         <div className="space-y-3">
@@ -1725,7 +1725,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
             </div>
           ))}
         </div>
-      </Card>
+      </A_Card>
     </div>
   );
 
@@ -1734,21 +1734,21 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => setView("list")}>← Volver</Btn>
+          <A_Btn variant="ghost" onClick={() => setView("list")}>← Volver</A_Btn>
           <h2 className="text-xl font-bold text-white">vs {match.rival}</h2>
-          {match.resultado && <Badge color={getResultBadge(match.resultado).props.color}>{match.resultado}</Badge>}
+          {match.resultado && <A_Badge color={getResultBadge(match.resultado).props.color}>{match.resultado}</A_Badge>}
         </div>
-        <Card>
+        <A_Card>
           <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
             <span>📅 {match.fecha}</span>
             <span>📍 {match.lugar}</span>
             {match.resultado && <span className="text-white font-bold">🏀 {match.resultado}</span>}
             {match.capitan && (() => { const cap = (match.convocatoria || []).find(c => c.playerId === match.capitan); return cap ? <span className="text-yellow-400">⭐ {cap.playerName}</span> : null; })()}
           </div>
-        </Card>
+        </A_Card>
         <div className="space-y-2">
           {(match.convocatoria || []).map(c => (
-            <Card key={c.playerId} className="space-y-3">
+            <A_Card key={c.playerId} className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-white font-semibold flex-1">{c.playerName}</span>
                 {["titular", "suplente", "no_conv"].map(s => (
@@ -1770,18 +1770,18 @@ function PartidosSection({ team, data, onSave, isCoord }) {
                 >⭐ Capitán</button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <Input label="Min" type="number" value={c.minutos} onChange={e => updateConv(match.id, c.playerId, "minutos", Number(e.target.value))} />
-                <Input label="Pts" type="number" value={c.puntos} onChange={e => updateConv(match.id, c.playerId, "puntos", Number(e.target.value))} />
-                <Input label="Ast" type="number" value={c.asistencias} onChange={e => updateConv(match.id, c.playerId, "asistencias", Number(e.target.value))} />
-                <Input label="Reb" type="number" value={c.rebotes} onChange={e => updateConv(match.id, c.playerId, "rebotes", Number(e.target.value))} />
-                <Input label="Reb.Of" type="number" value={c.rebotesOf || 0} onChange={e => updateConv(match.id, c.playerId, "rebotesOf", Number(e.target.value))} />
-                <Input label="Tap" type="number" value={c.tapones || 0} onChange={e => updateConv(match.id, c.playerId, "tapones", Number(e.target.value))} />
-                <Input label="Rob" type="number" value={c.robos || 0} onChange={e => updateConv(match.id, c.playerId, "robos", Number(e.target.value))} />
-                <Input label="Perd" type="number" value={c.perdidas || 0} onChange={e => updateConv(match.id, c.playerId, "perdidas", Number(e.target.value))} />
-                <Input label="Falt" type="number" value={c.faltas || 0} onChange={e => updateConv(match.id, c.playerId, "faltas", Number(e.target.value))} />
-                <Input label="Nota (0-10)" type="number" step="0.5" min="0" max="10" value={c.nota} onChange={e => updateConv(match.id, c.playerId, "nota", e.target.value)} />
+                <A_Input label="Min" type="number" value={c.minutos} onChange={e => updateConv(match.id, c.playerId, "minutos", Number(e.target.value))} />
+                <A_Input label="Pts" type="number" value={c.puntos} onChange={e => updateConv(match.id, c.playerId, "puntos", Number(e.target.value))} />
+                <A_Input label="Ast" type="number" value={c.asistencias} onChange={e => updateConv(match.id, c.playerId, "asistencias", Number(e.target.value))} />
+                <A_Input label="Reb" type="number" value={c.rebotes} onChange={e => updateConv(match.id, c.playerId, "rebotes", Number(e.target.value))} />
+                <A_Input label="Reb.Of" type="number" value={c.rebotesOf || 0} onChange={e => updateConv(match.id, c.playerId, "rebotesOf", Number(e.target.value))} />
+                <A_Input label="Tap" type="number" value={c.tapones || 0} onChange={e => updateConv(match.id, c.playerId, "tapones", Number(e.target.value))} />
+                <A_Input label="Rob" type="number" value={c.robos || 0} onChange={e => updateConv(match.id, c.playerId, "robos", Number(e.target.value))} />
+                <A_Input label="Perd" type="number" value={c.perdidas || 0} onChange={e => updateConv(match.id, c.playerId, "perdidas", Number(e.target.value))} />
+                <A_Input label="Falt" type="number" value={c.faltas || 0} onChange={e => updateConv(match.id, c.playerId, "faltas", Number(e.target.value))} />
+                <A_Input label="Nota (0-10)" type="number" step="0.5" min="0" max="10" value={c.nota} onChange={e => updateConv(match.id, c.playerId, "nota", e.target.value)} />
               </div>
-            </Card>
+            </A_Card>
           ))}
         </div>
       </div>
@@ -1792,7 +1792,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Partidos — {team}</h2>
-        <Btn onClick={() => openForm()}>+ Nuevo partido</Btn>
+        <A_Btn onClick={() => openForm()}>+ Nuevo partido</A_Btn>
       </div>
 
       {/* Season summary */}
@@ -1808,7 +1808,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           return acc;
         }, { pj: 0, v: 0, e: 0, d: 0, pf: 0, pc: 0, pts: 0 });
         return (
-          <Card className="border-zinc-700">
+          <A_Card className="border-zinc-700">
             <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Resumen de temporada</p>
             <div className="grid grid-cols-4 gap-2 text-center mb-3">
               <div><div className="text-2xl font-black text-white">{stats.pts}</div><div className="text-xs text-zinc-500">Puntos</div></div>
@@ -1827,19 +1827,19 @@ function PartidosSection({ team, data, onSave, isCoord }) {
               {stats.e > 0 && <div className="bg-yellow-500" style={{ flex: stats.e }} />}
               {stats.d > 0 && <div className="bg-red-600" style={{ flex: stats.d }} />}
             </div>
-          </Card>
+          </A_Card>
         );
       })()}
 
       <div className="space-y-3">
         {(data.matches || []).map(m => (
-          <Card key={m.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => openDetail(m)}>
+          <A_Card key={m.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => openDetail(m)}>
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-white font-bold">vs {m.rival}</span>
                   {m.resultado && <><span className="text-white font-black text-lg">{m.resultado}</span>{getResultBadge(m.resultado)}</>}
-                  {!m.resultado && <Badge color="zinc">Sin resultado</Badge>}
+                  {!m.resultado && <A_Badge color="zinc">Sin resultado</A_Badge>}
                 </div>
                 <div className="flex gap-3 text-xs text-zinc-400">
                   <span>📅 {m.fecha}</span>
@@ -1847,14 +1847,14 @@ function PartidosSection({ team, data, onSave, isCoord }) {
                 </div>
               </div>
               <div className="flex gap-1 ml-3" onClick={e => e.stopPropagation()}>
-                <Btn small variant="primary" onClick={() => openDetail(m)}>⭐ Valorar</Btn>
-                <Btn small variant="secondary" onClick={() => setAttMatch(m)}>📋 Asistencia</Btn>
-                {(data.coaches || []).length > 0 && isCoord && <Btn small variant="secondary" onClick={() => setCoachAttMatch(m)}>🧑‍🏫 Entrenadores</Btn>}
-                <Btn small variant="secondary" onClick={() => openForm(m)}>✏️ Editar</Btn>
-                <Btn small variant="danger" onClick={() => delMatch(m.id)}>🗑️ Borrar</Btn>
+                <A_Btn small variant="primary" onClick={() => openDetail(m)}>⭐ Valorar</A_Btn>
+                <A_Btn small variant="secondary" onClick={() => setAttMatch(m)}>📋 Asistencia</A_Btn>
+                {(data.coaches || []).length > 0 && isCoord && <A_Btn small variant="secondary" onClick={() => setCoachAttMatch(m)}>🧑‍🏫 Entrenadores</A_Btn>}
+                <A_Btn small variant="secondary" onClick={() => openForm(m)}>✏️ Editar</A_Btn>
+                <A_Btn small variant="danger" onClick={() => delMatch(m.id)}>🗑️ Borrar</A_Btn>
               </div>
             </div>
-          </Card>
+          </A_Card>
         ))}
         {(data.matches || []).length === 0 && <p className="text-zinc-500 text-sm">No hay partidos registrados.</p>}
       </div>
@@ -1865,7 +1865,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div><h3 className="text-white font-bold text-lg">Asistencia</h3><p className="text-zinc-400 text-sm">{attMatch.fecha} — vs {attMatch.rival}</p></div>
-              <Btn small variant="secondary" onClick={() => setAttMatch(null)}>✕</Btn>
+              <A_Btn small variant="secondary" onClick={() => setAttMatch(null)}>✕</A_Btn>
             </div>
             <div className="p-5 space-y-2">
               {(data.players || []).map(p => {
@@ -1880,7 +1880,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
                           className={`text-xs px-2 py-1 rounded border transition-all ${attStatusBtnClass(rec?.status, opt.val, opt.color)}`}
                         >{opt.label}</button>
                       ))}
-                      {rec && <Btn small variant="danger" onClick={() => delAttRecord(`m_${attMatch.id}`, p.id)}>✕</Btn>}
+                      {rec && <A_Btn small variant="danger" onClick={() => delAttRecord(`m_${attMatch.id}`, p.id)}>✕</A_Btn>}
                     </div>
                   </div>
                 );
@@ -1894,7 +1894,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div><h3 className="text-white font-bold text-lg">🧑‍🏫 Entrenadores</h3><p className="text-zinc-400 text-sm">{coachAttMatch.fecha} — vs {coachAttMatch.rival}</p></div>
-              <Btn small variant="secondary" onClick={() => setCoachAttMatch(null)}>✕</Btn>
+              <A_Btn small variant="secondary" onClick={() => setCoachAttMatch(null)}>✕</A_Btn>
             </div>
             <div className="p-5 space-y-2">
               {(data.coaches || []).length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
@@ -1910,7 +1910,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
                           className={`text-xs px-2 py-1 rounded border transition-all ${coachAttBtnClass(rec?.status, opt.val, opt.color)}`}
                         >{opt.label}</button>
                       ))}
-                      {rec && <Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</Btn>}
+                      {rec && <A_Btn small variant="danger" onClick={() => delCoachAttRecord(sessionId, c.id)}>✕</A_Btn>}
                     </div>
                   </div>
                 );
@@ -1980,27 +1980,27 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => { setActivePlayer(null); setSearchDate(""); }}>← Volver</Btn>
+          <A_Btn variant="ghost" onClick={() => { setActivePlayer(null); setSearchDate(""); }}>← Volver</A_Btn>
           <h2 className="text-xl font-bold text-white">{p.name}</h2>
         </div>
-        <Card>
+        <A_Card>
           <div className="flex gap-6 mb-3">
             <div className="text-center"><div className="text-2xl font-black text-green-400">{stats.present}</div><div className="text-xs text-zinc-500">Asistió</div></div>
             <div className="text-center"><div className="text-2xl font-black text-yellow-400">{stats.late}</div><div className="text-xs text-zinc-500">Tarde</div></div>
             <div className="text-center"><div className="text-2xl font-black text-red-400">{stats.absent}</div><div className="text-xs text-zinc-500">No asistió</div></div>
           </div>
-          <AttendanceChart {...stats} />
-        </Card>
-        <Input label="Buscar sesión por fecha" value={searchDate} onChange={e => setSearchDate(e.target.value)} placeholder="2024-10" />
+          <A_AttendanceChart {...stats} />
+        </A_Card>
+        <A_Input label="Buscar sesión por fecha" value={searchDate} onChange={e => setSearchDate(e.target.value)} placeholder="2024-10" />
         <div className="space-y-2">
           {filteredSessions.map(s => {
             const rec = (data.attendance || []).find(a => a.sessionId === s.id && a.playerId === p.id);
             return (
-              <Card key={s.id} className="flex flex-wrap items-center gap-3">
+              <A_Card key={s.id} className="flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white text-sm font-semibold">{s.fecha}</span>
-                    <Badge color={s.tipo === "Partido" ? "orange" : "blue"}>{s.tipo === "Partido" ? "🏀 Partido" : "🏃 Entrenamiento"}</Badge>
+                    <A_Badge color={s.tipo === "Partido" ? "orange" : "blue"}>{s.tipo === "Partido" ? "🏀 Partido" : "🏃 Entrenamiento"}</A_Badge>
                     <span className="text-zinc-400 text-xs truncate">{s.desc}</span>
                   </div>
                 </div>
@@ -2010,9 +2010,9 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
                       className={`text-xs px-2 py-1 rounded border transition-all ${statusBtnClass(rec?.status, opt.val, opt.color)}`}
                     >{opt.label}</button>
                   ))}
-                  {rec && <Btn small variant="danger" onClick={() => delRecord(s.id, p.id)}>✕</Btn>}
+                  {rec && <A_Btn small variant="danger" onClick={() => delRecord(s.id, p.id)}>✕</A_Btn>}
                 </div>
-              </Card>
+              </A_Card>
             );
           })}
           {filteredSessions.length === 0 && <p className="text-zinc-500 text-sm">No hay sesiones registradas.</p>}
@@ -2036,11 +2036,11 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
           const stats = getPlayerStats(p.id);
           const total = stats.present + stats.late + stats.absent;
           return (
-            <Card key={p.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => setActivePlayer(p)}>
+            <A_Card key={p.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => setActivePlayer(p)}>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <span className="text-white font-semibold">{p.name}</span>
-                  {total > 0 && <div className="mt-2"><AttendanceChart {...stats} /></div>}
+                  {total > 0 && <div className="mt-2"><A_AttendanceChart {...stats} /></div>}
                   {total === 0 && <p className="text-zinc-600 text-xs mt-1">Sin registros todavía</p>}
                 </div>
                 <div className="flex gap-3 text-xs shrink-0">
@@ -2050,7 +2050,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
                   <span className="text-zinc-500">→</span>
                 </div>
               </div>
-            </Card>
+            </A_Card>
           );
         })}
         {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
@@ -2278,31 +2278,31 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">⚙️ Gestión</h2>
 
-      <Card>
+      <A_Card>
         <h3 className="text-white font-semibold mb-2">📦 Archivar temporada</h3>
         <p className="text-zinc-400 text-sm mb-4">Guarda los datos actuales y empieza una nueva temporada. Los jugadores y entrenadores se conservan.</p>
-        <Btn onClick={doArchive} variant="secondary">{archiving ? "Archivando..." : "Archivar temporada actual"}</Btn>
-      </Card>
+        <A_Btn onClick={doArchive} variant="secondary">{archiving ? "Archivando..." : "Archivar temporada actual"}</A_Btn>
+      </A_Card>
 
       {seasons.length > 0 && (
-        <Card>
+        <A_Card>
           <h3 className="text-white font-semibold mb-3">📁 Temporadas archivadas</h3>
           <div className="space-y-2">
             {seasons.map((s, i) => (
               <div key={i} className="flex items-center gap-3 bg-zinc-800 rounded-lg px-4 py-3">
                 <span className="text-zinc-300 flex-1">{s.archivedAt ? new Date(s.archivedAt).toLocaleDateString("es-ES") : `Temporada ${i + 1}`}</span>
-                <Btn small variant="secondary" onClick={() => setViewingSeason(s)}>👁 Ver</Btn>
-                <Btn small variant="ghost" onClick={() => { if (window.confirm("¿Restaurar esta temporada? Los datos actuales se perderán.")) onRestore(s.data); }}>↩ Restaurar</Btn>
+                <A_Btn small variant="secondary" onClick={() => setViewingSeason(s)}>👁 Ver</A_Btn>
+                <A_Btn small variant="ghost" onClick={() => { if (window.confirm("¿Restaurar esta temporada? Los datos actuales se perderán.")) onRestore(s.data); }}>↩ Restaurar</A_Btn>
               </div>
             ))}
           </div>
-        </Card>
+        </A_Card>
       )}
 
-      <Card>
+      <A_Card>
         <h3 className="text-white font-semibold mb-2">🔑 Contraseñas de equipos</h3>
         {!editPwds ? (
-          <Btn variant="secondary" onClick={() => { setPwdInputs({ ...passwords }); setEditPwds(true); }}>Gestionar contraseñas</Btn>
+          <A_Btn variant="secondary" onClick={() => { setPwdInputs({ ...passwords }); setEditPwds(true); }}>Gestionar contraseñas</A_Btn>
         ) : (
           <div className="space-y-2">
             {TEAMS.map(t => (
@@ -2314,12 +2314,12 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
               </div>
             ))}
             <div className="flex gap-2 mt-3">
-              <Btn onClick={() => { onSavePasswords(pwdInputs); setEditPwds(false); }}>Guardar</Btn>
-              <Btn variant="secondary" onClick={() => setEditPwds(false)}>Cancelar</Btn>
+              <A_Btn onClick={() => { onSavePasswords(pwdInputs); setEditPwds(false); }}>Guardar</A_Btn>
+              <A_Btn variant="secondary" onClick={() => setEditPwds(false)}>Cancelar</A_Btn>
             </div>
           </div>
         )}
-      </Card>
+      </A_Card>
     </div>
   );
 }
@@ -2370,33 +2370,33 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
       </div>
       <div className="flex justify-between items-center">
         <p className="text-zinc-400 text-sm">Equipo: <span className="text-white font-semibold">{selectedTeam}</span></p>
-        <Btn onClick={() => open()}>+ Añadir entrenador</Btn>
+        <A_Btn onClick={() => open()}>+ Añadir entrenador</A_Btn>
       </div>
       {showForm && (
-        <Card className="border-green-900/50">
+        <A_Card className="border-green-900/50">
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <Input label="Nombre" value={name} onChange={e => setName(e.target.value)} />
-            <Input label="Rol (ej: Primer entrenador)" value={role} onChange={e => setRole(e.target.value)} />
+            <A_Input label="Nombre" value={name} onChange={e => setName(e.target.value)} />
+            <A_Input label="Rol (ej: Primer entrenador)" value={role} onChange={e => setRole(e.target.value)} />
           </div>
           <div className="flex gap-2">
-            <Btn onClick={save}>Guardar</Btn>
-            <Btn variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Btn>
+            <A_Btn onClick={save}>Guardar</A_Btn>
+            <A_Btn variant="secondary" onClick={() => setShowForm(false)}>Cancelar</A_Btn>
           </div>
-        </Card>
+        </A_Card>
       )}
       <div className="space-y-2">
         {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
         {coaches.map(c => (
-          <Card key={c.id} className="flex justify-between items-center">
+          <A_Card key={c.id} className="flex justify-between items-center">
             <div>
               <span className="text-white font-semibold">{c.name}</span>
               {c.role && <span className="text-zinc-400 text-sm ml-2">· {c.role}</span>}
             </div>
             <div className="flex gap-1">
-              <Btn small variant="secondary" onClick={() => open(c)}>✏️</Btn>
-              <Btn small variant="danger" onClick={() => del(c.id)}>🗑️</Btn>
+              <A_Btn small variant="secondary" onClick={() => open(c)}>✏️</A_Btn>
+              <A_Btn small variant="danger" onClick={() => del(c.id)}>🗑️</A_Btn>
             </div>
-          </Card>
+          </A_Card>
         ))}
       </div>
     </div>
@@ -2420,11 +2420,11 @@ function ResumenSection({ db }) {
 
   const getResultBadge = (resultado) => {
     const parts = parseResult(resultado);
-    if (!parts) return <Badge color="zinc">Sin resultado</Badge>;
+    if (!parts) return <A_Badge color="zinc">Sin resultado</A_Badge>;
     const [pf, pc] = parts;
-    if (pf > pc) return <Badge color="green">Victoria</Badge>;
-    if (pf < pc) return <Badge color="red">Derrota</Badge>;
-    return <Badge color="yellow">Empate</Badge>;
+    if (pf > pc) return <A_Badge color="green">Victoria</A_Badge>;
+    if (pf < pc) return <A_Badge color="red">Derrota</A_Badge>;
+    return <A_Badge color="yellow">Empate</A_Badge>;
   };
 
   const stats = matches.reduce((acc, m) => {
@@ -2451,7 +2451,7 @@ function ResumenSection({ db }) {
         ))}
       </div>
       {total > 0 && (
-        <Card>
+        <A_Card>
           <div className="flex flex-wrap gap-6 justify-around text-center">
             <div><div className="text-3xl font-black text-white">{total}</div><div className="text-xs text-zinc-500 mt-1">Partidos</div></div>
             <div><div className="text-3xl font-black text-green-400">{stats.v}</div><div className="text-xs text-zinc-500 mt-1">Victorias</div></div>
@@ -2468,23 +2468,23 @@ function ResumenSection({ db }) {
             <span className="text-green-400">{Math.round((stats.v / total) * 100)}% victorias</span>
             <span className="text-red-400">{Math.round((stats.d / total) * 100)}% derrotas</span>
           </div>
-        </Card>
+        </A_Card>
       )}
       <div className="space-y-2">
         {matches.length === 0 && <p className="text-zinc-500 text-sm">No hay partidos registrados para {selectedTeam}.</p>}
         {matches.map(m => (
-          <Card key={m.id} className="flex items-center gap-4">
+          <A_Card key={m.id} className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <span className="text-white font-semibold">vs {m.rival}</span>
-                {m.resultado ? <><span className="text-white font-black text-lg">{m.resultado}</span>{getResultBadge(m.resultado)}</> : <Badge color="zinc">Sin resultado</Badge>}
+                {m.resultado ? <><span className="text-white font-black text-lg">{m.resultado}</span>{getResultBadge(m.resultado)}</> : <A_Badge color="zinc">Sin resultado</A_Badge>}
               </div>
               <div className="flex gap-3 text-xs text-zinc-400">
                 <span>📅 {m.fecha}</span>
                 {m.lugar && <span>📍 {m.lugar}</span>}
               </div>
             </div>
-          </Card>
+          </A_Card>
         ))}
       </div>
     </div>
@@ -2684,7 +2684,7 @@ export default function AmicsApp() {
           <h1 className="text-2xl font-black text-white tracking-tight">Amics Castelló</h1>
           <p className="text-zinc-500 text-sm mt-1">Gestió esportiva de cantera</p>
         </div>
-        <Card className="border-zinc-700">
+        <A_Card className="border-zinc-700">
           <div className="space-y-4">
             <div>
               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
@@ -2693,14 +2693,14 @@ export default function AmicsApp() {
                 {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <Input label="Contraseña" type="password" value={password}
+            <A_Input label="Contraseña" type="password" value={password}
               onChange={e => { setPassword(e.target.value); setLoginError(""); }}
               onKeyDown={e => e.key === "Enter" && login()} placeholder="Introduce tu clave"
             />
             {loginError && <p className="text-red-400 text-xs">{loginError}</p>}
-            <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
+            <A_Btn onClick={login} className="w-full justify-center">Entrar</A_Btn>
           </div>
-        </Card>
+        </A_Card>
       </div>
     </div>
   );
@@ -2717,7 +2717,7 @@ export default function AmicsApp() {
             <span className="font-black text-white text-sm">Amics Castelló</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge color={isCoord ? "orange" : "blue"}>{isCoord ? `Coord. ${coordProfile}` : "Entrenador"}</Badge>
+            <A_Badge color={isCoord ? "orange" : "blue"}>{isCoord ? `Coord. ${coordProfile}` : "Entrenador"}</A_Badge>
           </div>
         </div>
 
@@ -2748,9 +2748,9 @@ export default function AmicsApp() {
         </nav>
 
         <div className="p-3 border-t border-zinc-800">
-          <Btn variant="ghost" small className="w-full justify-center" onClick={() => { setAuthState("login"); setPassword(""); }}>
+          <A_Btn variant="ghost" small className="w-full justify-center" onClick={() => { setAuthState("login"); setPassword(""); }}>
             Cerrar sesión
-          </Btn>
+          </A_Btn>
         </div>
       </div>
 
