@@ -5369,6 +5369,7 @@ function SelectorClubes({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════════
 function HomePublica({ onAcceder, club, onVolver }) {
   const c = club || CLUBS[0];
+  if (!c) return null;
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
