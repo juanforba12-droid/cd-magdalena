@@ -5510,7 +5510,7 @@ function RegistroScreen({ onVolver, onRegistroOk }) {
           "Alevin B":"WCQ","Alevin A":"NYS","Transicion":"HQV","Infantil B":"RGK","Infantil A":"BTP",
           "Cadete":"XMJ","Juvenil":"FVL"
         };
-        const COORD_PWD = "MGD";
+        const COORD_PWD = "MGD2026";
         const codigoOk = rol === "coordinador"
           ? codigo.trim().toUpperCase() === COORD_PWD
           : codigo.trim().toUpperCase() === (CODIGOS_EQUIPO[equipoSel] || "");
