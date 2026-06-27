@@ -5387,8 +5387,8 @@ function HomePublica({ onAcceder, club, onVolver }) {
         </div>
         <p className="text-zinc-500 text-sm mb-4">{c.ciudad}</p>
         <div className="flex gap-2 justify-center flex-wrap">
-          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Futbol 11</span>
-          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">5 equipos</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">{c.emoji} {c.deporte}</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">{c.equipos.length} equipos</span>
           <span className="text-xs px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Temporada 2025-26</span>
         </div>
       </div>
@@ -5409,7 +5409,7 @@ function HomePublica({ onAcceder, club, onVolver }) {
         <Card>
           {[["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Infantil gana 2-1 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
             <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
-              <div className="text-xs text-red-400 font-semibold mb-0.5">{tag}</div>
+              <div className="text-xs font-semibold mb-0.5" style={{color: c.colorAccent}}>{tag}</div>
               <div className="text-sm font-semibold text-white">{title}</div>
               <div className="text-xs text-zinc-500">{meta}</div>
             </div>
