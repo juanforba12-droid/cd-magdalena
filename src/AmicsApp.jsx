@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
-class ErrorBoundary extends React.Component {
+class A_ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(e) { console.error("Render error:", e); }
@@ -11,7 +11,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // ── Constantes Amics Castelló ──────────────────────────────────────────────────
-const TEAMS = [
+const A_TEAMS = [
   // Cantera real del club
   "Baby",
   "Prebenjamín",
@@ -30,10 +30,10 @@ const TEAMS = [
 const CLUB_COLOR_PRIMARY = "green";   // verde
 const CLUB_COLOR_HEX = "#16a34a";
 
-const COORDINATORS = ["Director Deportivo", "Coord. Cantera", "Coord. Prebenjamín", "Coord. Benjamín", "Coord. Alevín", "Coord. Infantil", "Coord. Cadete", "Coord. Junior"];
+const A_COORDINATORS = ["Director Deportivo", "Coord. Cantera", "Coord. Prebenjamín", "Coord. Benjamín", "Coord. Alevín", "Coord. Infantil", "Coord. Cadete", "Coord. Junior"];
 
 // Posiciones reales del baloncesto (FEB)
-const POSITIONS = [
+const A_POSITIONS = [
   // Exteriores
   "Base (1)",
   "Escolta (2)",
@@ -63,7 +63,7 @@ const MATCH_STATS_FIELDS = [
   { key: "nota", label: "Nota", tipo: "decimal" },
 ];
 
-function initState() {
+function A_initState() {
   const teams = {};
   TEAMS.forEach(t => {
     teams[t] = { players: [], trainings: [], matches: [], attendance: [], tasks: [], coaches: [] };
@@ -72,7 +72,7 @@ function initState() {
 }
 
 // ── Tiny UI components ────────────────────────────────────────────────────────
-const Btn = ({ children, onClick, variant = "primary", small, className = "" }) => {
+const A_Btn = ({ children, onClick, variant = "primary", small, className = "" }) => {
   const base = "font-bold rounded transition-all duration-150 cursor-pointer border-0 ";
   const sizes = small ? "px-3 py-1 text-xs" : "px-5 py-2 text-sm";
   const variants = {
@@ -84,7 +84,7 @@ const Btn = ({ children, onClick, variant = "primary", small, className = "" }) 
   return <button className={`${base}${sizes} ${variants[variant]} ${className}`} onClick={onClick}>{children}</button>;
 };
 
-const Input = ({ label, ...props }) => (
+const A_Input = ({ label, ...props }) => (
   <div className="flex flex-col gap-1">
     {label && <label className="text-xs text-zinc-400 uppercase tracking-wider">{label}</label>}
     <input
@@ -94,7 +94,7 @@ const Input = ({ label, ...props }) => (
   </div>
 );
 
-const Textarea = ({ label, ...props }) => (
+const A_Textarea = ({ label, ...props }) => (
   <div className="flex flex-col gap-1">
     {label && <label className="text-xs text-zinc-400 uppercase tracking-wider">{label}</label>}
     <textarea
@@ -105,11 +105,11 @@ const Textarea = ({ label, ...props }) => (
   </div>
 );
 
-const Card = ({ children, className = "", onClick }) => (
+const A_Card = ({ children, className = "", onClick }) => (
   <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-5 ${className}`} onClick={onClick}>{children}</div>
 );
 
-const Badge = ({ children, color = "zinc" }) => {
+const A_Badge = ({ children, color = "zinc" }) => {
   const colors = {
     zinc: "bg-zinc-800 text-zinc-300",
     red: "bg-red-900/60 text-red-300",
@@ -122,7 +122,7 @@ const Badge = ({ children, color = "zinc" }) => {
 };
 
 // ── Attendance mini-bar chart ──────────────────────────────────────────────────
-function AttendanceChart({ present, late, absent }) {
+function A_AttendanceChart({ present, late, absent }) {
   const total = present + late + absent || 1;
   const bars = [
     { label: "Asistió", val: present, color: "bg-green-500" },
@@ -150,7 +150,7 @@ function AttendanceChart({ present, late, absent }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Plantilla
 // ══════════════════════════════════════════════════════════════════════════════
-function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
+function A_PlantillaSection({ team, data, onSave, isCoord, seasons }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -506,11 +506,11 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PIZARRA (cancha de baloncesto)
 // ══════════════════════════════════════════════════════════════════════════════
-const PLAYER_COLORS = ["red", "yellow", "blue", "green"];
-const PLAYER_COLOR_STYLES = { red: "bg-red-600 border-red-400", yellow: "bg-yellow-500 border-yellow-300", blue: "bg-blue-600 border-blue-400", green: "bg-green-600 border-green-400" };
-const PLAYER_COLOR_HEX2 = { red: "#dc2626", yellow: "#eab308", blue: "#2563eb", green: "#16a34a" };
+const A_PLAYER_COLORS = ["red", "yellow", "blue", "green"];
+const A_PLAYER_COLOR_STYLES = { red: "bg-red-600 border-red-400", yellow: "bg-yellow-500 border-yellow-300", blue: "bg-blue-600 border-blue-400", green: "bg-green-600 border-green-400" };
+const A_PLAYER_COLOR_HEX2 = { red: "#dc2626", yellow: "#eab308", blue: "#2563eb", green: "#16a34a" };
 
-const MATERIALS = [
+const A_MATERIALS = [
   { id: "cono", label: "Cono 🟠", svg: <svg viewBox="0 0 24 24" fill="#f97316" className="w-5 h-5"><path d="M12 2L4 20h16L12 2z"/><ellipse cx="12" cy="20" rx="8" ry="2" fill="#f97316" opacity="0.4"/></svg> },
   { id: "cono_azul", label: "Cono 🔵", svg: <svg viewBox="0 0 24 24" fill="#2563eb" className="w-5 h-5"><path d="M12 2L4 20h16L12 2z"/><ellipse cx="12" cy="20" rx="8" ry="2" fill="#2563eb" opacity="0.4"/></svg> },
   { id: "aro", label: "Aro 🔵", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
@@ -524,13 +524,13 @@ const MATERIALS = [
   { id: "canasta", label: "Canasta", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white"><rect x="2" y="11" width="5" height="3" rx="0.5"/><line x1="7" y1="12.5" x2="11" y2="12.5" strokeWidth="1.5"/><circle cx="13" cy="12.5" r="2.5"/><line x1="13" y1="15" x2="13" y2="20" strokeWidth="1.5"/><line x1="10" y1="20" x2="16" y2="20" strokeWidth="1.5"/></svg> },
 ];
 
-const FIELD_TYPES = [
+const A_FIELD_TYPES = [
   { id: "full", label: "🏀 Cancha completa" },
   { id: "half", label: "½ Media cancha" },
   { id: "blank", label: "⬛ Libre" },
 ];
 
-function FieldMarkings({ type }) {
+function A_FieldMarkings({ type }) {
   if (type === "blank") return null;
   if (type === "half") return (
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 55 55" preserveAspectRatio="none">
@@ -603,7 +603,7 @@ function FieldMarkings({ type }) {
   );
 }
 
-function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange }) {
+function A_Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange }) {
   const [tool, setTool] = useState("player_red");
   const [playerNum, setPlayerNum] = useState(1);
   const [_fieldType, _setFieldType] = useState("full");
@@ -874,7 +874,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
 // ══════════════════════════════════════════════════════════════════════════════
 // TASK EDITOR MODAL
 // ══════════════════════════════════════════════════════════════════════════════
-const TASK_CATEGORIES = [
+const A_TASK_CATEGORIES = [
   { id: "tecnico", label: "🏀 Técnico", color: "green" },
   { id: "tactico", label: "♟️ Táctico", color: "blue" },
   { id: "fisico", label: "💪 Físico", color: "yellow" },
@@ -909,7 +909,7 @@ const EDAD_OPTS = [
   { id: "senior", label: "Senior" },
 ];
 
-function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
+function A_TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   const [nombre, setNombre] = useState(task?.nombre || "");
   const [minutos, setMinutos] = useState(task?.minutos || 10);
   const [desc, setDesc] = useState(task?.desc || "");
@@ -968,7 +968,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Tareas / Ejercicios
 // ══════════════════════════════════════════════════════════════════════════════
-function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord }) {
+function A_TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord }) {
   const [editing, setEditing] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
   const [libTab, setLibTab] = useState("equipo");
@@ -1068,7 +1068,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenamientos
 // ══════════════════════════════════════════════════════════════════════════════
-function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }) {
+function A_EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }) {
   const [view, setView] = useState("list");
   const [editing, setEditing] = useState(null);
   const [taskEditor, setTaskEditor] = useState(null);
@@ -1535,7 +1535,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord, globalTasks = [] }
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Partidos
 // ══════════════════════════════════════════════════════════════════════════════
-function PartidosSection({ team, data, onSave, isCoord }) {
+function A_PartidosSection({ team, data, onSave, isCoord }) {
   const [view, setView] = useState("list");
   const [editing, setEditing] = useState(null);
   const [activeMatch, setActiveMatch] = useState(null);
@@ -1926,7 +1926,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Asistencia
 // ══════════════════════════════════════════════════════════════════════════════
-function AsistenciaSection({ team, data, onSave, isCoord }) {
+function A_AsistenciaSection({ team, data, onSave, isCoord }) {
   const [activePlayer, setActivePlayer] = useState(null);
   const [searchDate, setSearchDate] = useState("");
 
@@ -2062,7 +2062,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Clasificaciones (estadísticas de baloncesto)
 // ══════════════════════════════════════════════════════════════════════════════
-function ClasificacionSection({ team, data }) {
+function A_ClasificacionSection({ team, data }) {
   const [tab, setTab] = useState("puntos");
 
   const players = data.players || [];
@@ -2179,7 +2179,7 @@ function ClasificacionSection({ team, data }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Mejores Rivales
 // ══════════════════════════════════════════════════════════════════════════════
-function MejoresRivalesSection({ db }) {
+function A_MejoresRivalesSection({ db }) {
   const [filterTeam, setFilterTeam] = useState("all");
   const allRivales = [];
   Object.keys(db).forEach(team => {
@@ -2253,7 +2253,7 @@ function MejoresRivalesSection({ db }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Gestión
 // ══════════════════════════════════════════════════════════════════════════════
-function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }) {
+function A_GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }) {
   const [seasons, setSeasons] = useState([]);
   const [viewingSeason, setViewingSeason] = useState(null);
   const [viewingTeam, setViewingTeam] = useState(TEAMS[0]);
@@ -2327,7 +2327,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenadores
 // ══════════════════════════════════════════════════════════════════════════════
-function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
+function A_EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
   const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -2406,7 +2406,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Resumen
 // ══════════════════════════════════════════════════════════════════════════════
-function ResumenSection({ db }) {
+function A_ResumenSection({ db }) {
   const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
   const teamData = db[selectedTeam] || { matches: [] };
   const matches = (teamData.matches || []).sort((a, b) => b.fecha.localeCompare(a.fecha));
