@@ -3708,7 +3708,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
   const [viewingTeam, setViewingTeam] = useState(TEAMS[0]);
   const [confirming, setConfirming] = useState(false);
   const [confirmingRestore, setConfirmingRestore] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [ajustesTab, setAjustesTab] = useState("temporadas");
   const [editPwd, setEditPwd] = useState({});
   const [pwdSaving, setPwdSaving] = useState(false);
