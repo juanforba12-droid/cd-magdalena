@@ -5780,9 +5780,10 @@ export default function App() {
       setShowProfilePicker(false);
       setAuthState("app");
     } else if (r === "entrenador") {
+      const equipo = user.equipo && TEAMS.includes(user.equipo) ? user.equipo : TEAMS[0];
       setRole("trainer");
-      setTeamAccess(TEAMS[0]);
-      setActiveTeam(TEAMS[0]);
+      setTeamAccess(equipo);
+      setActiveTeam(equipo);
       setActiveSection("plantilla");
       setAuthState("app");
     } else {
