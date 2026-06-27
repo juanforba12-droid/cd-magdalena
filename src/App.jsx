@@ -5523,9 +5523,15 @@ export default function App() {
 
   const availableTeams = isCoord ? TEAMS : [teamAccess];
 
+  if (authState === "home") return <HomePublica onAcceder={() => setAuthState("login")} />;
+
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center flex-col gap-4">
       <div className="text-zinc-400 text-sm animate-pulse">Cargando...</div>
+      <button
+        onClick={() => setLoading(false)}
+        className="text-zinc-600 text-xs underline"
+      >Si tarda mucho, pulsa aqui</button>
     </div>
   );
 
