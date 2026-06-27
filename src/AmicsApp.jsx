@@ -2759,6 +2759,7 @@ export default function AmicsApp() {
         <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0">
           <button onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-800 transition-all">☰</button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent("volverSelector"))} className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all ml-1">🏠 Clubes</button>
           <span className="text-white font-semibold">
             {sections.find(s => s.id === activeSection)?.icon} {sections.find(s => s.id === activeSection)?.label}
             <span className="text-zinc-500 font-normal ml-2">— {activeTeam}</span>

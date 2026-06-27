@@ -5696,6 +5696,12 @@ export default function App() {
     return () => window.removeEventListener("openInformes", handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => { setAuthState("selector"); setClubActual(null); };
+    window.addEventListener("volverSelector", handler);
+    return () => window.removeEventListener("volverSelector", handler);
+  }, []);
+
   const isCoord = role === "coordinator";
 
   const sections = [
