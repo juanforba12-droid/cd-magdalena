@@ -5978,14 +5978,7 @@ export default function App() {
     </div>
   );
 
-  if (authState === "app" && clubActual?.id === "amics") return (
-    <React.Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="text-zinc-400 text-sm animate-pulse">Cargando Amics...</div></div>}>
-      <ErrorBoundary>
-        <AmicsApp />
-      </ErrorBoundary>
-    </React.Suspense>
-  );
-  if (authState === "app" && clubActual?.id === "amics") return <AmicsApp />;
+  if (authState === "app" && clubActual?.id === "amics") return <AmicsApp currentUser={currentUser} onVolver={() => setAuthState("home")} onSalir={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState("selector"); setCurrentUser(null); setClubActual(null); setRole(null); }} />;
   const teamData = db[activeTeam] || { players: [], trainings: [], matches: [], attendance: [] };
 
   return (
