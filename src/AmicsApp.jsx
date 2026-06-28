@@ -2494,14 +2494,14 @@ function BC_ResumenSection({ db }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // APP PRINCIPAL
 // ══════════════════════════════════════════════════════════════════════════════
-export default function AmicsApp({ currentUser, onVolver, onSalir }) {
-  const [authState, setAuthState] = useState("login");
-  const [role, setRole] = useState(null);
-  const [teamAccess, setTeamAccess] = useState(null);
+export default function AmicsApp({ currentUser: extUser, onVolver, onSalir }) {
+  const [authState, setAuthState] = useState(extUser ? "app" : "login");
+  const [role, setRole] = useState(extUser?.rol === "coordinador" ? "coordinator" : extUser?.rol === "entrenador" ? "trainer" : null);
+  const [teamAccess, setTeamAccess] = useState(extUser?.equipo || null);
   const [password, setPassword] = useState("");
   const [teamPasswords, setTeamPasswords] = useState({});
   const [globalTasks, setGlobalTasks] = useState([]);
-  const [coordProfile, setCoordProfile] = useState("");
+  const [coordProfile, setCoordProfile] = useState(extUser?.nombre || "");
   const [showProfilePicker, setShowProfilePicker] = useState(false);
   const [teamInput, setTeamInput] = useState("Coordinador");
   const [loginError, setLoginError] = useState("");
