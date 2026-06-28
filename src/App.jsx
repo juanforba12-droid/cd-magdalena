@@ -5695,20 +5695,31 @@ function GestionClubSection({ clubActual }) {
   const [tab, setTab] = React.useState("equipos");
 
   React.useEffect(() => {
-    Promise.all([loadEquipos(prefix), loadUsuariosClub(prefix)]).then(([eq, us]) => {
-      if (eq.length === 0 && TEAMS.length > 0) {
-        const migrados = TEAMS.map(nombre => ({
-          nombre,
-          password: Object.entries({...TEAM_PASSWORDS}).find(([k]) => k === nombre)?.[1] || "",
-          creadoEn: new Date().toISOString()
-        }));
-        saveEquipos(prefix, migrados).then(() => setEquipos(migrados));
-      } else {
-        setEquipos(eq);
+    const cargar = async () => {
+      try {
+        const [eq, us] = await Promise.all([
+          loadEquipos(prefix).catch(() => []),
+          loadUsuariosClub(prefix).catch(() => [])
+        ]);
+        if (eq.length === 0 && TEAMS.length > 0) {
+          const migrados = TEAMS.map(nombre => ({
+            nombre,
+            password: Object.entries({...TEAM_PASSWORDS}).find(([k]) => k === nombre)?.[1] || "",
+            creadoEn: new Date().toISOString()
+          }));
+          await saveEquipos(prefix, migrados).catch(() => {});
+          setEquipos(migrados);
+        } else {
+          setEquipos(eq);
+        }
+        setUsuarios(us);
+      } catch(e) {
+        console.error("Error cargando gestion:", e);
+      } finally {
+        setLoading(false);
       }
-      setUsuarios(us);
-      setLoading(false);
-    });
+    };
+    cargar();
   }, [prefix]);
 
   const crearEquipo = async () => {
