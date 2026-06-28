@@ -5841,10 +5841,11 @@ function GestionClubSection({ clubActual }) {
                           <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                             {(u.nombre || u.email || "?")[0].toUpperCase()}
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <div className="text-white text-xs font-semibold">{u.nombre}</div>
                             <div className="text-zinc-500 text-xs">{u.email}</div>
                           </div>
+                          <Badge color={getRolUsuario(u) === "entrenador" ? "blue" : "zinc"}>{getRolUsuario(u)}</Badge>
                         </div>
                       ))
                     )}
