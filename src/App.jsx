@@ -5771,8 +5771,16 @@ function GestionClubSection({ clubActual }) {
       const clubId = clubInfo?.id || "magdalena";
       const roles = u.roles || {};
       const clubRol = roles[clubId];
-      return clubRol?.equipo === nombreEquipo || u.equipo === nombreEquipo;
+      const equipo = clubRol?.equipo || u.equipo || null;
+      return equipo === nombreEquipo;
     });
+  };
+
+  const getRolUsuario = (u) => {
+    const clubId = clubInfo?.id || "magdalena";
+    const roles = u.roles || {};
+    const clubRol = roles[clubId];
+    return clubRol?.rol || u.rol || "familiar";
   };
 
   const ROL_COLOR = { coordinador: "red", entrenador: "blue", familiar: "zinc" };
@@ -5808,7 +5816,7 @@ function GestionClubSection({ clubActual }) {
                     <Input label="Nombre" value={editNombre} onChange={e => setEditNombre(e.target.value)} />
                     <Input label="Contraseña" value={editPassword} onChange={e => setEditPassword(e.target.value.toUpperCase())} />
                     <Btn small onClick={guardarEdicion}>Guardar</Btn>
-                    <Btn small variant="secondary" onClick={() => setEditando(null)}>Cancelar</Btn>
+                    <Btn small variant="secondary" onClick={() => { setEditando(null); setEditNombre(""); setEditPassword(""); }}>Cancelar</Btn>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
