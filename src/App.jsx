@@ -5407,25 +5407,45 @@ function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }
       <div className="p-5 border-b border-zinc-800">
         <h2 className="text-sm font-bold text-white mb-3">Resultados recientes</h2>
         <Card>
-          {[["Infantil","2-1","V"],["Juvenil B","1-1","E"],["Amateur","0-2","D"]].map(([eq,res,r]) => (
-            <div key={eq} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
-              <span className="text-zinc-400 text-sm flex-1">{eq}</span>
-              <span className="text-white font-bold text-sm">{res}</span>
-              <Badge color={r==="V"?"green":r==="D"?"red":"yellow"}>{r==="V"?"Victoria":r==="D"?"Derrota":"Empate"}</Badge>
-            </div>
-          ))}
+          {c.deporte === "Baloncesto" ? (
+            [["Infantil A","72-68","V"],["Cadete A","58-61","D"],["Junior A","81-75","V"]].map(([eq,res,r]) => (
+              <div key={eq} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+                <span className="text-zinc-400 text-sm flex-1">{eq}</span>
+                <span className="text-white font-bold text-sm">{res}</span>
+                <Badge color={r==="V"?"green":"red"}>{r==="V"?"Victoria":"Derrota"}</Badge>
+              </div>
+            ))
+          ) : (
+            [["Infantil","2-1","V"],["Juvenil B","1-1","E"],["Amateur","0-2","D"]].map(([eq,res,r]) => (
+              <div key={eq} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+                <span className="text-zinc-400 text-sm flex-1">{eq}</span>
+                <span className="text-white font-bold text-sm">{res}</span>
+                <Badge color={r==="V"?"green":r==="D"?"red":"yellow"}>{r==="V"?"Victoria":r==="D"?"Derrota":"Empate"}</Badge>
+              </div>
+            ))
+          )}
         </Card>
       </div>
       <div className="p-5 border-b border-zinc-800">
         <h2 className="text-sm font-bold text-white mb-3">Ultimas noticias</h2>
         <Card>
-          {[["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Infantil gana 2-1 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
-            <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
-              <div className="text-xs font-semibold mb-0.5" style={{color: c.colorAccent}}>{tag}</div>
-              <div className="text-sm font-semibold text-white">{title}</div>
-              <div className="text-xs text-zinc-500">{meta}</div>
-            </div>
-          ))}
+          {c.deporte === "Baloncesto" ? (
+            [["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Junior A gana 81-75 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico de baloncesto 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
+              <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
+                <div className="text-xs font-semibold mb-0.5" style={{color: c.colorAccent}}>{tag}</div>
+                <div className="text-sm font-semibold text-white">{title}</div>
+                <div className="text-xs text-zinc-500">{meta}</div>
+              </div>
+            ))
+          ) : (
+            [["Captacion","Inscripcion abierta para la temporada 2026-27","Hace 2h"],["Resultados","El Infantil gana 2-1 en el primer amistoso","Ayer"],["Club","Presentacion del cuerpo tecnico 2026-27","Hace 3 dias"]].map(([tag,title,meta]) => (
+              <div key={title} className="py-2 border-b border-zinc-800 last:border-0">
+                <div className="text-xs font-semibold mb-0.5" style={{color: c.colorAccent}}>{tag}</div>
+                <div className="text-sm font-semibold text-white">{title}</div>
+                <div className="text-xs text-zinc-500">{meta}</div>
+              </div>
+            ))
+          )}
         </Card>
       </div>
       <div className="p-5 border-b border-zinc-800">
