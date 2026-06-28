@@ -5477,7 +5477,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
     } else {
       try { localStorage.removeItem("mgd_remember"); } catch(e) {}
     }
-    try { localStorage.setItem("mgd_session", JSON.stringify({ user: res.user, clubId: club?.id || "magdalena" })); } catch(e) {}
+    try { localStorage.setItem("mgd_session", JSON.stringify({ user: res.user, clubId: club?.id || clubActual?.id || "magdalena" })); } catch(e) {}
     onLoginOk(res.user);
   };
 
@@ -5672,13 +5672,14 @@ export default function App() {
   const [authState, setAuthState] = useState(savedSession ? "app" : "selector");
   const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : null);
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
-  const [role, setRole] = useState(null); // coordinator | trainer
-  const [teamAccess, setTeamAccess] = useState(null);
+  const savedRole = savedSession?.user?.rol === "coordinador" ? "coordinator" : savedSession?.user?.rol === "entrenador" ? "trainer" : savedSession?.user?.rol === "familiar" ? "familiar" : null;
+  const [role, setRole] = useState(savedRole);
+  const [teamAccess, setTeamAccess] = useState(savedSession?.user?.equipo || null);
   const [password, setPassword] = useState("");
   const [teamPasswords, setTeamPasswords] = useState({});
   const [globalTasks, setGlobalTasks] = useState([]);
-  const [coordProfile, setCoordProfile] = useState("");
-  const [showProfilePicker, setShowProfilePicker] = useState(false);
+  const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
+  const [showProfilePicker, setShowProfilePicker] = useState(false); // nunca mostrar si hay sesion guardada
   const [teamInput, setTeamInput] = useState("Coordinador");
   const [loginError, setLoginError] = useState("");
 
@@ -5686,7 +5687,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState([]);
 
-  const [activeTeam, setActiveTeam] = useState(null);
+  const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || null);
   const [activeSection, setActiveSection] = useState("plantilla");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [informesPlayer, setInformesPlayer] = useState(null);
