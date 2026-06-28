@@ -5920,6 +5920,14 @@ export default function App() {
     <SelectorClubes onSelect={(club) => {
       setClubActual(club);
       try { localStorage.setItem("mgd_club", club.id); } catch(e) {}
+      try {
+        const sess = JSON.parse(localStorage.getItem("mgd_session"));
+        if (sess && sess.clubId !== club.id) {
+          localStorage.removeItem("mgd_session");
+          setCurrentUser(null);
+          setRole(null);
+        }
+      } catch(e) {}
       setAuthState("home");
     }} />
   );
