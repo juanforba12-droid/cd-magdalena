@@ -5696,7 +5696,16 @@ function GestionClubSection({ clubActual }) {
 
   React.useEffect(() => {
     Promise.all([loadEquipos(prefix), loadUsuariosClub(prefix)]).then(([eq, us]) => {
-      setEquipos(eq);
+      if (eq.length === 0 && TEAMS.length > 0) {
+        const migrados = TEAMS.map(nombre => ({
+          nombre,
+          password: Object.entries({...TEAM_PASSWORDS}).find(([k]) => k === nombre)?.[1] || "",
+          creadoEn: new Date().toISOString()
+        }));
+        saveEquipos(prefix, migrados).then(() => setEquipos(migrados));
+      } else {
+        setEquipos(eq);
+      }
       setUsuarios(us);
       setLoading(false);
     });
