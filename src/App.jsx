@@ -5677,12 +5677,30 @@ export default function App() {
     } catch(e) { return null; }
   })();
   const savedSession = (() => {
-    try { return JSON.parse(localStorage.getItem("mgd_session")); } catch(e) { return null; }
+    try {
+      const s = JSON.parse(localStorage.getItem("mgd_session"));
+      if (!s || !s.user) return null;
+      // Verificar que tiene roles por club validos
+      const clubId = s.clubId || "magdalena";
+      const roles = s.user.roles || {};
+      const clubRol = roles[clubId];
+      if (!clubRol && !(clubId === "magdalena" && s.user.rol)) {
+        localStorage.removeItem("mgd_session");
+        return null;
+      }
+      // Asegurar rolActual correcto para el club
+      if (clubRol) {
+        s.user.rolActual = clubRol.rol;
+        s.user.equipoActual = clubRol.equipo;
+      }
+      return s;
+    } catch(e) { return null; }
   })();
   const [authState, setAuthState] = useState(savedSession ? "app" : "selector");
   const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : null);
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
-  const savedRole = savedSession?.user?.rol === "coordinador" ? "coordinator" : savedSession?.user?.rol === "entrenador" ? "trainer" : savedSession?.user?.rol === "familiar" ? "familiar" : null;
+  const savedRolRaw = savedSession?.user?.rolActual || savedSession?.user?.rol;
+  const savedRole = savedRolRaw === "coordinador" ? "coordinator" : savedRolRaw === "entrenador" ? "trainer" : savedRolRaw === "familiar" ? "familiar" : null;
   const [role, setRole] = useState(savedRole);
   const [teamAccess, setTeamAccess] = useState(savedSession?.user?.equipo || null);
   const [password, setPassword] = useState("");
