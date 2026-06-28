@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
 import AmicsApp from "./AmicsApp";
 
@@ -5680,6 +5680,149 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECCION: Banco de jugadores del club
+// ══════════════════════════════════════════════════════════════════════════════
+function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
+  const clubInfo = CLUBS.find(c => c.id === clubActual?.id) || CLUBS[0];
+  const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
+  const [jugadores, setJugadores] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState("");
+  const [showForm, setShowForm] = React.useState(false);
+  const [editJ, setEditJ] = React.useState(null);
+  const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
+  const [tab, setTab] = React.useState("todos");
+
+  React.useEffect(() => {
+    loadBancoJugadores(prefix).then(js => { setJugadores(js); setLoading(false); }).catch(() => setLoading(false));
+  }, [prefix]);
+
+  const POSICIONES = ["Portero","Defensa Central","Lateral Derecho","Lateral Izquierdo","Mediocentro","Mediapunta","Extremo Derecho","Extremo Izquierdo","Delantero"];
+  const ESTADOS = ["disponible","probando","lesionado","inactivo"];
+  const ESTADO_COLOR = { disponible:"green", probando:"yellow", lesionado:"red", inactivo:"zinc" };
+
+  const save = async (nuevos) => {
+    await saveBancoJugadores(prefix, nuevos);
+    setJugadores(nuevos);
+  };
+
+  const openForm = (j = null) => {
+    setEditJ(j?.id || null);
+    setForm(j ? { nombre:j.nombre||"", fechaNac:j.fechaNac||"", dni:j.dni||"", telefono:j.telefono||"", posicion:j.posicion||"", estado:j.estado||"disponible", notas:j.notas||"" } : { nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
+    setShowForm(true);
+  };
+
+  const guardarJugador = async () => {
+    if (!form.nombre.trim()) return;
+    let nuevos;
+    if (editJ) {
+      nuevos = jugadores.map(j => j.id === editJ ? { ...j, ...form } : j);
+    } else {
+      const nuevo = { ...form, id: Date.now().toString(), creadoEn: new Date().toISOString() };
+      nuevos = [...jugadores, nuevo];
+    }
+    await save(nuevos);
+    setShowForm(false);
+    setEditJ(null);
+  };
+
+  const eliminarJugador = async (id) => {
+    if (!window.confirm("Eliminar jugador?")) return;
+    await save(jugadores.filter(j => j.id !== id));
+  };
+
+  const calcEdad = (fechaNac) => {
+    if (!fechaNac) return "-";
+    const hoy = new Date();
+    const nac = new Date(fechaNac);
+    return hoy.getFullYear() - nac.getFullYear() - (hoy < new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate()) ? 1 : 0);
+  };
+
+  const jugadoresFiltrados = jugadores
+    .filter(j => tab === "todos" ? true : j.estado === tab)
+    .filter(j => !search || j.nombre.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => (a.fechaNac || "").localeCompare(b.fechaNac || ""));
+
+  if (loading) return <div className="p-6 text-zinc-500 text-sm">Cargando...</div>;
+
+  return (
+    <div className="p-6 max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-white">Banco de Jugadores</h2>
+        <Btn onClick={() => openForm()}>+ Añadir jugador</Btn>
+      </div>
+
+      {showForm && (
+        <Card className="mb-6">
+          <h3 className="text-sm font-semibold text-white mb-4">{editJ ? "Editar jugador" : "Nuevo jugador"}</h3>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Input label="Nombre completo" value={form.nombre} onChange={e => setForm({...form, nombre:e.target.value})} placeholder="Nombre y apellidos" />
+            <Input label="Fecha de nacimiento" type="date" value={form.fechaNac} onChange={e => setForm({...form, fechaNac:e.target.value})} />
+            <Input label="DNI / NIE" value={form.dni} onChange={e => setForm({...form, dni:e.target.value})} placeholder="12345678A" />
+            <Input label="Teléfono" value={form.telefono} onChange={e => setForm({...form, telefono:e.target.value})} placeholder="+34 600 000 000" />
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posición</label>
+              <select value={form.posicion} onChange={e => setForm({...form, posicion:e.target.value})}
+                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm w-full">
+                <option value="">Sin posición</option>
+                {POSICIONES.map(p => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Estado</label>
+              <select value={form.estado} onChange={e => setForm({...form, estado:e.target.value})}
+                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm w-full">
+                {ESTADOS.map(e => <option key={e}>{e}</option>)}
+              </select>
+            </div>
+          </div>
+          <Input label="Notas" value={form.notas} onChange={e => setForm({...form, notas:e.target.value})} placeholder="Observaciones..." />
+          <div className="flex gap-2 mt-3">
+            <Btn onClick={guardarJugador}>Guardar</Btn>
+            <Btn variant="secondary" onClick={() => { setShowForm(false); setEditJ(null); }}>Cancelar</Btn>
+          </div>
+        </Card>
+      )}
+
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {["todos","disponible","probando","lesionado","inactivo"].map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${tab===t?"bg-red-700 text-white":"bg-zinc-800 text-zinc-400 hover:text-white"}`}>
+            {t === "todos" ? `Todos (${jugadores.length})` : `${t} (${jugadores.filter(j=>j.estado===t).length})`}
+          </button>
+        ))}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..."
+          className="ml-auto bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-zinc-100 text-xs w-48 focus:outline-none" />
+      </div>
+
+      <Card>
+        {jugadoresFiltrados.length === 0 && <p className="text-zinc-500 text-sm py-2">No hay jugadores.</p>}
+        {jugadoresFiltrados.map(j => (
+          <div key={j.id} className="flex items-center gap-3 py-2.5 border-b border-zinc-800 last:border-0">
+            <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+              {j.nombre[0]?.toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-sm font-semibold">{j.nombre}</div>
+              <div className="text-zinc-500 text-xs flex gap-3">
+                {j.fechaNac && <span>{calcEdad(j.fechaNac)} años · {j.fechaNac}</span>}
+                {j.posicion && <span>{j.posicion}</span>}
+                {j.telefono && <span>{j.telefono}</span>}
+              </div>
+            </div>
+            <Badge color={ESTADO_COLOR[j.estado] || "zinc"}>{j.estado}</Badge>
+            {onAddToEquipo && <Btn small variant="secondary" onClick={() => onAddToEquipo(j)}>+ Equipo</Btn>}
+            <Btn small onClick={() => openForm(j)}>Editar</Btn>
+            <Btn small variant="danger" onClick={() => eliminarJugador(j.id)}>Eliminar</Btn>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SECCION: Gestión de equipos y usuarios del club
 // ══════════════════════════════════════════════════════════════════════════════
@@ -5998,6 +6141,7 @@ export default function App() {
     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
+    ...(isCoord ? [{ id: "banco", label: "Banco de Jugadores", icon: "🗂️" }] : []),
     ...(isCoord ? [{ id: "mejoresrivales", label: "Mejores Rivales", icon: "⭐" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
@@ -6364,6 +6508,9 @@ export default function App() {
             {activeSection === "mejoresrivales" && isCoord && (
         <MejoresRivalesSection db={db} />
       )}
+      {activeSection === "banco" && isCoord && (
+              <BancoJugadoresSection clubActual={clubActual} />
+            )}
       {activeSection === "gestion" && isCoord && (
               <div>
                 <GestionClubSection clubActual={clubActual} onEquiposChange={(eqs) => setEquiposDinamicos(eqs.map(e => e.nombre))} />

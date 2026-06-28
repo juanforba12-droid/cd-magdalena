@@ -264,3 +264,19 @@ export async function loadUsuariosClub(prefix) {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch(e) { return []; }
 }
+
+// ── Banco de jugadores del club ───────────────────────────────────────────────
+export async function loadBancoJugadores(prefix) {
+  try {
+    const snap = await getDoc(doc(db, prefix + "_config", "banco_jugadores"));
+    if (!snap.exists()) return [];
+    return snap.data().jugadores || [];
+  } catch(e) { return []; }
+}
+
+export async function saveBancoJugadores(prefix, jugadores) {
+  try {
+    await setDoc(doc(db, prefix + "_config", "banco_jugadores"), { jugadores });
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
