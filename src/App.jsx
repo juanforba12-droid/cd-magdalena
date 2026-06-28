@@ -6288,7 +6288,7 @@ export default function App() {
         {isCoord && (
           <div className="p-3 border-b border-zinc-800">
             <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
-            {TEAMS.map(t => (
+            {teamsToUse.map(t => (
               <button
                 key={t}
                 onClick={() => setActiveTeam(t)}
