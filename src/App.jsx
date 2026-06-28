@@ -5762,9 +5762,13 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
       ? { ...e, nombre: editNombre.trim(), password: editPassword.trim().toUpperCase() }
       : e
     );
-    await saveEquipos(prefix, nuevos);
-    setEquipos(nuevos);
+    const sinDups = nuevos.filter((e, i, arr) => arr.findIndex(x => x.nombre === e.nombre) === i);
+    await saveEquipos(prefix, sinDups);
+    setEquipos(sinDups);
+    if (onEquiposChange) onEquiposChange(sinDups);
     setEditando(null);
+    setEditNombre("");
+    setEditPassword("");
   };
 
   const jugadoresDeEquipo = (nombreEquipo) => {
