@@ -5940,6 +5940,17 @@ export default function App() {
   const [globalTasks, setGlobalTasks] = useState([]);
   const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
   const [equiposDinamicos, setEquiposDinamicos] = useState([]);
+  // Cargar equipos al inicializar si hay sesion
+  React.useEffect(() => {
+    if (authState === "app" && clubActual?.id) {
+      const { CLUBS: C } = { CLUBS };
+      const clubInfo = CLUBS.find(c => c.id === clubActual.id) || CLUBS[0];
+      const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
+      loadEquipos(prefix).then(eqs => {
+        if (eqs && eqs.length > 0) setEquiposDinamicos(eqs.map(e => e.nombre));
+      }).catch(() => {});
+    }
+  }, []);
   const [showProfilePicker, setShowProfilePicker] = useState(false); // nunca mostrar si hay sesion guardada
   const [teamInput, setTeamInput] = useState("Coordinador");
   const [loginError, setLoginError] = useState("");
