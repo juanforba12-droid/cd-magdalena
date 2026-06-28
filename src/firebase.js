@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, getDocs, collection } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -240,4 +240,27 @@ export function getClubDb(firebaseConfig) {
   const existingApp = getApps().find(a => a.name === appName);
   const app2 = existingApp || initializeApp(firebaseConfig, appName);
   return getFirestore(app2);
+}
+
+// ── Gestión de equipos por club ───────────────────────────────────────────────
+export async function loadEquipos(prefix) {
+  try {
+    const snap = await getDoc(doc(db, prefix + "_config", "equipos"));
+    if (!snap.exists()) return [];
+    return snap.data().lista || [];
+  } catch(e) { return []; }
+}
+
+export async function saveEquipos(prefix, equipos) {
+  try {
+    await setDoc(doc(db, prefix + "_config", "equipos"), { lista: equipos });
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+export async function loadUsuariosClub(prefix) {
+  try {
+    const snap = await getDocs(collection(db, prefix + "_usuarios"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { return []; }
 }

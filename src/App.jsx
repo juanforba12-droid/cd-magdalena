@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub } from "./firebase";
 import { CLUBS } from "./clubs";
 import AmicsApp from "./AmicsApp";
 
@@ -5679,6 +5679,117 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECCION: Gestión de equipos y usuarios del club
+// ══════════════════════════════════════════════════════════════════════════════
+function GestionClubSection({ clubActual }) {
+  const prefix = clubActual?.firestorePrefix || "cdmagdalena";
+  const [equipos, setEquipos] = React.useState([]);
+  const [usuarios, setUsuarios] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [nuevoEquipo, setNuevoEquipo] = React.useState("");
+  const [nuevaPassword, setNuevaPassword] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState("");
+  const [tab, setTab] = React.useState("equipos");
+
+  React.useEffect(() => {
+    Promise.all([loadEquipos(prefix), loadUsuariosClub(prefix)]).then(([eq, us]) => {
+      setEquipos(eq);
+      setUsuarios(us);
+      setLoading(false);
+    });
+  }, [prefix]);
+
+  const crearEquipo = async () => {
+    if (!nuevoEquipo.trim() || !nuevaPassword.trim()) { setMsg("Pon nombre y contraseña."); return; }
+    if (equipos.find(e => e.nombre === nuevoEquipo.trim())) { setMsg("Ya existe ese equipo."); return; }
+    setSaving(true);
+    const nuevo = { nombre: nuevoEquipo.trim(), password: nuevaPassword.trim().toUpperCase(), creadoEn: new Date().toISOString() };
+    const nuevos = [...equipos, nuevo];
+    const res = await saveEquipos(prefix, nuevos);
+    if (res.ok) { setEquipos(nuevos); setNuevoEquipo(""); setNuevaPassword(""); setMsg("Equipo creado."); }
+    else { setMsg("Error: " + res.error); }
+    setSaving(false);
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  const eliminarEquipo = async (nombre) => {
+    if (!window.confirm("Eliminar equipo " + nombre + "?")) return;
+    const nuevos = equipos.filter(e => e.nombre !== nombre);
+    await saveEquipos(prefix, nuevos);
+    setEquipos(nuevos);
+  };
+
+  const ROL_COLOR = { coordinador: "red", entrenador: "blue", familiar: "zinc" };
+
+  if (loading) return <div className="p-6 text-zinc-500 text-sm">Cargando...</div>;
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <h2 className="text-xl font-bold text-white mb-6">Gestión del Club</h2>
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setTab("equipos")} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab==="equipos"?"bg-red-700 text-white":"bg-zinc-800 text-zinc-400 hover:text-white"}`}>Equipos</button>
+        <button onClick={() => setTab("usuarios")} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab==="usuarios"?"bg-red-700 text-white":"bg-zinc-800 text-zinc-400 hover:text-white"}`}>Usuarios ({usuarios.length})</button>
+      </div>
+
+      {tab === "equipos" && (
+        <div>
+          <Card className="mb-4">
+            <h3 className="text-sm font-semibold text-white mb-3">Crear nuevo equipo</h3>
+            <div className="flex gap-2 mb-2">
+              <Input label="Nombre del equipo" value={nuevoEquipo} onChange={e => setNuevoEquipo(e.target.value)} placeholder="Ej: Infantil A" />
+              <Input label="Contraseña" value={nuevaPassword} onChange={e => setNuevaPassword(e.target.value.toUpperCase())} placeholder="Ej: INF2026" />
+            </div>
+            {msg && <p className="text-xs text-green-400 mb-2">{msg}</p>}
+            <Btn onClick={crearEquipo} disabled={saving}>{saving ? "Guardando..." : "Crear equipo"}</Btn>
+          </Card>
+          <Card>
+            <h3 className="text-sm font-semibold text-white mb-3">Equipos actuales ({equipos.length})</h3>
+            {equipos.length === 0 && <p className="text-zinc-500 text-sm">No hay equipos creados aun.</p>}
+            {equipos.map(eq => (
+              <div key={eq.nombre} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+                <div className="flex-1">
+                  <div className="text-white text-sm font-semibold">{eq.nombre}</div>
+                  <div className="text-zinc-500 text-xs">Contraseña: <span className="text-zinc-300 font-mono">{eq.password}</span></div>
+                </div>
+                <Btn small variant="danger" onClick={() => eliminarEquipo(eq.nombre)}>Eliminar</Btn>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {tab === "usuarios" && (
+        <Card>
+          <h3 className="text-sm font-semibold text-white mb-3">Usuarios registrados</h3>
+          {usuarios.length === 0 && <p className="text-zinc-500 text-sm">No hay usuarios registrados.</p>}
+          {usuarios.map(u => (
+            <div key={u.email} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
+              <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {(u.nombre || u.email || "?")[0].toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold">{u.nombre || u.email}</div>
+                <div className="text-zinc-500 text-xs">{u.email}</div>
+                {u.equipo && <div className="text-zinc-500 text-xs">Equipo: {u.equipo}</div>}
+              </div>
+              {(() => {
+                const clubId = clubActual?.id || "magdalena";
+                const roles = u.roles || {};
+                const clubRol = roles[clubId];
+                const rol = clubRol?.rol || u.rol || "familiar";
+                return <Badge color={ROL_COLOR[rol] || "zinc"}>{rol}</Badge>;
+              })()}
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const getSavedClub = () => {
     try {
@@ -6127,7 +6238,10 @@ export default function App() {
         <MejoresRivalesSection db={db} />
       )}
       {activeSection === "gestion" && isCoord && (
-              <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
+              <div>
+                <GestionClubSection clubActual={clubActual} />
+                <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
+              </div>
             )}
             {activeSection === "plantilla" && (
               <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} />
