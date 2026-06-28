@@ -126,24 +126,38 @@ function hashSimple(str) {
   }
   return hash.toString(36);
 }
-export async function registrarUsuario({ nombre, email, password, rol }) {
+export async function registrarUsuario({ nombre, email, password, rol, equipo, club }) {
   try {
     const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
-    if (snap.exists()) return { ok: false, error: "Este email ya esta registrado." };
-    const userData = { nombre, email: email.toLowerCase(), passwordHash: hashSimple(password), rol, creadoEn: new Date().toISOString() };
+    const clubId = club || "magdalena";
+    if (snap.exists()) {
+      // Usuario ya existe - añadir rol para este club
+      const existing = snap.data();
+      const roles = existing.roles || {};
+      roles[clubId] = { rol, equipo: equipo || null };
+      await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), { ...existing, roles }, { merge: true });
+      const updatedUser = { ...existing, roles, rolActual: rol, equipoActual: equipo || null };
+      return { ok: true, user: updatedUser };
+    }
+    const roles = { [clubId]: { rol, equipo: equipo || null } };
+    const userData = { nombre, email: email.toLowerCase(), passwordHash: hashSimple(password), roles, creadoEn: new Date().toISOString() };
     await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), userData);
-    return { ok: true, user: userData };
+    return { ok: true, user: { ...userData, rolActual: rol, equipoActual: equipo || null } };
   } catch (e) { return { ok: false, error: e.message }; }
 }
-export async function loginUsuario({ email, password }) {
+export async function loginUsuario({ email, password, clubId }) {
   try {
     const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
     if (!snap.exists()) return { ok: false, error: "Email no encontrado." };
     const userData = snap.data();
     if (userData.passwordHash !== hashSimple(password)) return { ok: false, error: "Contrasena incorrecta." };
-    return { ok: true, user: userData };
+    const club = clubId || "magdalena";
+    const roles = userData.roles || {};
+    const clubRol = roles[club];
+    if (!clubRol) return { ok: false, error: "No tienes acceso a este club. Registrate primero." };
+    return { ok: true, user: { ...userData, rolActual: clubRol.rol, equipoActual: clubRol.equipo, rol: clubRol.rol, equipo: clubRol.equipo } };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 export async function verificarCodigoRol(rol, codigo) {

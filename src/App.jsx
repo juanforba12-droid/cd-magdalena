@@ -5479,7 +5479,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
   const handleLogin = async () => {
     if (!email || !pass) { setError("Introduce tu email y contrasena."); return; }
     setLoading(true); setError("");
-    const res = await loginUsuario({ email, password: pass });
+    const res = await loginUsuario({ email, password: pass, clubId: club?.id || "magdalena" });
     setLoading(false);
     if (!res.ok) { setError(res.error); return; }
     if (recordar) {
@@ -5566,7 +5566,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
           : codigo.trim().toUpperCase() === (codigosEquipo[equipoSel] || "");
         if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
       }
-      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c.id });
+      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c?.id || "magdalena" });
       if (!res.ok) { setError(res.error); setLoading(false); return; }
       setRolFinal(rol); setPaso(3);
       setTimeout(() => onRegistroOk(res.user), 1500);
@@ -5847,7 +5847,7 @@ export default function App() {
 
   const handleLoginUsuario = (user) => {
     setCurrentUser(user);
-    const r = user.rol || "familiar";
+    const r = user.rolActual || user.rol || "familiar";
     if (r === "coordinador") {
       setRole("coordinator");
       setTeamAccess(null);
