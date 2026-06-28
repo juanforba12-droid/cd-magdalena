@@ -5694,6 +5694,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   const [editJ, setEditJ] = React.useState(null);
   const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
   const [tab, setTab] = React.useState("todos");
+  const [filtroPosicion, setFiltroPosicion] = React.useState("");
+  const [filtroAnio, setFiltroAnio] = React.useState("");
 
   React.useEffect(() => {
     loadBancoJugadores(prefix).then(js => { setJugadores(js); setLoading(false); }).catch(() => setLoading(false));
@@ -5740,9 +5742,13 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
     return hoy.getFullYear() - nac.getFullYear() - (hoy < new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate()) ? 1 : 0);
   };
 
+  const aniosDisponibles = [...new Set(jugadores.map(j => j.fechaNac ? new Date(j.fechaNac).getFullYear().toString() : null).filter(Boolean))].sort();
+
   const jugadoresFiltrados = jugadores
     .filter(j => tab === "todos" ? true : j.estado === tab)
     .filter(j => !search || j.nombre.toLowerCase().includes(search.toLowerCase()))
+    .filter(j => !filtroPosicion || j.posicion === filtroPosicion)
+    .filter(j => !filtroAnio || (j.fechaNac && new Date(j.fechaNac).getFullYear().toString() === filtroAnio))
     .sort((a, b) => (a.fechaNac || "").localeCompare(b.fechaNac || ""));
 
   const [importing, setImporting] = React.useState(false);
@@ -5860,8 +5866,20 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
             {t === "todos" ? `Todos (${jugadores.length})` : `${t} (${jugadores.filter(j=>j.estado===t).length})`}
           </button>
         ))}
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..."
-          className="ml-auto bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-zinc-100 text-xs w-48 focus:outline-none" />
+        <div className="ml-auto flex gap-2">
+          <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 text-xs focus:outline-none">
+            <option value="">Todos los años</option>
+            {aniosDisponibles.map(a => <option key={a}>{a}</option>)}
+          </select>
+          <select value={filtroPosicion} onChange={e => setFiltroPosicion(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 text-xs focus:outline-none">
+            <option value="">Todas las posiciones</option>
+            {POSICIONES.map(p => <option key={p}>{p}</option>)}
+          </select>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..."
+            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-zinc-100 text-xs w-40 focus:outline-none" />
+        </div>
       </div>
 
       <Card>
@@ -5873,10 +5891,11 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-white text-sm font-semibold">{j.nombre}</div>
-              <div className="text-zinc-500 text-xs flex gap-3">
-                {j.fechaNac && <span>{calcEdad(j.fechaNac)} años · {j.fechaNac}</span>}
+              <div className="text-zinc-500 text-xs flex gap-3 flex-wrap">
+                {j.fechaNac && <span className="text-zinc-300">{calcEdad(j.fechaNac)} años ({new Date(j.fechaNac).getFullYear()})</span>}
                 {j.posicion && <span>{j.posicion}</span>}
                 {j.telefono && <span>{j.telefono}</span>}
+                {j.equipoOrigen && <span className="text-zinc-600">📍 {j.equipoOrigen}</span>}
               </div>
             </div>
             <Badge color={ESTADO_COLOR[j.estado] || "zinc"}>{j.estado}</Badge>
