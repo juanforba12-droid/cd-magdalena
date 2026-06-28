@@ -5934,6 +5934,7 @@ export default function App() {
   const [teamPasswords, setTeamPasswords] = useState({});
   const [globalTasks, setGlobalTasks] = useState([]);
   const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
+  const [equiposDinamicos, setEquiposDinamicos] = useState([]);
   const [showProfilePicker, setShowProfilePicker] = useState(false); // nunca mostrar si hay sesion guardada
   const [teamInput, setTeamInput] = useState("Coordinador");
   const [loginError, setLoginError] = useState("");
@@ -5961,6 +5962,18 @@ export default function App() {
     window.addEventListener("volverSelector", handler);
     return () => window.removeEventListener("volverSelector", handler);
   }, []);
+
+  useEffect(() => {
+    if (authState === "app" && clubActual) {
+      const clubInfo = CLUBS.find(c => c.id === clubActual.id) || CLUBS[0];
+      const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
+      loadEquipos(prefix).then(eqs => {
+        if (eqs && eqs.length > 0) {
+          setEquiposDinamicos(eqs.map(e => e.nombre));
+        }
+      }).catch(() => {});
+    }
+  }, [authState, clubActual?.id]);
 
   const isCoord = role === "coordinator";
 
@@ -6115,7 +6128,8 @@ export default function App() {
       setAuthState("app");
     }
   };
-  const availableTeams = isCoord ? TEAMS : [teamAccess];
+  const teamsToUse = equiposDinamicos.length > 0 ? equiposDinamicos : TEAMS;
+  const availableTeams = isCoord ? teamsToUse : [teamAccess];
 
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
