@@ -5745,13 +5745,80 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
     .filter(j => !search || j.nombre.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.fechaNac || "").localeCompare(b.fechaNac || ""));
 
+  const [importing, setImporting] = React.useState(false);
+
+  const importarDeEquipos = async () => {
+    setImporting(true);
+    try {
+      const dbSnap = await loadData();
+      if (!dbSnap) { setImporting(false); return; }
+      const bancoActual = [...jugadores];
+      const idsExistentes = new Set(bancoActual.map(j => j.nombre?.toLowerCase()?.trim()));
+      let nuevos = 0;
+      Object.entries(dbSnap).forEach(([equipo, datos]) => {
+        if (!datos || typeof datos !== "object") return;
+        const players = datos.players || [];
+        players.forEach(p => {
+          const nombre = (p.name || p.nombre || "").trim();
+          if (!nombre) return;
+          if (!idsExistentes.has(nombre.toLowerCase())) {
+            bancoActual.push({
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              nombre,
+              fechaNac: p.fechaNac || p.dob || "",
+              dni: p.dni || "",
+              telefono: p.phone || p.telefono || p.phone2 || "",
+              posicion: p.posicionPrincipal || p.posicion || "",
+              estado: "disponible",
+              equipoOrigen: equipo,
+              notas: "",
+              creadoEn: new Date().toISOString()
+            });
+            idsExistentes.add(nombre.toLowerCase());
+            nuevos++;
+          }
+        });
+        const probando = datos.probando || [];
+        probando.forEach(p => {
+          const nombre = (p.name || p.nombre || "").trim();
+          if (!nombre) return;
+          if (!idsExistentes.has(nombre.toLowerCase())) {
+            bancoActual.push({
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              nombre,
+              fechaNac: p.fechaNac || p.dob || "",
+              dni: p.dni || "",
+              telefono: p.phone || p.telefono || "",
+              posicion: p.posicionPrincipal || p.posicion || "",
+              estado: "probando",
+              equipoOrigen: equipo,
+              notas: "",
+              creadoEn: new Date().toISOString()
+            });
+            idsExistentes.add(nombre.toLowerCase());
+            nuevos++;
+          }
+        });
+      });
+      await saveBancoJugadores(prefix, bancoActual);
+      setJugadores(bancoActual);
+      alert(nuevos + " jugadores importados al banco.");
+    } catch(e) {
+      alert("Error al importar: " + e.message);
+    }
+    setImporting(false);
+  };
+
   if (loading) return <div className="p-6 text-zinc-500 text-sm">Cargando...</div>;
 
   return (
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Banco de Jugadores</h2>
-        <Btn onClick={() => openForm()}>+ Añadir jugador</Btn>
+        <div className="flex gap-2">
+          <Btn variant="secondary" onClick={importarDeEquipos} disabled={importing}>{importing ? "Importando..." : "Importar de equipos"}</Btn>
+          <Btn onClick={() => openForm()}>+ Añadir jugador</Btn>
+        </div>
       </div>
 
       {showForm && (
