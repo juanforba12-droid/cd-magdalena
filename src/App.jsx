@@ -5684,7 +5684,9 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
 // SECCION: Gestión de equipos y usuarios del club
 // ══════════════════════════════════════════════════════════════════════════════
 function GestionClubSection({ clubActual }) {
-  const prefix = clubActual?.firestorePrefix || "cdmagdalena";
+  const clubInfo = CLUBS.find(c => c.id === clubActual?.id) || CLUBS[0];
+  const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
+  const teamPasswordsLocal = clubInfo?.passwords?.equipos || TEAM_PASSWORDS;
   const [equipos, setEquipos] = React.useState([]);
   const [usuarios, setUsuarios] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -5704,7 +5706,7 @@ function GestionClubSection({ clubActual }) {
         if (eq.length === 0 && TEAMS.length > 0) {
           const migrados = TEAMS.map(nombre => ({
             nombre,
-            password: Object.entries({...TEAM_PASSWORDS}).find(([k]) => k === nombre)?.[1] || "",
+            password: Object.entries({...teamPasswordsLocal}).find(([k]) => k === nombre)?.[1] || "",
             creadoEn: new Date().toISOString()
           }));
           await saveEquipos(prefix, migrados).catch(() => {});
