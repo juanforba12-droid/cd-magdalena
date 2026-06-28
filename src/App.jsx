@@ -5737,11 +5737,42 @@ function GestionClubSection({ clubActual }) {
     setTimeout(() => setMsg(""), 3000);
   };
 
+  const [editando, setEditando] = React.useState(null);
+  const [editNombre, setEditNombre] = React.useState("");
+  const [editPassword, setEditPassword] = React.useState("");
+  const [verJugadores, setVerJugadores] = React.useState(null);
+
   const eliminarEquipo = async (nombre) => {
     if (!window.confirm("Eliminar equipo " + nombre + "?")) return;
     const nuevos = equipos.filter(e => e.nombre !== nombre);
     await saveEquipos(prefix, nuevos);
     setEquipos(nuevos);
+  };
+
+  const editarEquipo = (eq) => {
+    setEditando(eq.nombre);
+    setEditNombre(eq.nombre);
+    setEditPassword(eq.password);
+  };
+
+  const guardarEdicion = async () => {
+    if (!editNombre.trim() || !editPassword.trim()) return;
+    const nuevos = equipos.map(e => e.nombre === editando
+      ? { ...e, nombre: editNombre.trim(), password: editPassword.trim().toUpperCase() }
+      : e
+    );
+    await saveEquipos(prefix, nuevos);
+    setEquipos(nuevos);
+    setEditando(null);
+  };
+
+  const jugadoresDeEquipo = (nombreEquipo) => {
+    return usuarios.filter(u => {
+      const clubId = clubInfo?.id || "magdalena";
+      const roles = u.roles || {};
+      const clubRol = roles[clubId];
+      return clubRol?.equipo === nombreEquipo || u.equipo === nombreEquipo;
+    });
   };
 
   const ROL_COLOR = { coordinador: "red", entrenador: "blue", familiar: "zinc" };
@@ -5771,12 +5802,46 @@ function GestionClubSection({ clubActual }) {
             <h3 className="text-sm font-semibold text-white mb-3">Equipos actuales ({equipos.length})</h3>
             {equipos.length === 0 && <p className="text-zinc-500 text-sm">No hay equipos creados aun.</p>}
             {equipos.map(eq => (
-              <div key={eq.nombre} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
-                <div className="flex-1">
-                  <div className="text-white text-sm font-semibold">{eq.nombre}</div>
-                  <div className="text-zinc-500 text-xs">Contraseña: <span className="text-zinc-300 font-mono">{eq.password}</span></div>
-                </div>
-                <Btn small variant="danger" onClick={() => eliminarEquipo(eq.nombre)}>Eliminar</Btn>
+              <div key={eq.nombre} className="py-2 border-b border-zinc-800 last:border-0">
+                {editando === eq.nombre ? (
+                  <div className="flex gap-2 items-end">
+                    <Input label="Nombre" value={editNombre} onChange={e => setEditNombre(e.target.value)} />
+                    <Input label="Contraseña" value={editPassword} onChange={e => setEditPassword(e.target.value.toUpperCase())} />
+                    <Btn small onClick={guardarEdicion}>Guardar</Btn>
+                    <Btn small variant="secondary" onClick={() => setEditando(null)}>Cancelar</Btn>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="text-white text-sm font-semibold">{eq.nombre}</div>
+                      <div className="text-zinc-500 text-xs">Contraseña: <span className="text-zinc-300 font-mono">{eq.password}</span></div>
+                    </div>
+                    <Btn small variant="secondary" onClick={() => setVerJugadores(verJugadores === eq.nombre ? null : eq.nombre)}>
+                      {verJugadores === eq.nombre ? "Ocultar" : "Jugadores"}
+                    </Btn>
+                    <Btn small onClick={() => editarEquipo(eq)}>Editar</Btn>
+                    <Btn small variant="danger" onClick={() => eliminarEquipo(eq.nombre)}>Eliminar</Btn>
+                  </div>
+                )}
+                {verJugadores === eq.nombre && (
+                  <div className="mt-2 pl-3 border-l-2 border-zinc-700">
+                    {jugadoresDeEquipo(eq.nombre).length === 0 ? (
+                      <p className="text-zinc-600 text-xs">Sin entrenadores registrados</p>
+                    ) : (
+                      jugadoresDeEquipo(eq.nombre).map(u => (
+                        <div key={u.email} className="flex items-center gap-2 py-1">
+                          <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {(u.nombre || u.email || "?")[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-white text-xs font-semibold">{u.nombre}</div>
+                            <div className="text-zinc-500 text-xs">{u.email}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </Card>
