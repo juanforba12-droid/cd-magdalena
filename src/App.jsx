@@ -5769,6 +5769,7 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
     setEditando(null);
     setEditNombre("");
     setEditPassword("");
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const jugadoresDeEquipo = (nombreEquipo) => {
