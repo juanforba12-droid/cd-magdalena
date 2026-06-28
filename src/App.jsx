@@ -5683,7 +5683,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECCION: Gestión de equipos y usuarios del club
 // ══════════════════════════════════════════════════════════════════════════════
-function GestionClubSection({ clubActual }) {
+function GestionClubSection({ clubActual, onEquiposChange }) {
   const clubInfo = CLUBS.find(c => c.id === clubActual?.id) || CLUBS[0];
   const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
   const teamPasswordsLocal = clubInfo?.passwords?.equipos || TEAM_PASSWORDS;
@@ -5731,7 +5731,7 @@ function GestionClubSection({ clubActual }) {
     const nuevo = { nombre: nuevoEquipo.trim(), password: nuevaPassword.trim().toUpperCase(), creadoEn: new Date().toISOString() };
     const nuevos = [...equipos, nuevo];
     const res = await saveEquipos(prefix, nuevos);
-    if (res.ok) { setEquipos(nuevos); setNuevoEquipo(""); setNuevaPassword(""); setMsg("Equipo creado."); }
+    if (res.ok) { setEquipos(nuevos); if (onEquiposChange) onEquiposChange(nuevos); setNuevoEquipo(""); setNuevaPassword(""); setMsg("Equipo creado."); }
     else { setMsg("Error: " + res.error); }
     setSaving(false);
     setTimeout(() => setMsg(""), 3000);
@@ -5747,6 +5747,7 @@ function GestionClubSection({ clubActual }) {
     const nuevos = equipos.filter(e => e.nombre !== nombre);
     await saveEquipos(prefix, nuevos);
     setEquipos(nuevos);
+    if (onEquiposChange) onEquiposChange(nuevos);
   };
 
   const editarEquipo = (eq) => {
@@ -6349,7 +6350,7 @@ export default function App() {
       )}
       {activeSection === "gestion" && isCoord && (
               <div>
-                <GestionClubSection clubActual={clubActual} />
+                <GestionClubSection clubActual={clubActual} onEquiposChange={(eqs) => setEquiposDinamicos(eqs.map(e => e.nombre))} />
                 <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
               </div>
             )}
