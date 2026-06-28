@@ -5388,7 +5388,17 @@ function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }
             <button onClick={onEntrarDirecto} className="text-xs text-white border px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all" style={{borderColor: c.colorAccent}}>Entrar</button>
           </div>
         ) : (
+          {currentUser ? (
+          <div className="flex items-center gap-2">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs text-white font-semibold">{currentUser.nombre}</div>
+              <div className="text-xs capitalize" style={{color:c.colorAccent}}>{currentUser.rol}</div>
+            </div>
+            <button onClick={onEntrarDirecto} className="text-xs text-white border px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all" style={{borderColor:c.colorAccent}}>Entrar</button>
+          </div>
+        ) : (
           <button onClick={onAcceder} className="text-xs text-white border border-zinc-600 px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all">Acceder</button>
+        )}
         )}
         </div>
       </div>
