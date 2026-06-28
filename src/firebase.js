@@ -156,7 +156,13 @@ export async function loginUsuario({ email, password, clubId }) {
     const club = clubId || "magdalena";
     const roles = userData.roles || {};
     const clubRol = roles[club];
-    if (!clubRol) return { ok: false, error: "No tienes acceso a este club. Registrate primero." };
+    if (!clubRol) {
+      // Si no tiene roles por club, solo permitir acceso a magdalena con el rol legacy
+      if (club === "magdalena" && userData.rol) {
+        return { ok: true, user: { ...userData, rolActual: userData.rol, equipoActual: userData.equipo || null } };
+      }
+      return { ok: false, error: "No tienes acceso a este club. Registrate primero en " + club + "." };
+    }
     return { ok: true, user: { ...userData, rolActual: clubRol.rol, equipoActual: clubRol.equipo, rol: clubRol.rol, equipo: clubRol.equipo } };
   } catch (e) { return { ok: false, error: e.message }; }
 }
