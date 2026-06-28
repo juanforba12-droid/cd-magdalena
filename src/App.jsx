@@ -5367,7 +5367,7 @@ function SelectorClubes({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Home publica
 // ══════════════════════════════════════════════════════════════════════════════
-function HomePublica({ onAcceder, club, onVolver }) {
+function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }) {
   const c = club || CLUBS[0];
   if (!c) return null;
   return (
@@ -5379,7 +5379,17 @@ function HomePublica({ onAcceder, club, onVolver }) {
         </div>
         <div className="flex items-center gap-3">
           <button onClick={onVolver} className="text-zinc-500 text-xs hover:text-white transition-all">← Clubes</button>
+          {currentUser ? (
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <div className="text-xs text-white font-semibold">{currentUser.nombre}</div>
+              <div className="text-xs capitalize" style={{color: c.colorAccent}}>{currentUser.rol}</div>
+            </div>
+            <button onClick={onEntrarDirecto} className="text-xs text-white border px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all" style={{borderColor: c.colorAccent}}>Entrar</button>
+          </div>
+        ) : (
           <button onClick={onAcceder} className="text-xs text-white border border-zinc-600 px-4 py-2 rounded-lg hover:bg-zinc-800 transition-all">Acceder</button>
+        )}
         </div>
       </div>
       <div className="bg-black border-b border-zinc-800 py-10 text-center">
@@ -5895,7 +5905,7 @@ export default function App() {
       setAuthState("home");
     }} />
   );
-  if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} />;
+  if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} currentUser={currentUser} onEntrarDirecto={() => { setAuthState("app"); if(savedRole === "coordinator") { setActiveTeam(TEAMS[0]); setActiveSection("resumen"); } }} />;
   if (authState === "login") return (
     <LoginScreen
       club={clubActual}
