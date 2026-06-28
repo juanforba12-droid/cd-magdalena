@@ -2760,7 +2760,7 @@ export default function AmicsApp({ currentUser: extUser, onVolver, onSalir }) {
           <button onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-800 transition-all">☰</button>
           <button onClick={onVolver} className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all ml-1">🏠 Inicio</button>
-          {currentUser && <span className="text-xs text-zinc-400 ml-2 hidden sm:inline">{currentUser.nombre} · <span className="capitalize" style={{color:"#f97316"}}>{currentUser.rol}</span></span>}
+          {extUser && <span className="text-xs text-zinc-400 ml-2 hidden sm:inline">{extUser.nombre} · <span className="capitalize" style={{color:"#f97316"}}>{extUser.rol}</span></span>}
           <button onClick={onSalir} className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all ml-1">Salir</button>
           <span className="text-white font-semibold">
             {sections.find(s => s.id === activeSection)?.icon} {sections.find(s => s.id === activeSection)?.label}

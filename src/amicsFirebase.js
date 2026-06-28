@@ -73,3 +73,6 @@ export async function saveSeasons(seasons) {
     await setDoc(doc(db, "amicscastello", "seasons"), { json });
   } catch(e) { console.error(e); }
 }
+export async function loadFichas(team) { return {}; }
+export async function saveFicha(team, playerId, base64, nombre) { return { ok: true }; }
+export async function deleteFicha(team, playerId) { return { ok: true }; }
