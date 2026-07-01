@@ -6728,22 +6728,10 @@ export default function App() {
             </button>
             {equipoAbierto === "__lista__" && <div>
             {teamsToUse.map(t => (
-              <div key={t}>
-                <button onClick={() => { setEquipoAbierto(equipoAbierto === t ? null : t); setActiveTeam(t); }}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition-all flex items-center justify-between ${activeTeam === t ? "bg-red-900/40 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}>
-                  <span>{t}</span><span className="text-xs opacity-50">{equipoAbierto === t ? "▲" : "▼"}</span>
-                </button>
-                {equipoAbierto === t && (
-                  <div className="pl-3 py-1 space-y-0.5">
-                    {[["plantilla","👥 Plantilla"],["entrenamientos","🏃 Entrenamientos"],["tareas","🗂 Tareas"],["partidos","⚽ Partidos"],["clasificacion","🏆 Clasificación"],["asistencia","📋 Asistencia"],["tacticas","🎯 Tácticas"],["microciclo","📅 Microciclo"]].map(([sec,label]) => (
-                      <button key={sec} onClick={() => setActiveSection(sec)}
-                        className={`w-full text-left px-2 py-1 rounded text-xs transition-all ${activeSection === sec ? "text-red-300 font-semibold bg-red-900/20" : "text-zinc-500 hover:text-white"}`}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button key={t} onClick={() => setActiveTeam(t)}
+                className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${activeTeam === t ? "bg-red-900/40 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}>
+                {t}
+              </button>
             ))}
           </div>}
           </div>
