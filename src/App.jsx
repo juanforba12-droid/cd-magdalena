@@ -6386,6 +6386,7 @@ export default function App() {
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
     { id: "tacticas", label: "Tácticas", icon: "🎬" },
+    { id: "microciclo", label: "Microciclo", icon: "📅" },
   ];
 
   useEffect(() => {
