@@ -5754,6 +5754,35 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
 
   const [importing, setImporting] = React.useState(false);
 
+  const actualizarFechas = async () => {
+    setImporting(true);
+    try {
+      const dbSnap = await loadData();
+      if (!dbSnap) { setImporting(false); return; }
+      const todosJugadores = [];
+      Object.entries(dbSnap).forEach(([equipo, datos]) => {
+        if (!datos || typeof datos !== "object") return;
+        [...(datos.players || []), ...(datos.probando || [])].forEach(p => {
+          const nombre = (p.name || p.nombre || "").trim();
+          if (nombre) todosJugadores.push({ nombre, fechaNacimiento: p.fechaNacimiento || "", posicion: p.posicionPrincipal || p.posicion || "", posicionesSecundarias: p.positions || [], telefono: p.phone || p.telefono || p.phone2 || "", dni: p.dni || "" });
+        });
+      });
+      let actualizados = 0;
+      const nuevoBanco = jugadores.map(j => {
+        const match = todosJugadores.find(p => p.nombre.toLowerCase().trim() === j.nombre.toLowerCase().trim());
+        if (match && (!j.fechaNac || j.fechaNac === "") && match.fechaNacimiento) {
+          actualizados++;
+          return { ...j, fechaNac: match.fechaNacimiento, posicion: j.posicion || match.posicion, posicionesSecundarias: j.posicionesSecundarias?.length ? j.posicionesSecundarias : match.posicionesSecundarias, telefono: j.telefono || match.telefono, dni: j.dni || match.dni };
+        }
+        return j;
+      });
+      await saveBancoJugadores(prefix, nuevoBanco);
+      setJugadores(nuevoBanco);
+      alert(actualizados + " jugadores actualizados con fecha de nacimiento.");
+    } catch(e) { alert("Error: " + e.message); }
+    setImporting(false);
+  };
+
   const importarDeEquipos = async () => {
     setImporting(true);
     try {
@@ -5825,6 +5854,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Banco de Jugadores</h2>
         <div className="flex gap-2">
+          <Btn variant="secondary" onClick={actualizarFechas} disabled={importing}>Actualizar fechas</Btn>
           <Btn variant="secondary" onClick={importarDeEquipos} disabled={importing}>{importing ? "Importando..." : "Importar de equipos"}</Btn>
           <Btn onClick={() => openForm()}>+ Añadir jugador</Btn>
         </div>
