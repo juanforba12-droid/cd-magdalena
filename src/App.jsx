@@ -1,6 +1,7 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
 import AmicsApp from "./AmicsApp";
+import { loginInternacional, registrarInternacional } from "./internacionalFirebase";
 import InternacionalApp from "./InternacionalApp";
 
 import { useState, useEffect, useRef } from "react";
