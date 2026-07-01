@@ -1,6 +1,7 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
 import AmicsApp from "./AmicsApp";
+import InternacionalApp from "./InternacionalApp";
 
 import { useState, useEffect, useRef } from "react";
 import * as React from "react";
@@ -6697,6 +6698,7 @@ export default function App() {
   );
 
   if (authState === "app" && clubActual?.id === "amics") return <AmicsApp currentUser={currentUser} onVolver={() => setAuthState("home")} onSalir={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState("selector"); setCurrentUser(null); setClubActual(null); setRole(null); }} />;
+  if (authState === "app" && clubActual?.id === "internacional") return <InternacionalApp currentUser={currentUser} onVolver={() => setAuthState("home")} onSalir={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState("selector"); setCurrentUser(null); setClubActual(null); setRole(null); }} />;
   const teamData = db[activeTeam] || { players: [], trainings: [], matches: [], attendance: [] };
 
   return (

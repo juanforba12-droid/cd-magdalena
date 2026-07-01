@@ -57,6 +57,34 @@ export const CLUBS = [
       }
     }
   }
+,
+  {
+    id: "internacional",
+    nombre: "Amics Castelló International",
+    nombreCorto: "Amics International",
+    deporte: "Baloncesto",
+    ciudad: "Castellón de la Plana",
+    color: "#052e16",
+    colorAccent: "#f97316",
+    colorSecundario: "#16a34a",
+    emoji: "🌍",
+    firebaseConfig: {
+      apiKey: "AIzaSyCfxoAOo4E6bpfFe1N9_DkZvYl2yewijhI",
+      authDomain: "academia-basket-app.firebaseapp.com",
+      projectId: "academia-basket-app",
+      storageBucket: "academia-basket-app.firebasestorage.app",
+      messagingSenderId: "573776541077",
+      appId: "1:573776541077:web:9da12db6d5c54dbcce329c"
+    },
+    firestorePrefix: "internacional",
+    equipos: ["Sub-14","Sub-16","Sub-18","Senior"],
+    passwords: {
+      coordinador: "INTL2026",
+      equipos: {
+        "Sub-14":"S14","Sub-16":"S16","Sub-18":"S18","Senior":"SNR"
+      }
+    }
+  }
 ];
 
 export function getClub(id) {
