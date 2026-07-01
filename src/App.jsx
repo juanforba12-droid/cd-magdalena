@@ -5695,7 +5695,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
   const [tab, setTab] = React.useState("todos");
   const [filtroPosicion, setFiltroPosicion] = React.useState("");
-  const [filtroAnio, setFiltroAnio] = React.useState("");
+  const [filtroAnioMin, setFiltroAnioMin] = React.useState("");
+  const [filtroAnioMax, setFiltroAnioMax] = React.useState("");
 
   React.useEffect(() => {
     loadBancoJugadores(prefix).then(js => { setJugadores(js); setLoading(false); }).catch(() => setLoading(false));
@@ -5747,8 +5748,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   const jugadoresFiltrados = jugadores
     .filter(j => tab === "todos" ? true : j.estado === tab)
     .filter(j => !search || j.nombre.toLowerCase().includes(search.toLowerCase()))
-    .filter(j => !filtroPosicion || j.posicion === filtroPosicion)
-    .filter(j => !filtroAnio || (j.fechaNac && new Date(j.fechaNac).getFullYear().toString() === filtroAnio))
+    .filter(j => !filtroPosicion || j.posicion === filtroPosicion || (j.posicionesSecundarias && j.posicionesSecundarias.includes(filtroPosicion)))
+    .filter(j => { if (!filtroAnioMin && !filtroAnioMax) return true; const anio = j.fechaNac ? new Date(j.fechaNac).getFullYear() : null; if (!anio) return false; if (filtroAnioMin && anio < parseInt(filtroAnioMin)) return false; if (filtroAnioMax && anio > parseInt(filtroAnioMax)) return false; return true; })
     .sort((a, b) => (a.fechaNac || "").localeCompare(b.fechaNac || ""));
 
   const [importing, setImporting] = React.useState(false);
@@ -5867,9 +5868,14 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
           </button>
         ))}
         <div className="ml-auto flex gap-2">
-          <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}
+          <select value={filtroAnioMin} onChange={e => setFiltroAnioMin(e.target.value)}
             className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 text-xs focus:outline-none">
-            <option value="">Todos los años</option>
+            <option value="">Desde</option>
+            {aniosDisponibles.map(a => <option key={a}>{a}</option>)}
+          </select>
+          <select value={filtroAnioMax} onChange={e => setFiltroAnioMax(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 text-xs focus:outline-none">
+            <option value="">Hasta</option>
             {aniosDisponibles.map(a => <option key={a}>{a}</option>)}
           </select>
           <select value={filtroPosicion} onChange={e => setFiltroPosicion(e.target.value)}
@@ -6121,6 +6127,134 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: Microciclo semanal
+// ══════════════════════════════════════════════════════════════════════════════
+function MicrocicloSection({ team, data, onSave }) {
+  const DIAS = ["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado","Domingo"];
+  const TIPOS = ["Descanso","Fisico","Tecnico","Tactico","Mixto","Partido","Recuperacion"];
+  const INTENSIDADES = ["Baja","Media","Alta","Maxima"];
+  const COLORES_TIPO = {
+    "Descanso":"bg-zinc-800 text-zinc-400",
+    "Fisico":"bg-orange-900 text-orange-300",
+    "Tecnico":"bg-blue-900 text-blue-300",
+    "Tactico":"bg-purple-900 text-purple-300",
+    "Mixto":"bg-yellow-900 text-yellow-300",
+    "Partido":"bg-red-900 text-red-300",
+    "Recuperacion":"bg-green-900 text-green-300"
+  };
+  const COLORES_INT = { "Baja":"text-green-400","Media":"text-yellow-400","Alta":"text-orange-400","Maxima":"text-red-400" };
+
+  const semanaActual = () => {
+    const hoy = new Date();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - (hoy.getDay() || 7) + 1);
+    return lunes.toISOString().slice(0, 10);
+  };
+
+  const [semana, setSemana] = React.useState(semanaActual());
+  const microciclos = data?.microciclos || {};
+  const [plan, setPlan] = React.useState(
+    microciclos[semanaActual()] || DIAS.map(d => ({ dia: d, tipo: "Descanso", objetivo: "", carga: 5, intensidad: "Media", notas: "" }))
+  );
+  const [guardando, setGuardando] = React.useState(false);
+
+  React.useEffect(() => {
+    const mc = (data?.microciclos || {})[semana];
+    setPlan(mc || DIAS.map(d => ({ dia: d, tipo: "Descanso", objetivo: "", carga: 5, intensidad: "Media", notas: "" })));
+  }, [semana, data]);
+
+  const updateDia = (i, field, val) => {
+    setPlan(plan.map((d, idx) => idx === i ? { ...d, [field]: val } : d));
+  };
+
+  const guardar = async () => {
+    setGuardando(true);
+    const nuevaData = { ...data, microciclos: { ...(data?.microciclos || {}), [semana]: plan } };
+    await onSave(nuevaData);
+    setGuardando(false);
+  };
+
+  const fechaDia = (i) => {
+    const d = new Date(semana);
+    d.setDate(d.getDate() + i);
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  };
+
+  const semanaAnterior = () => { const d = new Date(semana); d.setDate(d.getDate() - 7); setSemana(d.toISOString().slice(0,10)); };
+  const semanaSiguiente = () => { const d = new Date(semana); d.setDate(d.getDate() + 7); setSemana(d.toISOString().slice(0,10)); };
+
+  const cargaTotal = plan.reduce((s, d) => d.tipo !== "Descanso" ? s + (d.carga || 0) : s, 0);
+  const sesiones = plan.filter(d => d.tipo !== "Descanso").length;
+
+  return (
+    <div className="p-4 max-w-5xl">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 className="text-xl font-bold text-white">Microciclo Semanal</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={semanaAnterior} className="text-zinc-400 hover:text-white px-3 py-1 bg-zinc-800 rounded">prev</button>
+          <span className="text-zinc-300 text-sm font-medium">Semana {new Date(semana).toLocaleDateString("es-ES", {day:"numeric",month:"short"})}</span>
+          <button onClick={semanaSiguiente} className="text-zinc-400 hover:text-white px-3 py-1 bg-zinc-800 rounded">sig</button>
+        </div>
+      </div>
+
+      <div className="flex gap-3 mb-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
+          <div className="text-white font-bold text-lg">{sesiones}</div>
+          <div className="text-zinc-500 text-xs">Sesiones</div>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
+          <div className="text-white font-bold text-lg">{cargaTotal}</div>
+          <div className="text-zinc-500 text-xs">Carga total</div>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
+          <div className="text-white font-bold text-lg">{sesiones > 0 ? (cargaTotal/sesiones).toFixed(1) : 0}</div>
+          <div className="text-zinc-500 text-xs">Media/sesion</div>
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        {plan.map((dia, i) => (
+          <div key={i} className={`border rounded-xl p-3 ${dia.tipo === "Partido" ? "border-red-800 bg-red-900/10" : "border-zinc-800 bg-zinc-900"}`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-20 flex-shrink-0">
+                <div className="text-white text-sm font-semibold">{dia.dia}</div>
+                <div className="text-zinc-500 text-xs">{fechaDia(i)}</div>
+              </div>
+              <select value={dia.tipo} onChange={e => updateDia(i, "tipo", e.target.value)}
+                className={`text-xs rounded px-2 py-1 border-0 font-medium cursor-pointer ${COLORES_TIPO[dia.tipo] || "bg-zinc-800 text-zinc-300"}`}>
+                {TIPOS.map(t => <option key={t}>{t}</option>)}
+              </select>
+              {dia.tipo !== "Descanso" && (
+                <>
+                  <input value={dia.objetivo} onChange={e => updateDia(i, "objetivo", e.target.value)}
+                    placeholder="Objetivo del dia..."
+                    className="flex-1 min-w-28 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-100 text-xs focus:outline-none" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-zinc-500 text-xs">Carga:</span>
+                    <input type="range" min="1" max="10" value={dia.carga}
+                      onChange={e => updateDia(i, "carga", parseInt(e.target.value))}
+                      className="w-16 accent-red-600" />
+                    <span className="text-white text-xs font-bold w-4">{dia.carga}</span>
+                  </div>
+                  <select value={dia.intensidad} onChange={e => updateDia(i, "intensidad", e.target.value)}
+                    className={`text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 font-medium ${COLORES_INT[dia.intensidad] || ""}`}>
+                    {INTENSIDADES.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <Btn onClick={guardar} disabled={guardando} className="w-full justify-center">
+        {guardando ? "Guardando..." : "Guardar microciclo"}
+      </Btn>
+    </div>
+  );
+}
+
 export default function App() {
   const getSavedClub = () => {
     try {
@@ -6170,6 +6304,7 @@ export default function App() {
   const [globalTasks, setGlobalTasks] = useState([]);
   const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
   const [equiposDinamicos, setEquiposDinamicos] = useState([]);
+  const [equipoAbierto, setEquipoAbierto] = useState(null);
   // Cargar equipos al inicializar si hay sesion
   React.useEffect(() => {
     if (authState === "app" && clubActual?.id) {
@@ -6208,6 +6343,21 @@ export default function App() {
     window.addEventListener("volverSelector", handler);
     return () => window.removeEventListener("volverSelector", handler);
   }, []);
+
+  const [alertaEntrenamiento, setAlertaEntrenamiento] = useState(null);
+  useEffect(() => {
+    if (authState !== "app" || !db || !activeTeam) return;
+    const ahora = new Date();
+    const teamData = db[activeTeam] || {};
+    const entrenamientos = teamData.trainings || [];
+    const proximo = entrenamientos.find(e => {
+      if (!e.date) return false;
+      const fechaHora = new Date(e.date + (e.time ? "T" + e.time : "T18:00"));
+      const diff = (fechaHora - ahora) / 60000;
+      return diff >= 0 && diff <= 30;
+    });
+    if (proximo) setAlertaEntrenamiento(proximo);
+  }, [authState, db, activeTeam]);
 
   useEffect(() => {
     if (authState === "app" && clubActual) {
@@ -6404,6 +6554,27 @@ export default function App() {
     </div>
   );
 
+  if (alertaEntrenamiento && authState === "app") return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-sm w-full">
+        <div className="text-center mb-4">
+          <div className="text-4xl mb-2">🏃</div>
+          <h2 className="text-white text-xl font-bold">Entrenamiento en breve</h2>
+          <p className="text-zinc-400 text-sm mt-1">{alertaEntrenamiento.date} {alertaEntrenamiento.time || ""}</p>
+          {alertaEntrenamiento.description && <p className="text-zinc-300 text-sm mt-1">{alertaEntrenamiento.description}</p>}
+        </div>
+        <div className="flex gap-2">
+          <Btn className="flex-1 justify-center" onClick={() => { setActiveSection("entrenamientos"); setAlertaEntrenamiento(null); }}>
+            Ir a asistencia
+          </Btn>
+          <Btn variant="secondary" className="flex-1 justify-center" onClick={() => setAlertaEntrenamiento(null)}>
+            Ahora no
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+
   if (authState === "selector") return (
     <SelectorClubes onSelect={(club) => {
       setClubActual(club);
@@ -6519,13 +6690,22 @@ export default function App() {
           <div className="p-3 border-b border-zinc-800">
             <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
             {teamsToUse.map(t => (
-              <button
-                key={t}
-                onClick={() => setActiveTeam(t)}
-                className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${
-                  activeTeam === t ? "bg-red-900/40 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                }`}
-              >{t}</button>
+              <div key={t}>
+                <button onClick={() => { setEquipoAbierto(equipoAbierto === t ? null : t); setActiveTeam(t); }}
+                  className={`w-full text-left px-3 py-2 rounded text-sm transition-all flex items-center justify-between ${activeTeam === t ? "bg-red-900/40 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}>
+                  <span>{t}</span><span className="text-xs opacity-50">{equipoAbierto === t ? "▲" : "▼"}</span>
+                </button>
+                {equipoAbierto === t && (
+                  <div className="pl-3 py-1 space-y-0.5">
+                    {[["plantilla","👥 Plantilla"],["entrenamientos","🏃 Entrenamientos"],["tareas","🗂 Tareas"],["partidos","⚽ Partidos"],["clasificacion","🏆 Clasificación"],["asistencia","📋 Asistencia"],["tacticas","🎯 Tácticas"],["microciclo","📅 Microciclo"]].map(([sec,label]) => (
+                      <button key={sec} onClick={() => setActiveSection(sec)}
+                        className={`w-full text-left px-2 py-1 rounded text-xs transition-all ${activeSection === sec ? "text-red-300 font-semibold bg-red-900/20" : "text-zinc-500 hover:text-white"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -6630,6 +6810,9 @@ export default function App() {
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
+            )}
+            {activeSection === "microciclo" && (
+              <MicrocicloSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
             )}
             {activeSection === "tacticas" && (
               <TacticasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
