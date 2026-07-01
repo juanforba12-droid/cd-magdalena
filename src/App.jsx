@@ -6613,7 +6613,7 @@ export default function App() {
   if (authState === "selector") return (
     <SelectorClubes onSelect={(club) => {
       setClubActual(club);
-      try { localStorage.setItem("mgd_club", club.id); } catch(e) {}
+      try { localStorage.setItem("mgd_club", JSON.stringify(club.id)); } catch(e) {}
       try {
         const sess = JSON.parse(localStorage.getItem("mgd_session"));
         if (sess && sess.clubId !== club.id) {
