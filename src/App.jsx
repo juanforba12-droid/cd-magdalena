@@ -6622,7 +6622,14 @@ export default function App() {
           setRole(null);
         }
       } catch(e) {}
-      setAuthState("home");
+      if (club.id === "internacional") {
+        const demoUser = { nombre: "Demo", email: "demo@internacional.com", rolActual: "admin", rol: "admin" };
+        setCurrentUser(demoUser);
+        try { localStorage.setItem("mgd_session", JSON.stringify({ user: demoUser, clubId: "internacional" })); } catch(e) {}
+        setAuthState("app");
+      } else {
+        setAuthState("home");
+      }
     }} />
   );
   if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} currentUser={currentUser} onEntrarDirecto={() => { setAuthState("app"); if(savedRole === "coordinator") { setActiveTeam(TEAMS[0]); setActiveSection("resumen"); } }} />;
