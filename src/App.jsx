@@ -5772,10 +5772,11 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
             bancoActual.push({
               id: Date.now().toString() + Math.random().toString(36).slice(2),
               nombre,
-              fechaNac: p.fechaNac || p.dob || "",
+              fechaNac: p.fechaNacimiento || p.fechaNac || p.dob || "",
               dni: p.dni || "",
               telefono: p.phone || p.telefono || p.phone2 || "",
               posicion: p.posicionPrincipal || p.posicion || "",
+              posicionesSecundarias: p.positions || p.posicionesSecundarias || [],
               estado: "disponible",
               equipoOrigen: equipo,
               notas: "",
@@ -5793,10 +5794,11 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
             bancoActual.push({
               id: Date.now().toString() + Math.random().toString(36).slice(2),
               nombre,
-              fechaNac: p.fechaNac || p.dob || "",
+              fechaNac: p.fechaNacimiento || p.fechaNac || p.dob || "",
               dni: p.dni || "",
               telefono: p.phone || p.telefono || "",
               posicion: p.posicionPrincipal || p.posicion || "",
+              posicionesSecundarias: p.positions || p.posicionesSecundarias || [],
               estado: "probando",
               equipoOrigen: equipo,
               notas: "",
@@ -6689,7 +6691,12 @@ export default function App() {
         {/* Team selector */}
         {isCoord && (
           <div className="p-3 border-b border-zinc-800">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
+            <button onClick={() => setEquipoAbierto(equipoAbierto === "__lista__" ? null : "__lista__")}
+              className="w-full flex items-center justify-between text-xs text-zinc-500 uppercase tracking-wider mb-2 hover:text-white transition-all">
+              <span>Equipo</span>
+              <span>{equipoAbierto === "__lista__" ? "▲" : "▼"}</span>
+            </button>
+            {equipoAbierto === "__lista__" && <div>
             {teamsToUse.map(t => (
               <div key={t}>
                 <button onClick={() => { setEquipoAbierto(equipoAbierto === t ? null : t); setActiveTeam(t); }}
@@ -6708,9 +6715,9 @@ export default function App() {
                 )}
               </div>
             ))}
+          </div>}
           </div>
-        )}
-        {!isCoord && (
+        )}      {!isCoord && (
           <div className="p-3 border-b border-zinc-800">
             <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Tu equipo</p>
             <p className="text-white font-semibold text-sm">{teamAccess}</p>
