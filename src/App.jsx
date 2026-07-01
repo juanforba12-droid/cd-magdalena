@@ -6626,6 +6626,13 @@ export default function App() {
     }} />
   );
   if (authState === "home") return <HomePublica club={clubActual} onAcceder={() => setAuthState("login")} onVolver={() => setAuthState("selector")} currentUser={currentUser} onEntrarDirecto={() => { setAuthState("app"); if(savedRole === "coordinator") { setActiveTeam(TEAMS[0]); setActiveSection("resumen"); } }} />;
+  if (authState === "login" && clubActual?.id === "internacional") {
+    const demoUser = { nombre: "Coordinador", email: "demo@internacional.com", rolActual: "admin", rol: "admin" };
+    try { localStorage.setItem("mgd_session", JSON.stringify({ user: demoUser, clubId: "internacional" })); } catch(e) {}
+    setCurrentUser(demoUser);
+    setAuthState("app");
+    return null;
+  }
   if (authState === "login") return (
     <LoginScreen
       club={clubActual}
