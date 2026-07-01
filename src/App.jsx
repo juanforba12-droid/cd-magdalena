@@ -5501,7 +5501,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
   const handleLogin = async () => {
     if (!email || !pass) { setError("Introduce tu email y contrasena."); return; }
     setLoading(true); setError("");
-    const res = await loginUsuario({ email, password: pass, clubId: club?.id || "magdalena" });
+    const res = club?.id === "internacional" ? await loginInternacional({ email, password: pass }) : await loginUsuario({ email, password: pass, clubId: club?.id || "magdalena" });
     setLoading(false);
     if (!res.ok) { setError(res.error); return; }
     if (recordar) {
