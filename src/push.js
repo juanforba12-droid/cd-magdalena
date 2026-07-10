@@ -3,7 +3,7 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFirestore, doc, setDoc, addDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from "firebase/firestore";
 
 // ⚠️ PEGA AQUÍ TU CLAVE (consola Firebase → Cloud Messaging → Certificados push web):
-const VAPID_KEY = "PEGA_AQUI_LA_CLAVE_VAPID";
+const VAPID_KEY = "BG9MYtEVe9RXcYsQTWO8_5JphByaE6FUVdvglI-4Xp_gf_aSRqZA9DRT07OzyUb2-K6GHeJhTxKNb1F3DCplbtw";
 
 export async function activarPush({ email, nombre, rol, equipo, clubId }) {
   try {
@@ -49,6 +49,11 @@ export async function enviarAviso({ titulo, mensaje, destino, clubId, creadoPor 
     creadoPor: creadoPor || "sistema",
     fecha: serverTimestamp(),
   });
+  fetch("/api/send-push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titulo, mensaje, destino: destino || "todos", clubId: clubId || "magdalena" }),
+  }).catch(() => {});
   return { ok: true };
 }
 
