@@ -1,5 +1,6 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
+import { activarPush, enviarAviso, cargarAvisos } from "./push";
 import AmicsApp from "./AmicsApp";
 import { loginInternacional, registrarInternacional } from "./internacionalFirebase";
 import InternacionalApp from "./InternacionalApp";
@@ -1455,6 +1456,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       trainings.push({ id: Date.now(), fecha, desc, duracion });
     }
     onSave({ ...data, trainings: trainings.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
+    if (!editing) enviarAviso({ titulo: "🏃 Nuevo entrenamiento — " + team, mensaje: "Entrenamiento el " + fecha + (desc ? ": " + desc.slice(0, 80) : ""), destino: team, clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setShowForm(false);
   };
 
@@ -2026,6 +2028,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
       matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales });
     }
     onSave({ ...data, matches: matches.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
+    if (!editing) enviarAviso({ titulo: "⚽ Nuevo partido — " + team, mensaje: "vs " + rival + (fecha ? " el " + fecha : "") + (lugar ? " en " + lugar : ""), destino: team, clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setView("list");
   };
 
@@ -4669,6 +4672,7 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
     const nueva = { id: Date.now(), nombre, fecha: fechaConv, jugadores: seleccionados.map(p => ({ id: p.id, equipo: p.equipo })) };
     const updated = [...convocatoriasGuardadas, nueva];
     onSave({ ...data, convocatorias: updated });
+    enviarAviso({ titulo: "📋 Nueva convocatoria", mensaje: nombre + " — " + fechaConv + " (" + seleccionados.length + " jugadores)", destino: "todos", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setVista("lista");
     setNombre("");
     setSeleccionados([]);
@@ -6289,6 +6293,201 @@ function MicrocicloSection({ team, data, onSave }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: Barra de navegación inferior (solo móvil, 4 más recientes)
+// ══════════════════════════════════════════════════════════════════════════════
+function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, activeTeam, setActiveTeam }) {
+  const [showMore, setShowMore] = React.useState(false);
+  const storageKey = "mgd_nav_recientes_" + (isCoord ? "coord" : "entrenador");
+  const [recientes, setRecientes] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey)) || []; } catch(e) { return []; }
+  });
+
+  const defaults = isCoord
+    ? ["resumen", "plantilla", "entrenamientos", "partidos"]
+    : ["plantilla", "entrenamientos", "partidos", "asistencia"];
+
+  const validIds = sections.map(s => s.id);
+  const barIds = [...new Set([...recientes, ...defaults])]
+    .filter(id => validIds.includes(id))
+    .slice(0, 4);
+
+  // Orden estable: según el orden original de sections, no según recencia
+  const main = sections.filter(s => barIds.includes(s.id));
+  const more = sections.filter(s => !barIds.includes(s.id));
+  const isMoreActive = more.some(s => s.id === activeSection);
+
+  const go = (id) => {
+    setActiveSection(id);
+    setShowMore(false);
+    const nuevos = [id, ...recientes.filter(x => x !== id)].slice(0, 8);
+    setRecientes(nuevos);
+    try { localStorage.setItem(storageKey, JSON.stringify(nuevos)); } catch(e) {}
+  };
+
+  return (
+    <>
+      {showMore && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setShowMore(false)}>
+          <div className="absolute bottom-16 inset-x-0 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl p-4 max-h-[70vh] overflow-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
+            {isCoord && (
+              <div className="mb-4">
+                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {teams.map(t => (
+                    <button key={t} onClick={() => { setActiveTeam(t); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTeam === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Más secciones</p>
+            <div className="grid grid-cols-3 gap-2">
+              {more.map(s => (
+                <button key={s.id} onClick={() => go(s.id)}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${activeSection === s.id ? "bg-red-900/40 border-red-700 text-red-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                  <span className="text-xl">{s.icon}</span>
+                  <span className="text-xs font-medium text-center leading-tight">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-zinc-900 border-t border-zinc-800 flex"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {main.map(s => (
+          <button key={s.id} onClick={() => go(s.id)}
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-all ${activeSection === s.id ? "text-red-400" : "text-zinc-500"}`}>
+            <span className="text-lg">{s.icon}</span>
+            <span className="text-[10px] font-medium">{s.label.length > 10 ? s.label.slice(0, 9) + "…" : s.label}</span>
+            {activeSection === s.id && <span className="w-5 h-0.5 bg-red-500 rounded-full" />}
+          </button>
+        ))}
+        <button onClick={() => setShowMore(v => !v)}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-all ${showMore || isMoreActive ? "text-red-400" : "text-zinc-500"}`}>
+          <span className="text-lg">☰</span>
+          <span className="text-[10px] font-medium">Más</span>
+          {isMoreActive && !showMore && <span className="w-5 h-0.5 bg-red-500 rounded-full" />}
+        </button>
+      </div>
+    </>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Avisos (notificaciones push)
+// ══════════════════════════════════════════════════════════════════════════════
+function AvisosSection({ isCoord, teamAccess, teams, currentUser, clubId }) {
+  const [titulo, setTitulo] = React.useState("");
+  const [mensaje, setMensaje] = React.useState("");
+  const [destino, setDestino] = React.useState(isCoord ? "todos" : teamAccess);
+  const [avisos, setAvisos] = React.useState([]);
+  const [enviando, setEnviando] = React.useState(false);
+  const [pushMsg, setPushMsg] = React.useState("");
+  const [pushOk, setPushOk] = React.useState(false);
+
+  React.useEffect(() => {
+    cargarAvisos(clubId).then(setAvisos).catch(() => {});
+    try { setPushOk(Notification.permission === "granted"); } catch(e) {}
+  }, [clubId]);
+
+  const activar = async () => {
+    setPushMsg("Activando...");
+    const res = await activarPush({
+      email: currentUser?.email,
+      nombre: currentUser?.nombre,
+      rol: isCoord ? "coordinador" : (teamAccess ? "entrenador" : "familiar"),
+      equipo: teamAccess || "",
+      clubId,
+    });
+    if (res.ok) { setPushOk(true); setPushMsg("✅ Notificaciones activadas en este dispositivo"); }
+    else setPushMsg("❌ " + res.error);
+  };
+
+  const enviar = async () => {
+    if (!titulo.trim() || !mensaje.trim()) return;
+    setEnviando(true);
+    await enviarAviso({ titulo, mensaje, destino, clubId, creadoPor: currentUser?.nombre || "—" });
+    setTitulo(""); setMensaje("");
+    setEnviando(false);
+    cargarAvisos(clubId).then(setAvisos).catch(() => {});
+  };
+
+  const puedeEnviar = isCoord || !!teamAccess;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-white">🔔 Avisos</h2>
+
+      <Card className={pushOk ? "border-green-900/50" : "border-yellow-900/50"}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-white font-semibold text-sm">{pushOk ? "Notificaciones activadas" : "Activa las notificaciones"}</p>
+            <p className="text-zinc-500 text-xs">{pushOk ? "Recibirás los avisos en este dispositivo." : "Para recibir avisos del club en este dispositivo."}</p>
+          </div>
+          {!pushOk && <Btn onClick={activar}>🔔 Activar</Btn>}
+        </div>
+        {pushMsg && <p className="text-zinc-400 text-xs mt-2">{pushMsg}</p>}
+      </Card>
+
+      {puedeEnviar && (
+        <Card className="border-red-900/50">
+          <h3 className="text-sm font-bold text-zinc-300 mb-3">Enviar aviso</h3>
+          <div className="space-y-3">
+            <Input label="Título" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ej: Cambio de horario" />
+            <Textarea label="Mensaje" value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Escribe el aviso..." rows={3} />
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Enviar a</label>
+              <div className="flex flex-wrap gap-1.5">
+                {isCoord && (
+                  <button onClick={() => setDestino("todos")}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${destino === "todos" ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                    📢 Todo el club
+                  </button>
+                )}
+                {(isCoord ? teams : [teamAccess]).map(t => (
+                  <button key={t} onClick={() => setDestino(t)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${destino === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Btn onClick={enviar} disabled={enviando || !titulo.trim() || !mensaje.trim()}>
+              {enviando ? "Enviando..." : "📤 Enviar aviso"}
+            </Btn>
+          </div>
+        </Card>
+      )}
+
+      <div className="space-y-2">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider">Últimos avisos</p>
+        {avisos.length === 0 && <p className="text-zinc-500 text-sm">No hay avisos todavía.</p>}
+        {avisos.map(a => (
+          <Card key={a.id}>
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-white font-semibold text-sm">{a.titulo}</span>
+              <Badge color={a.destino === "todos" ? "red" : "blue"}>{a.destino === "todos" ? "📢 Todo el club" : a.destino}</Badge>
+            </div>
+            <p className="text-zinc-300 text-sm">{a.mensaje}</p>
+            <p className="text-zinc-600 text-xs mt-1">
+              {a.creadoPor}{a.fecha?.toDate ? " · " + a.fecha.toDate().toLocaleString("es-ES", {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : ""}
+            </p>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const getSavedClub = () => {
     try {
@@ -6413,6 +6612,7 @@ export default function App() {
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
     ...(isCoord ? [{ id: "banco", label: "Banco de Jugadores", icon: "🗂️" }] : []),
     ...(isCoord ? [{ id: "mejoresrivales", label: "Mejores Rivales", icon: "⭐" }] : []),
+    { id: "avisos", label: "Avisos", icon: "🔔" },
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
@@ -6719,7 +6919,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-950 flex text-zinc-100" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? "w-64" : "w-0 overflow-hidden"} transition-all duration-300 bg-zinc-900 border-r border-zinc-800 flex flex-col shrink-0`}>
+      <div className={`${sidebarOpen ? "md:w-64" : "md:w-0 overflow-hidden"} hidden md:flex transition-all duration-300 bg-zinc-900 border-r border-zinc-800 flex-col shrink-0`}>
         {/* Header */}
         <div className="p-4 border-b border-zinc-800">
           <div className="flex items-center gap-2 mb-2">
@@ -6789,7 +6989,7 @@ export default function App() {
         <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
+            className="text-zinc-400 hover:text-white text-xl w-8 h-8 hidden md:flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
           >☰</button>
           <button
             onClick={() => setAuthState("home")}
@@ -6806,7 +7006,7 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-5 md:p-8">
+        <div className="flex-1 overflow-auto p-5 pb-24 md:p-8 md:pb-8">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
               <ResumenSection db={db} />
@@ -6825,6 +7025,9 @@ export default function App() {
                 <GestionClubSection clubActual={clubActual} onEquiposChange={(eqs) => setEquiposDinamicos(eqs.map(e => e.nombre))} />
                 <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
               </div>
+            )}
+            {activeSection === "avisos" && (
+              <AvisosSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} clubId={clubActual?.id || "magdalena"} />
             )}
             {activeSection === "plantilla" && (
               <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} />
@@ -6863,6 +7066,15 @@ export default function App() {
           </div>
         </div>
       </div>
+      <BottomNav
+        sections={sections}
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        isCoord={isCoord}
+        teams={teamsToUse}
+        activeTeam={activeTeam}
+        setActiveTeam={setActiveTeam}
+      />
     </div>
   );
 }
