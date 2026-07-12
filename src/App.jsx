@@ -1,5 +1,6 @@
 import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
+import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos } from "./push";
 import AmicsApp from "./AmicsApp";
 import { loginInternacional, registrarInternacional } from "./internacionalFirebase";
@@ -6948,6 +6949,7 @@ export default function App() {
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
     ...(!isCoord ? [{ id: "avisos", label: "Avisos", icon: "🔔" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
+    { id: "parte", label: "Parte lesiones", icon: "🩹" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
     { id: "partidos", label: "Partidos", icon: "⚽" },
@@ -7367,6 +7369,9 @@ export default function App() {
             )}
             {activeSection === "avisos" && (
               <AvisosSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} clubId={clubActual?.id || "magdalena"} />
+            )}
+            {activeSection === "parte" && (
+              <ParteLesionesSection teams={teamsToUse} db={db} isCoord={isCoord} teamAccess={teamAccess} />
             )}
             {activeSection === "plantilla" && (
               <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} clubActual={clubActual} />
