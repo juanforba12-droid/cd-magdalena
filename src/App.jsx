@@ -324,7 +324,22 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
       {tab === "convocatoria" && <ConvocatoriaContent team={team} data={data} onSave={onSave} isCoord={isCoord} db={db || {}} />}
-      {tab === "banco" && isCoord && <BancoJugadoresSection clubActual={clubActual} />}
+      {tab === "banco" && isCoord && <BancoJugadoresSection clubActual={clubActual} onAddToEquipo={(j) => {
+        if (!window.confirm("¿Añadir a " + j.nombre + " a la plantilla de " + team + "?")) return;
+        const yaEsta = (data.players || []).some(p => (p.name || "").toLowerCase() === (j.nombre || "").toLowerCase() || (j.dni && p.dni === j.dni));
+        if (yaEsta) { alert(j.nombre + " ya está en la plantilla de " + team); return; }
+        const nuevo = {
+          id: Date.now(),
+          name: j.nombre || "",
+          dni: j.dni || "",
+          telefono: j.telefono || "",
+          posicionPrincipal: j.posicion || "",
+          fechaNac: j.fechaNac || "",
+          status: "disponible",
+        };
+        onSave({ ...data, players: [...(data.players || []), nuevo] });
+        setTab("oficial");
+      }} />}
       {tab === "oficial" && <>
 
       {/* Add/Edit Form */}
