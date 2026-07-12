@@ -39,7 +39,7 @@ function initState() {
 
 // ── Tiny UI components ───────────────────────────────────────────────────────
 const Btn = ({ children, onClick, variant = "primary", small, className = "", disabled = false }) => {
-  const base = "font-bold rounded transition-all duration-150 border-0 ";
+  const base = "font-semibold rounded-lg transition-all duration-150 border-0 ";
   const sizes = small ? "px-3 py-1 text-xs" : "px-5 py-2 text-sm";
   const variants = {
     primary: "bg-red-600 hover:bg-red-500 text-white",
@@ -64,7 +64,7 @@ const Input = ({ label, ...props }) => (
     {label && <label className="text-xs text-zinc-400 uppercase tracking-wider">{label}</label>}
     <input
       {...props}
-      className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full"
+      className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full"
     />
   </div>
 );
@@ -74,14 +74,14 @@ const Textarea = ({ label, ...props }) => (
     {label && <label className="text-xs text-zinc-400 uppercase tracking-wider">{label}</label>}
     <textarea
       {...props}
-      className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full resize-none"
+      className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full resize-none"
       rows={4}
     />
   </div>
 );
 
 const Card = ({ children, className = "", onClick }) => (
-  <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-5 ${className}`}>{children}</div>
+  <div onClick={onClick} className={`bg-zinc-900 border border-zinc-800 rounded-2xl p-5 ${className}`}>{children}</div>
 );
 
 const Badge = ({ children, color = "zinc" }) => {
@@ -123,7 +123,7 @@ function AttendanceChart({ present, late, absent }) {
 
 // SECTION: Plantilla
 // ══════════════════════════════════════════════════════════════════════════════
-function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
+function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual }) {
   const [tab, setTab] = useState("oficial"); // "oficial" | "probando" | "convocatoria"
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -140,6 +140,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
   const [fichaUploading, setFichaUploading] = useState({});
   const [fichaVisor, setFichaVisor] = useState(null);
   const [fichas, setFichas] = useState(null);
+  const [menuPlayer, setMenuPlayer] = useState(null);
 
   // ── Historial de partidos ─────────────────────────────────────────────────
   const getPlayerMatchHistory = (playerId) => {
@@ -296,7 +297,9 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
         <h2 className="text-xl font-bold text-white">Plantilla — {team}</h2>
         {tab === "oficial"
           ? <Btn onClick={() => open()}>+ Añadir jugador</Btn>
-          : <Btn onClick={() => { setTab("oficial"); setTimeout(() => { window.dispatchEvent(new CustomEvent("openProbandoForm")); }, 50); }}>+ Añadir jugador en prueba</Btn>
+          : tab === "probando"
+          ? <Btn onClick={() => { setTab("oficial"); setTimeout(() => { window.dispatchEvent(new CustomEvent("openProbandoForm")); }, 50); }}>+ Añadir jugador en prueba</Btn>
+          : null
         }
       </div>
       {/* Pestañas */}
@@ -313,9 +316,14 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
           onClick={() => { setTab("convocatoria"); setShowForm(false); }}
           className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "convocatoria" ? "border-orange-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >📋 Convocatoria</button>
+        {isCoord && <button
+          onClick={() => { setTab("banco"); setShowForm(false); }}
+          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "banco" ? "border-green-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+        >🗂️ Banco</button>}
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
       {tab === "convocatoria" && <ConvocatoriaContent team={team} data={data} onSave={onSave} isCoord={isCoord} db={db || {}} />}
+      {tab === "banco" && isCoord && <BancoJugadoresSection clubActual={clubActual} />}
       {tab === "oficial" && <>
 
       {/* Add/Edit Form */}
@@ -379,7 +387,21 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
                     {posLabel[pos] || pos} ({players.length})
                   </span>
                 </div>
-                <div className="rounded-xl border border-zinc-800 overflow-hidden">
+                <div className="space-y-1.5 mb-2">
+                  {players.map(p => {
+                    const st = PLAYER_STATUSES.find(s => s.val === (p.status || "disponible")) || PLAYER_STATUSES[0];
+                    return (
+                      <div key={p.id} onClick={() => setMenuPlayer(p)}
+                        className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 cursor-pointer active:bg-zinc-800 transition-colors">
+                        <span className={`font-black text-base w-9 shrink-0 ${c.text}`}>{p.dorsal ? `#${p.dorsal}` : "—"}</span>
+                        <span className="text-white font-semibold flex-1 truncate">{p.name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${st.color}`}>{st.label}</span>
+                        <span className="text-zinc-500 text-lg shrink-0">›</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden rounded-xl border border-zinc-800 overflow-hidden">
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="bg-zinc-900 border-b border-zinc-800">
@@ -529,6 +551,76 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db }) {
       )}
 
       </>}
+      {/* Ficha del jugador (móvil) */}
+      {menuPlayer && (() => {
+        const p = (data.players || []).find(x => x.id === menuPlayer.id) || menuPlayer;
+        const cM = posColorMap[getPosGroup(p)] || posColorMap["Sin posición"];
+        return (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-end md:items-center md:justify-center" onClick={() => setMenuPlayer(null)}>
+            <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-md p-5 pb-8 space-y-4 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
+              <div className="text-center">
+                <p className="text-white font-bold text-xl">{p.name} {p.dorsal && <span className={cM.text}>#{p.dorsal}</span>}</p>
+                <div className="mt-1.5">
+                  {p.posicionPrincipal && <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${cM.bg} ${cM.border} ${cM.text}`}>{p.posicionPrincipal}</span>}
+                </div>
+                {isCoord && p.dni && <p className="text-zinc-500 text-xs mt-2 font-mono">DNI: {p.dni}</p>}
+                {isCoord && p.telefono && <p className="text-zinc-500 text-xs font-mono">📞 {p.telefono}</p>}
+              </div>
+              {isCoord && (
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Ficha PDF</p>
+                  {fichaUploading[p.id] ? (
+                    <span className="text-xs text-zinc-400 animate-pulse">⏳ Guardando...</span>
+                  ) : fichas && fichas[String(p.id)] ? (
+                    <div className="flex gap-2 flex-wrap">
+                      <Btn variant="secondary" onClick={() => {
+                        const b64 = fichas[String(p.id)].base64;
+                        const byteStr = atob(b64.split(",")[1]);
+                        const arr = new Uint8Array(byteStr.length);
+                        for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+                        const blob = new Blob([arr], { type: "application/pdf" });
+                        setMenuPlayer(null);
+                        setFichaVisor({ blobUrl: URL.createObjectURL(blob), blob, nombre: fichas[String(p.id)].nombre || "ficha.pdf" });
+                      }}>📄 Ver</Btn>
+                      <label className="px-4 py-2 text-sm font-semibold rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-100 cursor-pointer transition-all">
+                        🔄 Reemplazar
+                        <input type="file" accept="application/pdf" className="hidden"
+                          onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }} />
+                      </label>
+                      <Btn variant="danger" onClick={() => handleFichaDelete(p)}>🗑️</Btn>
+                    </div>
+                  ) : (
+                    <label className="inline-block px-4 py-2 text-sm font-semibold rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-100 cursor-pointer transition-all">
+                      ⬆️ Subir PDF
+                      <input type="file" accept="application/pdf" className="hidden"
+                        onChange={e => { if (e.target.files[0]) handleFichaUpload(p, e.target.files[0]); e.target.value = ""; }} />
+                    </label>
+                  )}
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Estado</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PLAYER_STATUSES.map(s => (
+                    <button key={s.val} onClick={() => setPlayerStatus(p.id, s.val)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${(p.status || "disponible") === s.val ? s.color : "bg-zinc-800 border-zinc-700 text-zinc-500"}`}>{s.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Btn variant="secondary" onClick={() => { setMenuPlayer(null); setStatsPlayer(p); }}>📈 Estadísticas</Btn>
+                <Btn variant="secondary" onClick={() => { setMenuPlayer(null); setAttPlayer(p); }}>📋 Asistencia</Btn>
+                <Btn variant="secondary" onClick={() => { setMenuPlayer(null); window.dispatchEvent(new CustomEvent("openInformes", { detail: { player: p, team } })); }}>📝 Informes</Btn>
+                <Btn variant="secondary" onClick={() => { setMenuPlayer(null); open(p); }}>✏️ Editar</Btn>
+                <Btn variant="danger" onClick={() => { setMenuPlayer(null); del(p.id); }}>🗑️ Eliminar</Btn>
+              </div>
+              <Btn variant="ghost" className="w-full justify-center" onClick={() => setMenuPlayer(null)}>Cerrar</Btn>
+            </div>
+          </div>
+        );
+      })()}
+
       {fichaVisor && (
         <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">
           <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
@@ -1406,11 +1498,13 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const [attTraining, setAttTraining] = useState(null);
   const [coachAttTraining, setCoachAttTraining] = useState(null);
   const [taskTraining, setTaskTraining] = useState(null);
+  const [menuTraining, setMenuTraining] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [duracion, setDuracion] = useState(90);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [vista, setVista] = useState("sesiones");
 
   const setCoachAttRecord = (sessionId, coachId, status, sessionFecha) => {
     const coachAtt = [...(data.coachAttendance || [])].filter(a => !(a.sessionId === sessionId && a.coachId === coachId));
@@ -1683,8 +1777,23 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <h2 className="text-xl font-bold text-white">Entrenamientos — {team}</h2>
-        <Btn onClick={() => open()}>+ Nuevo entrenamiento</Btn>
+        {vista === "sesiones" && <Btn onClick={() => open()}>+ Nuevo entrenamiento</Btn>}
       </div>
+
+      <div className="flex gap-2">
+        <button onClick={() => setVista("sesiones")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "sesiones" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🏃 Sesiones</button>
+        <button onClick={() => setVista("microciclo")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "microciclo" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📅 Microciclo</button>
+        <button onClick={() => setVista("tacticas")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "tacticas" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎬 Tácticas</button>
+      </div>
+
+      {vista === "microciclo" && <MicrocicloSection team={team} data={data} onSave={onSave} />}
+
+      {vista === "tacticas" && <TacticasSection team={team} data={data} onSave={onSave} />}
+
+      {vista === "sesiones" && <>
 
       {showForm && (
         <Card className="border-red-900/50">
@@ -1710,43 +1819,65 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
           const absent = recs.filter(r => r.status === "absent").length;
           const totalTaskMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
           return (
-            <Card key={t.id}>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <Card key={t.id} className="cursor-pointer hover:border-zinc-600 transition-colors" onClick={() => setMenuTraining(t)}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="text-red-400 font-bold text-sm">{t.fecha}</span>
-                    <Badge>Entrenamiento</Badge>
                     {t.duracion && <Badge color="zinc">⏱ {t.duracion} min</Badge>}
-                    {(t.tasks || []).length > 0 && <Badge color="blue">🗂 {(t.tasks||[]).length} tareas · {totalTaskMin} min</Badge>}
+                    {(t.tasks || []).length > 0 && <Badge color="blue">🗂 {(t.tasks||[]).length}</Badge>}
                     {t.duracion > 0 && (t.tasks||[]).length > 0 && (
                       <Badge color={totalTaskMin > t.duracion ? "red" : totalTaskMin === t.duracion ? "green" : "yellow"}>
                         {Math.round((totalTaskMin / t.duracion) * 100)}%
                       </Badge>
                     )}
                     {recs.length > 0 && (
-                      <span className="text-xs text-zinc-500">
-                        <span className="text-green-400">{present}✓</span>{" "}
-                        <span className="text-yellow-400">{late}⏱</span>{" "}
-                        <span className="text-red-400">{absent}✗</span>
+                      <span className="text-xs">
+                        <span className="text-green-400">{present}✓</span> <span className="text-yellow-400">{late}⏱</span> <span className="text-red-400">{absent}✗</span>
                       </span>
                     )}
                   </div>
-                  <p className="text-zinc-300 text-sm whitespace-pre-wrap">{t.desc || <span className="text-zinc-500 italic">Sin descripción</span>}</p>
+                  <p className="text-zinc-400 text-xs truncate">{t.desc || <span className="text-zinc-600 italic">Sin descripción</span>}</p>
                 </div>
-                <div className="flex gap-1 ml-3 shrink-0flex-wrap">
-                  <Btn small variant="secondary" onClick={() => setTaskTraining(t)}>🗂 Tareas</Btn>
-                  <Btn small variant="primary" onClick={() => setAttTraining(t)}>📋 Jugadores</Btn>
-                  {(data.coaches || []).length > 0 && isCoord && <Btn small variant="secondary" onClick={() => setCoachAttTraining(t)}>🧑‍🏫 Entrenadores</Btn>}
-                  <Btn small variant="secondary" onClick={() => printTraining(t)}>🖨️ PDF</Btn>
-                  <Btn small variant="secondary" onClick={() => open(t)}>✏️</Btn>
-                  <Btn small variant="danger" onClick={() => del(t.id)}>🗑️</Btn>
-                </div>
+                <span className="text-zinc-500 text-xl shrink-0">›</span>
               </div>
             </Card>
           );
         })}
         {(data.trainings || []).length === 0 && <p className="text-zinc-500 text-sm">No hay entrenamientos registrados.</p>}
       </div>
+
+      </>}
+
+      {/* Menú de acciones del entrenamiento */}
+      {menuTraining && (() => {
+        const t = menuTraining;
+        const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
+        return (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-end md:items-center md:justify-center" onClick={() => setMenuTraining(null)}>
+            <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-md p-5 pb-8 space-y-4 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <span className="text-red-400 font-bold">{t.fecha}</span>
+                  {t.duracion && <Badge color="zinc">⏱ {t.duracion} min</Badge>}
+                  {(t.tasks || []).length > 0 && <Badge color="blue">🗂 {(t.tasks||[]).length} tareas · {totalMin} min</Badge>}
+                </div>
+                <p className="text-zinc-300 text-sm whitespace-pre-wrap">{t.desc || <span className="text-zinc-500 italic">Sin descripción</span>}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Btn variant="secondary" onClick={() => { setMenuTraining(null); setTaskTraining(t); }}>🗂 Tareas</Btn>
+                <Btn variant="primary" onClick={() => { setMenuTraining(null); setAttTraining(t); }}>📋 Jugadores</Btn>
+                {(data.coaches || []).length > 0 && isCoord && <Btn variant="secondary" onClick={() => { setMenuTraining(null); setCoachAttTraining(t); }}>🧑‍🏫 Entrenadores</Btn>}
+                <Btn variant="secondary" onClick={() => { setMenuTraining(null); printTraining(t); }}>🖨️ PDF</Btn>
+                <Btn variant="secondary" onClick={() => { setMenuTraining(null); open(t); }}>✏️ Editar</Btn>
+                <Btn variant="danger" onClick={() => { setMenuTraining(null); del(t.id); }}>🗑️ Eliminar</Btn>
+              </div>
+              <Btn variant="ghost" className="w-full justify-center" onClick={() => setMenuTraining(null)}>Cerrar</Btn>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tasks panel modal */}
       {taskTraining && (
@@ -1935,6 +2066,7 @@ function PartidosSection({ team, data, onSave, isCoord }) {
   const [activeMatch, setActiveMatch] = useState(null);
   const [attMatch, setAttMatch] = useState(null);
   const [coachAttMatch, setCoachAttMatch] = useState(null);
+  const [menuMatch, setMenuMatch] = useState(null);
 
   const coachAttStatusOpts = [
     { val: "present", label: "Asistió", color: "green" },
@@ -2248,30 +2380,52 @@ function PartidosSection({ team, data, onSave, isCoord }) {
 
       <div className="space-y-3">
         {(data.matches || []).map(m => (
-          <Card key={m.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => openDetail(m)}>
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-bold">vs {m.rival}</span>
-                  {m.resultado && <Badge color="green">{m.resultado}</Badge>}
-                </div>
+          <Card key={m.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => setMenuMatch(m)}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <span className="text-white font-bold block truncate">vs {m.rival}</span>
                 <div className="flex gap-3 text-xs text-zinc-400">
                   <span>📅 {m.fecha}</span>
-                  <span>📍 {m.lugar}</span>
+                  {m.lugar && <span className="truncate">📍 {m.lugar}</span>}
                 </div>
               </div>
-              <div className="flex gap-1 ml-3" onClick={e => e.stopPropagation()}>
-                <Btn small variant="primary" onClick={() => openDetail(m)}>⭐ Valorar</Btn>
-                <Btn small variant="secondary" onClick={() => { setAttMatch(m); }}>📋 Jugadores</Btn>
-                {(data.coaches || []).length > 0 && isCoord && <Btn small variant="secondary" onClick={() => setCoachAttMatch(m)}>🧑‍🏫 Entrenadores</Btn>}
-                <Btn small variant="secondary" onClick={() => openForm(m)}>✏️</Btn>
-                <Btn small variant="danger" onClick={() => delMatch(m.id)}>🗑️</Btn>
-              </div>
+              {m.resultado
+                ? <span className="text-white font-black text-2xl shrink-0">{m.resultado}</span>
+                : <span className="text-zinc-600 text-xs shrink-0">Sin resultado</span>}
+              <span className="text-zinc-500 text-xl shrink-0">›</span>
             </div>
           </Card>
         ))}
         {(data.matches || []).length === 0 && <p className="text-zinc-500 text-sm">No hay partidos registrados.</p>}
       </div>
+
+      {/* Menú de acciones del partido */}
+      {menuMatch && (() => {
+        const m = menuMatch;
+        return (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-end md:items-center md:justify-center" onClick={() => setMenuMatch(null)}>
+            <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-md p-5 pb-8 space-y-4 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
+              <div className="text-center">
+                <p className="text-white font-bold text-lg">vs {m.rival}</p>
+                {m.resultado && <p className="text-white font-black text-4xl my-1">{m.resultado}</p>}
+                <div className="flex gap-3 text-xs text-zinc-400 justify-center flex-wrap">
+                  <span>📅 {m.fecha}</span>
+                  {m.lugar && <span>📍 {m.lugar}</span>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Btn variant="primary" onClick={() => { setMenuMatch(null); openDetail(m); }}>⭐ Valorar</Btn>
+                <Btn variant="secondary" onClick={() => { setMenuMatch(null); setAttMatch(m); }}>📋 Jugadores</Btn>
+                {(data.coaches || []).length > 0 && isCoord && <Btn variant="secondary" onClick={() => { setMenuMatch(null); setCoachAttMatch(m); }}>🧑‍🏫 Entrenadores</Btn>}
+                <Btn variant="secondary" onClick={() => { setMenuMatch(null); openForm(m); }}>✏️ Editar</Btn>
+                <Btn variant="danger" onClick={() => { setMenuMatch(null); delMatch(m.id); }}>🗑️ Eliminar</Btn>
+              </div>
+              <Btn variant="ghost" className="w-full justify-center" onClick={() => setMenuMatch(null)}>Cerrar</Btn>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Attendance modal */}
       {attMatch && (
@@ -2375,16 +2529,18 @@ function PartidosSection({ team, data, onSave, isCoord }) {
 // SECTION: Asistencia
 // ══════════════════════════════════════════════════════════════════════════════
 function AsistenciaSection({ team, data, onSave, isCoord }) {
+  const [tab, setTab] = useState("ranking");
   const [activePlayer, setActivePlayer] = useState(null);
-  const [searchDate, setSearchDate] = useState("");
+  const [sesionEdit, setSesionEdit] = useState(null);
+
+  const players = data.players || [];
 
   const sessions = [
-    ...(data.trainings || []).map(t => ({ id: `t_${t.id}`, fecha: t.fecha, tipo: "Entrenamiento", desc: t.desc })),
-    ...(data.matches || []).map(m => ({ id: `m_${m.id}`, fecha: m.fecha, tipo: "Partido", desc: `vs ${m.rival}` }))
-  ].sort((a, b) => b.fecha.localeCompare(a.fecha));
+    ...(data.trainings || []).map(t => ({ id: `t_${t.id}`, rawId: t.id, kind: "training", fecha: t.fecha, tipo: "Entrenamiento", desc: t.desc || "" })),
+    ...(data.matches || []).map(m => ({ id: `m_${m.id}`, rawId: m.id, kind: "match", fecha: m.fecha, tipo: "Partido", desc: `vs ${m.rival}` }))
+  ].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
 
-  const setRecord = (sessionId, playerId, playerName, status) => {
-    const fecha = sessions.find(s => s.id === sessionId)?.fecha;
+  const setRecord = (sessionId, playerId, playerName, status, fecha) => {
     const att = [...(data.attendance || [])].filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
     att.push({ sessionId, playerId, playerName, status, fecha });
     onSave({ ...data, attendance: att });
@@ -2393,6 +2549,17 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
   const delRecord = (sessionId, playerId) => {
     const att = (data.attendance || []).filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
     onSave({ ...data, attendance: att });
+  };
+
+  const deleteSession = (s) => {
+    if (!window.confirm(`¿Eliminar ${s.tipo.toLowerCase()} del ${s.fecha}?\nSe borrarán también sus registros de asistencia.`)) return;
+    const newData = { ...data };
+    if (s.kind === "training") newData.trainings = (data.trainings || []).filter(t => t.id !== s.rawId);
+    else newData.matches = (data.matches || []).filter(m => m.id !== s.rawId);
+    newData.attendance = (data.attendance || []).filter(a => a.sessionId !== s.id);
+    newData.coachAttendance = (data.coachAttendance || []).filter(a => a.sessionId !== s.id);
+    onSave(newData);
+    setSesionEdit(null);
   };
 
   const getPlayerStats = (playerId) => {
@@ -2419,118 +2586,223 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
     return "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500";
   };
 
-  const players = data.players || [];
+  const ranked = players.map(p => {
+    const s = getPlayerStats(p.id);
+    const total = s.present + s.late + s.absent;
+    return { ...p, ...s, total, pct: total ? Math.round(((s.present + s.late) / total) * 100) : 0 };
+  }).sort((a, b) => (b.present + b.late) - (a.present + a.late) || a.absent - b.absent);
 
-  // ── Player detail view ──────────────────────────────────────────────────────
+  const maxTotal = Math.max(1, ...ranked.map(r => r.total));
+  const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+
   if (activePlayer) {
     const p = activePlayer;
     const stats = getPlayerStats(p.id);
-    const filteredSessions = searchDate ? sessions.filter(s => s.fecha.includes(searchDate)) : sessions;
-
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Btn variant="ghost" onClick={() => { setActivePlayer(null); setSearchDate(""); }}>← Volver</Btn>
+          <Btn variant="ghost" onClick={() => setActivePlayer(null)}>← Volver</Btn>
           <h2 className="text-xl font-bold text-white">{p.name}</h2>
         </div>
-
-        {/* Stats chart */}
         <Card>
-          <div className="flex gap-6 mb-3">
-            <div className="text-center">
-              <div className="text-2xl font-black text-green-400">{stats.present}</div>
-              <div className="text-xs text-zinc-500">Asistió</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-black text-yellow-400">{stats.late}</div>
-              <div className="text-xs text-zinc-500">Tarde</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-black text-red-400">{stats.absent}</div>
-              <div className="text-xs text-zinc-500">No asistió</div>
-            </div>
-          </div>
           <AttendanceChart {...stats} />
         </Card>
-
-        {/* Session history */}
-        <Input label="Buscar sesión por fecha" value={searchDate} onChange={e => setSearchDate(e.target.value)} placeholder="2024-10" />
         <div className="space-y-2">
-          {filteredSessions.map(s => {
+          {sessions.map(s => {
             const rec = (data.attendance || []).find(a => a.sessionId === s.id && a.playerId === p.id);
             return (
               <Card key={s.id} className="flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white text-sm font-semibold">{s.fecha}</span>
-                    <Badge color={s.tipo === "Partido" ? "red" : "blue"}>{s.tipo === "Partido" ? "⚽ Partido" : "🏃 Entrenamiento"}</Badge>
+                    <Badge color={s.tipo === "Partido" ? "red" : "blue"}>{s.tipo}</Badge>
                     <span className="text-zinc-400 text-xs truncate">{s.desc}</span>
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {statusOpts.map(opt => (
-                    <button
-                      key={opt.val}
-                      onClick={() => setRecord(s.id, p.id, p.name, opt.val)}
-                      className={`text-xs px-2 py-1 rounded border transition-all ${statusBtnClass(rec?.status, opt.val, opt.color)}`}
-                    >{opt.label}</button>
+                    <button key={opt.val} onClick={() => setRecord(s.id, p.id, p.name, opt.val, s.fecha)}
+                      className={`text-xs px-2 py-1 rounded border transition-all ${statusBtnClass(rec?.status, opt.val, opt.color)}`}>{opt.label}</button>
                   ))}
-                  {rec && (
-                    <Btn small variant="danger" onClick={() => delRecord(s.id, p.id)}>✕</Btn>
-                  )}
+                  {rec && <Btn small variant="danger" onClick={() => delRecord(s.id, p.id)}>✕</Btn>}
                 </div>
               </Card>
             );
           })}
-          {filteredSessions.length === 0 && <p className="text-zinc-500 text-sm">No hay sesiones registradas.</p>}
         </div>
       </div>
     );
   }
 
-  // ── Player list view ────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Asistencia — {team}</h2>
-      <p className="text-zinc-500 text-sm">Selecciona un jugador para ver y registrar su asistencia.</p>
-      <div className="space-y-2">
-        {[...players].sort((a, b) => {
-          const sa = getPlayerStats(a.id);
-          const sb = getPlayerStats(b.id);
-          if (sb.present !== sa.present) return sb.present - sa.present;
-          if (sb.late !== sa.late) return sb.late - sa.late;
-          return sa.absent - sb.absent;
-        }).map(p => {
-          const stats = getPlayerStats(p.id);
-          const total = stats.present + stats.late + stats.absent;
-          return (
-            <Card
-              key={p.id}
-              className="hover:border-zinc-600 transition-colors cursor-pointer"
-              onClick={() => setActivePlayer(p)}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <span className="text-white font-semibold">{p.name}</span>
-                  {total > 0 && (
-                    <div className="mt-2">
-                      <AttendanceChart {...stats} />
-                    </div>
-                  )}
-                  {total === 0 && <p className="text-zinc-600 text-xs mt-1">Sin registros todavía</p>}
-                </div>
-                <div className="flex gap-3 text-xs shrink-0">
-                  <span className="text-green-400 font-bold">{stats.present}✓</span>
-                  <span className="text-yellow-400 font-bold">{stats.late}⏱</span>
-                  <span className="text-red-400 font-bold">{stats.absent}✗</span>
-                  <span className="text-zinc-500">→</span>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-        {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
+
+      <div className="flex gap-2">
+        <button onClick={() => setTab("ranking")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${tab === "ranking" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📊 Ranking</button>
+        <button onClick={() => setTab("sesiones")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${tab === "sesiones" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🗓 Sesiones</button>
+        <button onClick={() => setTab("evolucion")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all ${tab === "evolucion" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📈 Evolución</button>
       </div>
+
+      {tab === "ranking" && (
+        <div className="space-y-1.5">
+          {ranked.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
+          {ranked.map((p, i) => (
+            <div key={p.id} onClick={() => setActivePlayer(p)}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 cursor-pointer active:bg-zinc-800 hover:border-zinc-600 transition-colors">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="w-7 text-center shrink-0">{medal(i)}</span>
+                <span className="text-white font-semibold flex-1 truncate text-sm">{p.name}</span>
+                <span className={`text-sm font-black shrink-0 ${p.pct >= 75 ? "text-green-400" : p.pct >= 50 ? "text-yellow-400" : "text-red-400"}`}>{p.total > 0 ? p.pct + "%" : "—"}</span>
+                <span className="text-zinc-500 text-lg shrink-0">›</span>
+              </div>
+              {p.total > 0 ? (
+                <div className="flex h-2.5 rounded-full overflow-hidden gap-px ml-9" style={{ width: `${Math.max(15, (p.total / maxTotal) * 100 - 10)}%` }}>
+                  {p.present > 0 && <div className="bg-green-500" style={{ flex: p.present }} />}
+                  {p.late > 0 && <div className="bg-yellow-500" style={{ flex: p.late }} />}
+                  {p.absent > 0 && <div className="bg-red-600" style={{ flex: p.absent }} />}
+                </div>
+              ) : <p className="text-zinc-600 text-xs ml-9">Sin registros</p>}
+            </div>
+          ))}
+          {ranked.length > 0 && (
+            <div className="flex gap-4 text-xs text-zinc-500 pt-2 px-1">
+              <span><span className="inline-block w-2.5 h-2.5 bg-green-500 rounded-sm mr-1"></span>Asistió</span>
+              <span><span className="inline-block w-2.5 h-2.5 bg-yellow-500 rounded-sm mr-1"></span>Tarde</span>
+              <span><span className="inline-block w-2.5 h-2.5 bg-red-600 rounded-sm mr-1"></span>Faltó</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "sesiones" && (
+        <div className="space-y-1.5">
+          {sessions.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenamientos ni partidos registrados.</p>}
+          {sessions.map(s => {
+            const recs = (data.attendance || []).filter(a => a.sessionId === s.id);
+            const pres = recs.filter(r => r.status === "present").length;
+            const tar = recs.filter(r => r.status === "late").length;
+            const aus = recs.filter(r => r.status === "absent").length;
+            return (
+              <div key={s.id} onClick={() => setSesionEdit(s)}
+                className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 cursor-pointer active:bg-zinc-800 hover:border-zinc-600 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white text-sm font-semibold">{s.fecha}</span>
+                    <Badge color={s.tipo === "Partido" ? "red" : "blue"}>{s.tipo}</Badge>
+                  </div>
+                  <p className="text-zinc-400 text-xs truncate">{s.desc || "Sin descripción"}</p>
+                </div>
+                {recs.length > 0
+                  ? <span className="text-xs shrink-0"><span className="text-green-400">{pres}✓</span> <span className="text-yellow-400">{tar}⏱</span> <span className="text-red-400">{aus}✗</span></span>
+                  : <span className="text-zinc-600 text-xs shrink-0">Sin pasar lista</span>}
+                <span className="text-zinc-500 text-lg shrink-0">›</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── TAB EVOLUCIÓN ── */}
+      {tab === "evolucion" && (() => {
+        const att = data.attendance || [];
+        const meses = [...new Set(att.map(a => (a.fecha || "").slice(0, 7)).filter(m => m.length === 7))].sort();
+        if (meses.length === 0) return <p className="text-zinc-500 text-sm">Aún no hay registros de asistencia con fecha.</p>;
+
+        const MESES_ES = { "01":"ene","02":"feb","03":"mar","04":"abr","05":"may","06":"jun","07":"jul","08":"ago","09":"sep","10":"oct","11":"nov","12":"dic" };
+        const label = (m) => MESES_ES[m.slice(5)] + " " + m.slice(2, 4);
+
+        const pctMes = (recs, mes) => {
+          const r = recs.filter(a => (a.fecha || "").startsWith(mes));
+          if (!r.length) return null;
+          return Math.round((r.filter(x => x.status === "present" || x.status === "late").length / r.length) * 100);
+        };
+
+        const equipoSerie = meses.map(m => pctMes(att, m));
+        const top5 = ranked.filter(p => p.total > 0).slice(0, 5);
+        const COLORES = ["#f87171", "#60a5fa", "#facc15", "#4ade80", "#c084fc"];
+        const series = top5.map((p, i) => ({
+          nombre: p.name,
+          color: COLORES[i],
+          puntos: meses.map(m => pctMes(att.filter(a => a.playerId === p.id), m)),
+        }));
+
+        const W = 100, H = 55, PAD = 6;
+        const x = (i) => meses.length === 1 ? W / 2 : PAD + (i / (meses.length - 1)) * (W - 2 * PAD);
+        const y = (pct) => H - PAD - (pct / 100) * (H - 2 * PAD);
+        const toPath = (pts) => pts.map((p, i) => p === null ? null : `${x(i)},${y(p)}`).filter(Boolean).join(" ");
+
+        return (
+          <div className="space-y-3">
+            <Card>
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">% de asistencia por mes</p>
+              <svg viewBox={`0 0 ${W} ${H + 8}`} className="w-full">
+                {[0, 25, 50, 75, 100].map(g => (
+                  <g key={g}>
+                    <line x1={PAD} y1={y(g)} x2={W - PAD} y2={y(g)} stroke="#3f3f46" strokeWidth="0.3" />
+                    <text x={PAD - 1} y={y(g) + 1} fontSize="2.8" fill="#71717a" textAnchor="end">{g}</text>
+                  </g>
+                ))}
+                {series.map(s => (
+                  <polyline key={s.nombre} points={toPath(s.puntos)} fill="none" stroke={s.color} strokeWidth="0.8" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" />
+                ))}
+                <polyline points={toPath(equipoSerie)} fill="none" stroke="#ffffff" strokeWidth="1.4" strokeDasharray="2 1.2" strokeLinejoin="round" strokeLinecap="round" />
+                {meses.map((m, i) => equipoSerie[i] !== null && (
+                  <circle key={m} cx={x(i)} cy={y(equipoSerie[i])} r="1.1" fill="#ffffff" />
+                ))}
+                {meses.map((m, i) => (
+                  <text key={m} x={x(i)} y={H + 5} fontSize="2.8" fill="#a1a1aa" textAnchor="middle">{label(m)}</text>
+                ))}
+              </svg>
+            </Card>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs px-1">
+              <span className="text-zinc-300"><span className="inline-block w-4 h-0.5 bg-white align-middle mr-1.5" style={{borderTop:"2px dashed white",height:0}}></span>Equipo</span>
+              {series.map(s => (
+                <span key={s.nombre} className="text-zinc-400"><span className="inline-block w-4 h-1 rounded-full align-middle mr-1.5" style={{ backgroundColor: s.color }}></span>{s.nombre}</span>
+              ))}
+            </div>
+            <p className="text-zinc-600 text-xs px-1">Se muestran los 5 jugadores con más asistencias. La línea blanca discontinua es la media del equipo.</p>
+          </div>
+        );
+      })()}
+
+      {/* ── Hoja de edición de sesión ── */}
+      {sesionEdit && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-end md:items-center md:justify-center" onClick={() => setSesionEdit(null)}>
+          <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-lg p-5 pb-8 space-y-3 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-white font-bold">{sesionEdit.fecha} <Badge color={sesionEdit.tipo === "Partido" ? "red" : "blue"}>{sesionEdit.tipo}</Badge></p>
+                <p className="text-zinc-400 text-xs">{sesionEdit.desc || "Sin descripción"}</p>
+              </div>
+              <Btn small variant="danger" onClick={() => deleteSession(sesionEdit)}>🗑️ Eliminar sesión</Btn>
+            </div>
+            <div className="space-y-1.5">
+              {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
+              {players.map(p => {
+                const rec = (data.attendance || []).find(a => a.sessionId === sesionEdit.id && a.playerId === p.id);
+                return (
+                  <div key={p.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2.5">
+                    <span className="text-white text-sm font-semibold flex-1 min-w-0 truncate">{p.name}</span>
+                    <div className="flex gap-1 shrink-0">
+                      {statusOpts.map(opt => (
+                        <button key={opt.val} onClick={() => setRecord(sesionEdit.id, p.id, p.name, opt.val, sesionEdit.fecha)}
+                          className={`text-xs px-2 py-1 rounded border transition-all ${statusBtnClass(rec?.status, opt.val, opt.color)}`}>{opt.label}</button>
+                      ))}
+                      {rec && <Btn small variant="danger" onClick={() => delRecord(sesionEdit.id, p.id)}>✕</Btn>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <Btn variant="ghost" className="w-full justify-center" onClick={() => setSesionEdit(null)}>Cerrar</Btn>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3276,8 +3548,8 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="fixed inset-0 z-[70] bg-zinc-950 overflow-auto p-4 pb-10 space-y-4 md:static md:z-auto md:bg-transparent md:p-0 md:overflow-visible">
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 bg-zinc-950/95 border-b border-zinc-800 flex items-center gap-3 flex-wrap md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-0">
         <button onClick={() => {
           // Normalizar quitando campos internos (tipo) antes de comparar
           const normJugs = jugs => jugs.map(({ tipo, ...rest }) => rest);
@@ -3454,7 +3726,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
             style={{
               width: "100%",
               maxWidth: "380px",
-              touchAction: dragging ? "none" : "pan-y",
+              touchAction: "none",
               cursor: modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab"),
               outline: modoEliminar ? "2px solid #ef4444" : "none",
             }}
@@ -3475,128 +3747,102 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Clasificación
 // ══════════════════════════════════════════════════════════════════════════════
-function ClasificacionSection({ team, data }) {
+function ClasificacionSection({ team, data, db, isCoord }) {
   const [tab, setTab] = useState("goles");
-
-  const players = data.players || [];
-  const matches = data.matches || [];
-  const attendance = data.attendance || [];
+  const [scope, setScope] = useState("equipo");
 
   const TABS = [
-    { id: "goles", label: "🥇 Goleadores" },
-    { id: "asistencias", label: "🎯 Asistencias" },
+    { id: "goles", label: "🥇 Goles" },
+    { id: "asistencias", label: "🎯 Asist." },
     { id: "ga", label: "⚡ G+A" },
     { id: "minutos", label: "⏱ Minutos" },
     { id: "partidos", label: "📋 Partidos" },
   ];
 
-  const getPlayerMatchStats = (playerId) => {
-    let goles = 0, asistencias = 0, minutos = 0, titular = 0, suplente = 0, noConv = 0;
-    matches.forEach(m => {
-      const c = (m.convocatoria || []).find(c => c.playerId === playerId);
-      if (!c) return;
-      goles += c.goles || 0;
-      asistencias += c.asistencias || 0;
-      minutos += c.minutos || 0;
-      if (c.status === "titular") titular++;
-      else if (c.status === "suplente") suplente++;
-      else noConv++;
+  const statsFromTeam = (teamData, teamName) => {
+    const players = teamData?.players || [];
+    const matches = teamData?.matches || [];
+    return players.map(p => {
+      let goles = 0, asistencias = 0, minutos = 0, titular = 0, suplente = 0;
+      matches.forEach(m => {
+        const c = (m.convocatoria || []).find(c => c.playerId === p.id);
+        if (!c) return;
+        goles += c.goles || 0;
+        asistencias += c.asistencias || 0;
+        minutos += c.minutos || 0;
+        if (c.status === "titular") titular++;
+        else if (c.status === "suplente") suplente++;
+      });
+      return { key: teamName + "_" + p.id, name: p.name, equipo: teamName, goles, asistencias, ga: goles + asistencias, minutos, titular, suplente, partidos: titular + suplente };
     });
-    return { goles, asistencias, ga: goles + asistencias, minutos, titular, suplente, noConv, partidos: titular + suplente };
   };
 
-  const getPlayerAttendance = (playerId) => {
-    const recs = attendance.filter(a => a.playerId === playerId);
-    return {
-      present: recs.filter(r => r.status === "present").length,
-      late: recs.filter(r => r.status === "late").length,
-      absent: recs.filter(r => r.status === "absent").length,
-    };
-  };
+  const ranked = scope === "equipo"
+    ? statsFromTeam(data, team)
+    : Object.entries(db || {})
+        .filter(([k, v]) => !k.startsWith("__") && v && typeof v === "object" && Array.isArray(v.players))
+        .flatMap(([k, v]) => statsFromTeam(v, k));
 
-  const getPlayerCapitanias = (playerId) => matches.filter(m => m.capitan === playerId).length;
-  const ranked = players.map(p => ({
-    ...p,
-    ...getPlayerMatchStats(p.id),
-    att: getPlayerAttendance(p.id),
-    capitanias: getPlayerCapitanias(p.id),
-  }));
+  const FIELD = { goles: "goles", asistencias: "asistencias", ga: "ga", minutos: "minutos", partidos: "partidos" };
+  const UNIT = { goles: "⚽", asistencias: "🎯", ga: "⚡", minutos: "min", partidos: "PJ" };
+  const field = FIELD[tab];
+  const sorted = [...ranked].sort((a, b) => b[field] - a[field]).filter(p => p[field] > 0);
+  const maxVal = Math.max(1, ...(sorted.length ? sorted.map(p => p[field]) : [1]));
 
-  const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
-
-  const Row = ({ i, name, main, sub }) => (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg ${i < 3 ? "bg-zinc-800" : "bg-zinc-900 border border-zinc-800"}`}>
-      <span className="text-lg w-8 text-center">{medal(i)}</span>
-      <span className="text-white font-semibold flex-1">{name}</span>
-      <div className="text-right">
-        <div className={`font-black text-lg ${i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-600" : "text-zinc-400"}`}>{main}</div>
-        {sub && <div className="text-xs text-zinc-500">{sub}</div>}
-      </div>
-    </div>
-  );
-
-  const renderTab = () => {
-    if (tab === "goles") {
-      const sorted = [...ranked].sort((a, b) => b.goles - a.goles).filter(p => p.goles > 0);
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin goles registrados todavía.</p>;
-      return sorted.map((p, i) => <Row key={p.id} i={i} name={p.name} main={`${p.goles} ⚽`} />);
-    }
-    if (tab === "asistencias") {
-      const sorted = [...ranked].sort((a, b) => b.asistencias - a.asistencias).filter(p => p.asistencias > 0);
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin asistencias registradas todavía.</p>;
-      return sorted.map((p, i) => <Row key={p.id} i={i} name={p.name} main={`${p.asistencias} 🎯`} />);
-    }
-    if (tab === "ga") {
-      const sorted = [...ranked].sort((a, b) => b.ga - a.ga).filter(p => p.ga > 0);
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin datos todavía.</p>;
-      return sorted.map((p, i) => <Row key={p.id} i={i} name={p.name} main={`${p.ga} ⚡`} sub={`${p.goles} ⚽ + ${p.asistencias} 🎯`} />);
-    }
-    if (tab === "minutos") {
-      const sorted = [...ranked].sort((a, b) => b.minutos - a.minutos).filter(p => p.minutos > 0);
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin minutos registrados todavía.</p>;
-      return sorted.map((p, i) => <Row key={p.id} i={i} name={p.name} main={`${p.minutos} min`} />);
-    }
-    if (tab === "partidos") {
-      const sorted = [...ranked].sort((a, b) => b.partidos - a.partidos).filter(p => p.partidos > 0);
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin partidos registrados todavía.</p>;
-      return sorted.map((p, i) => <Row key={p.id} i={i} name={p.name} main={`${p.partidos} partidos`} sub={`${p.titular} tit. · ${p.suplente} sup. · ${p.noConv} no conv.`} />);
-    }
-    if (tab === "asistencia") {
-      const sorted = [...ranked].sort((a, b) => (b.att.present + b.att.late) - (a.att.present + a.att.late));
-      if (!sorted.length) return <p className="text-zinc-500 text-sm">Sin registros de asistencia todavía.</p>;
-      return sorted.map((p, i) => (
-        <div key={p.id} className={`px-4 py-3 rounded-lg ${i < 3 ? "bg-zinc-800" : "bg-zinc-900 border border-zinc-800"}`}>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-lg w-8 text-center">{medal(i)}</span>
-            <span className="text-white font-semibold flex-1">{p.name}</span>
-            <span className="text-white font-black">{p.att.present + p.att.late} sesiones</span>
-          </div>
-          <div className="flex gap-3 text-xs ml-11">
-            <span className="text-green-400">✓ {p.att.present} asistió</span>
-            <span className="text-yellow-400">⏱ {p.att.late} tarde</span>
-            <span className="text-red-400">✗ {p.att.absent} no vino</span>
-          </div>
-        </div>
-      ));
-    }
-  };
+  const PODIO = [
+    { ring: "border-yellow-500/60", bg: "bg-yellow-900/15", num: "text-yellow-400", medal: "🥇" },
+    { ring: "border-zinc-400/50", bg: "bg-zinc-700/20", num: "text-zinc-300", medal: "🥈" },
+    { ring: "border-amber-700/60", bg: "bg-amber-900/15", num: "text-amber-500", medal: "🥉" },
+  ];
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">Clasificaciones — {team}</h2>
+      <h2 className="text-xl font-bold text-white">Clasificaciones{scope === "equipo" ? ` — ${team}` : " — Todo el club"}</h2>
 
-      {/* Tab selector */}
-      <div className="flex flex-wrap gap-2">
+      {/* Ámbito */}
+      <div className="flex gap-2">
+        <button onClick={() => setScope("equipo")}
+          className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm border transition-all ${scope === "equipo" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>👤 Mi equipo</button>
+        <button onClick={() => setScope("global")}
+          className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm border transition-all ${scope === "global" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🌍 Global</button>
+        {isCoord && <button onClick={() => setScope("rivales")}
+          className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm border transition-all ${scope === "rivales" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>⭐ Rivales</button>}
+      </div>
+
+      {scope === "rivales" && <MejoresRivalesSection db={db} embed />}
+
+      {/* Estadística */}
+      {scope !== "rivales" && <div className="flex flex-wrap gap-1.5">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-3 py-1.5 rounded text-sm border transition-all ${tab === t.id ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"}`}
-          >{t.label}</button>
+            className={`px-3 py-1.5 rounded-full text-xs border transition-all ${tab === t.id ? "bg-zinc-100 border-zinc-100 text-zinc-900 font-bold" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{t.label}</button>
         ))}
-      </div>
+      </div>}
 
-      <div className="space-y-2">
-        {renderTab()}
-      </div>
+      {scope !== "rivales" && sorted.length === 0 && <p className="text-zinc-500 text-sm">Sin datos registrados todavía{scope === "global" ? " en ningún equipo" : ""}.</p>}
+
+      {scope !== "rivales" && <div className="space-y-1.5">
+        {sorted.map((p, i) => {
+          const pod = i < 3 ? PODIO[i] : null;
+          return (
+            <div key={p.key} className={`rounded-xl border px-4 py-3 ${pod ? `${pod.bg} ${pod.ring}` : "bg-zinc-900 border-zinc-800"}`}>
+              <div className="flex items-center gap-3">
+                <span className={`w-8 text-center shrink-0 ${pod ? "text-xl" : "text-zinc-500 text-sm font-bold"}`}>{pod ? pod.medal : i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-white font-semibold text-sm block truncate">{p.name}</span>
+                  {scope === "global" && <span className="text-zinc-500 text-xs">{p.equipo}</span>}
+                  {tab === "ga" && <span className="text-zinc-500 text-xs">{p.goles} ⚽ + {p.asistencias} 🎯</span>}
+                  {tab === "partidos" && <span className="text-zinc-500 text-xs">{p.titular} tit. · {p.suplente} sup.</span>}
+                </div>
+                <span className={`font-black text-lg shrink-0 ${pod ? pod.num : "text-zinc-300"}`}>{p[field]}<span className="text-xs font-normal text-zinc-500 ml-1">{UNIT[tab]}</span></span>
+              </div>
+              <div className="mt-1.5 ml-11 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${pod ? "bg-red-500" : "bg-zinc-600"}`} style={{ width: `${(p[field] / maxVal) * 100}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>}
     </div>
   );
 }
@@ -3604,7 +3850,7 @@ function ClasificacionSection({ team, data }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Gestión de temporadas (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
-function MejoresRivalesSection({ db }) {
+function MejoresRivalesSection({ db, embed }) {
   const TEAMS_LIST = Object.keys(db);
   const [filterTeam, setFilterTeam] = useState("all");
 
@@ -3650,7 +3896,7 @@ function MejoresRivalesSection({ db }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">⭐ Mejores Jugadores Rivales</h2>
+      {!embed && <h2 className="text-xl font-bold text-white">⭐ Mejores Jugadores Rivales</h2>}
       <p className="text-zinc-400 text-sm">Jugadores rivales destacados registrados por los entrenadores en cada partido.</p>
 
       {/* Filtro por equipo */}
@@ -5700,6 +5946,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   const [editJ, setEditJ] = React.useState(null);
   const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
   const [tab, setTab] = React.useState("todos");
+  const [menuBanco, setMenuBanco] = React.useState(null);
   const [filtroPosicion, setFiltroPosicion] = React.useState("");
   const [filtroAnioMin, setFiltroAnioMin] = React.useState("");
   const [filtroAnioMax, setFiltroAnioMax] = React.useState("");
@@ -5857,12 +6104,12 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
 
   return (
     <div className="p-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Banco de Jugadores</h2>
-        <div className="flex gap-2">
-          <Btn variant="secondary" onClick={actualizarFechas} disabled={importing}>Actualizar fechas</Btn>
-          <Btn variant="secondary" onClick={importarDeEquipos} disabled={importing}>{importing ? "Importando..." : "Importar de equipos"}</Btn>
-          <Btn onClick={() => openForm()}>+ Añadir jugador</Btn>
+        <div className="flex gap-2 flex-wrap">
+          <Btn small variant="secondary" onClick={actualizarFechas} disabled={importing}>🔄 Fechas</Btn>
+          <Btn small variant="secondary" onClick={importarDeEquipos} disabled={importing}>{importing ? "Importando..." : "📥 Importar"}</Btn>
+          <Btn small onClick={() => openForm()}>+ Añadir</Btn>
         </div>
       </div>
 
@@ -5905,7 +6152,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
             {t === "todos" ? `Todos (${jugadores.length})` : `${t} (${jugadores.filter(j=>j.estado===t).length})`}
           </button>
         ))}
-        <div className="ml-auto flex gap-2">
+        <div className="w-full md:w-auto md:ml-auto flex gap-2 flex-wrap">
           <select value={filtroAnioMin} onChange={e => setFiltroAnioMin(e.target.value)}
             className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 text-xs focus:outline-none">
             <option value="">Desde</option>
@@ -5929,26 +6176,56 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
       <Card>
         {jugadoresFiltrados.length === 0 && <p className="text-zinc-500 text-sm py-2">No hay jugadores.</p>}
         {jugadoresFiltrados.map(j => (
-          <div key={j.id} className="flex items-center gap-3 py-2.5 border-b border-zinc-800 last:border-0">
+          <div key={j.id} onClick={() => setMenuBanco(j)}
+            className="flex items-center gap-3 py-3 border-b border-zinc-800 last:border-0 cursor-pointer active:bg-zinc-800/50 transition-colors">
             <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
               {j.nombre[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-white text-sm font-semibold">{j.nombre}</div>
-              <div className="text-zinc-500 text-xs flex gap-3 flex-wrap">
-                {j.fechaNac && <span className="text-zinc-300">{calcEdad(j.fechaNac)} años ({new Date(j.fechaNac).getFullYear()})</span>}
-                {j.posicion && <span>{j.posicion}</span>}
-                {j.telefono && <span>{j.telefono}</span>}
-                {j.equipoOrigen && <span className="text-zinc-600">📍 {j.equipoOrigen}</span>}
+              <div className="text-white text-sm font-semibold truncate">{j.nombre}</div>
+              <div className="text-zinc-500 text-xs truncate">
+                {[j.fechaNac ? new Date(j.fechaNac).getFullYear() : null, j.posicion, j.equipoOrigen].filter(Boolean).join(" · ") || "Sin datos"}
               </div>
             </div>
             <Badge color={ESTADO_COLOR[j.estado] || "zinc"}>{j.estado}</Badge>
-            {onAddToEquipo && <Btn small variant="secondary" onClick={() => onAddToEquipo(j)}>+ Equipo</Btn>}
-            <Btn small onClick={() => openForm(j)}>Editar</Btn>
-            <Btn small variant="danger" onClick={() => eliminarJugador(j.id)}>Eliminar</Btn>
+            <span className="text-zinc-500 text-lg shrink-0">›</span>
           </div>
         ))}
       </Card>
+
+      {/* Ficha del jugador del banco */}
+      {menuBanco && (() => {
+        const j = jugadores.find(x => x.id === menuBanco.id) || menuBanco;
+        return (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-end md:items-center md:justify-center" onClick={() => setMenuBanco(null)}>
+            <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-md p-5 pb-8 space-y-4 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-zinc-700 flex items-center justify-center text-white text-xl font-bold mx-auto mb-2">
+                  {j.nombre[0]?.toUpperCase()}
+                </div>
+                <p className="text-white font-bold text-lg">{j.nombre}</p>
+                <div className="mt-1"><Badge color={ESTADO_COLOR[j.estado] || "zinc"}>{j.estado}</Badge></div>
+              </div>
+              <div className="bg-zinc-800/60 rounded-xl p-4 space-y-1.5 text-sm">
+                {j.fechaNac && <p className="text-zinc-300">🎂 {calcEdad(j.fechaNac)} años ({new Date(j.fechaNac).toLocaleDateString("es-ES")})</p>}
+                {j.posicion && <p className="text-zinc-300">⚽ {j.posicion}{(j.posicionesSecundarias||[]).length > 0 ? " · " + j.posicionesSecundarias.join(", ") : ""}</p>}
+                {j.telefono && <p className="text-zinc-300">📞 {j.telefono}</p>}
+                {j.dni && <p className="text-zinc-300 font-mono">🪪 {j.dni}</p>}
+                {j.equipoOrigen && <p className="text-zinc-400">📍 {j.equipoOrigen}</p>}
+                {j.notas && <p className="text-zinc-400 italic pt-1 border-t border-zinc-700">{j.notas}</p>}
+                {!j.fechaNac && !j.posicion && !j.telefono && !j.dni && <p className="text-zinc-600">Sin más datos.</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {onAddToEquipo && <Btn variant="secondary" onClick={() => { setMenuBanco(null); onAddToEquipo(j); }}>➕ A equipo</Btn>}
+                <Btn variant="secondary" onClick={() => { setMenuBanco(null); openForm(j); }}>✏️ Editar</Btn>
+                <Btn variant="danger" onClick={() => { setMenuBanco(null); eliminarJugador(j.id); }}>🗑️ Eliminar</Btn>
+              </div>
+              <Btn variant="ghost" className="w-full justify-center" onClick={() => setMenuBanco(null)}>Cerrar</Btn>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -6192,9 +6469,8 @@ function MicrocicloSection({ team, data, onSave }) {
   };
 
   const [semana, setSemana] = React.useState(semanaActual());
-  const microciclos = data?.microciclos || {};
   const [plan, setPlan] = React.useState(
-    microciclos[semanaActual()] || DIAS.map(d => ({ dia: d, tipo: "Descanso", objetivo: "", carga: 5, intensidad: "Media", notas: "" }))
+    (data?.microciclos || {})[semanaActual()] || DIAS.map(d => ({ dia: d, tipo: "Descanso", objetivo: "", carga: 5, intensidad: "Media", notas: "" }))
   );
   const [guardando, setGuardando] = React.useState(false);
 
@@ -6203,96 +6479,155 @@ function MicrocicloSection({ team, data, onSave }) {
     setPlan(mc || DIAS.map(d => ({ dia: d, tipo: "Descanso", objetivo: "", carga: 5, intensidad: "Media", notas: "" })));
   }, [semana, data]);
 
+  const fechaISO = (i) => {
+    const d = new Date(semana);
+    d.setDate(d.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  };
+  const fechaDia = (i) => new Date(fechaISO(i)).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+
+  const trainingsDe = (i) => (data?.trainings || []).filter(t => t.fecha === fechaISO(i));
+  const matchesDe = (i) => (data?.matches || []).filter(m => m.fecha === fechaISO(i));
+
   const updateDia = (i, field, val) => {
     setPlan(plan.map((d, idx) => idx === i ? { ...d, [field]: val } : d));
   };
 
+  const dataConPlan = (base) => ({
+    ...base,
+    microciclos: { ...(base?.microciclos || {}), [semana]: plan },
+  });
+
   const guardar = async () => {
     setGuardando(true);
-    const nuevaData = { ...data, microciclos: { ...(data?.microciclos || {}), [semana]: plan } };
-    await onSave(nuevaData);
+    await onSave(dataConPlan(data));
     setGuardando(false);
   };
 
-  const fechaDia = (i) => {
-    const d = new Date(semana);
-    d.setDate(d.getDate() + i);
-    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  const crearSesion = async (i) => {
+    const dia = plan[i];
+    const nuevo = {
+      id: Date.now(),
+      fecha: fechaISO(i),
+      desc: [dia.tipo !== "Descanso" ? "[" + dia.tipo + (dia.intensidad ? " · " + dia.intensidad : "") + "]" : "", dia.objetivo].filter(Boolean).join(" "),
+      duracion: 90,
+    };
+    const trainings = [...(data.trainings || []), nuevo].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    setGuardando(true);
+    await onSave(dataConPlan({ ...data, trainings }));
+    setGuardando(false);
+  };
+
+  const crearSemana = async () => {
+    const nuevos = [];
+    plan.forEach((dia, i) => {
+      if (dia.tipo === "Descanso" || dia.tipo === "Partido") return;
+      if (trainingsDe(i).length > 0) return;
+      nuevos.push({
+        id: Date.now() + i,
+        fecha: fechaISO(i),
+        desc: ["[" + dia.tipo + (dia.intensidad ? " · " + dia.intensidad : "") + "]", dia.objetivo].filter(Boolean).join(" "),
+        duracion: 90,
+      });
+    });
+    if (!nuevos.length) { alert("Todos los días planificados ya tienen sesión creada."); return; }
+    if (!window.confirm("¿Crear " + nuevos.length + " entrenamiento(s) a partir del plan?")) return;
+    const trainings = [...(data.trainings || []), ...nuevos].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    setGuardando(true);
+    await onSave(dataConPlan({ ...data, trainings }));
+    setGuardando(false);
   };
 
   const semanaAnterior = () => { const d = new Date(semana); d.setDate(d.getDate() - 7); setSemana(d.toISOString().slice(0,10)); };
   const semanaSiguiente = () => { const d = new Date(semana); d.setDate(d.getDate() + 7); setSemana(d.toISOString().slice(0,10)); };
 
   const cargaTotal = plan.reduce((s, d) => d.tipo !== "Descanso" ? s + (d.carga || 0) : s, 0);
-  const sesiones = plan.filter(d => d.tipo !== "Descanso").length;
+  const sesionesPlan = plan.filter(d => d.tipo !== "Descanso").length;
+  const sesionesCreadas = plan.reduce((s, d, i) => s + trainingsDe(i).length, 0);
 
   return (
-    <div className="p-4 max-w-5xl">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-white">Microciclo Semanal</h2>
+    <div className="max-w-5xl space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <button onClick={semanaAnterior} className="text-zinc-400 hover:text-white px-3 py-1 bg-zinc-800 rounded">prev</button>
+          <button onClick={semanaAnterior} className="text-zinc-400 hover:text-white px-3 py-1.5 bg-zinc-800 rounded-lg">‹</button>
           <span className="text-zinc-300 text-sm font-medium">Semana {new Date(semana).toLocaleDateString("es-ES", {day:"numeric",month:"short"})}</span>
-          <button onClick={semanaSiguiente} className="text-zinc-400 hover:text-white px-3 py-1 bg-zinc-800 rounded">sig</button>
+          <button onClick={semanaSiguiente} className="text-zinc-400 hover:text-white px-3 py-1.5 bg-zinc-800 rounded-lg">›</button>
         </div>
+        <Btn small variant="secondary" onClick={crearSemana} disabled={guardando}>⚡ Crear sesiones de la semana</Btn>
       </div>
 
-      <div className="flex gap-3 mb-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
-          <div className="text-white font-bold text-lg">{sesiones}</div>
-          <div className="text-zinc-500 text-xs">Sesiones</div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-center">
+          <div className="text-white font-bold text-lg">{sesionesCreadas}/{sesionesPlan}</div>
+          <div className="text-zinc-500 text-xs">Creadas / plan</div>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-center">
           <div className="text-white font-bold text-lg">{cargaTotal}</div>
           <div className="text-zinc-500 text-xs">Carga total</div>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-center">
-          <div className="text-white font-bold text-lg">{sesiones > 0 ? (cargaTotal/sesiones).toFixed(1) : 0}</div>
-          <div className="text-zinc-500 text-xs">Media/sesion</div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-center">
+          <div className="text-white font-bold text-lg">{sesionesPlan > 0 ? (cargaTotal/sesionesPlan).toFixed(1) : 0}</div>
+          <div className="text-zinc-500 text-xs">Media/sesión</div>
         </div>
       </div>
 
-      <div className="space-y-2 mb-4">
-        {plan.map((dia, i) => (
-          <div key={i} className={`border rounded-xl p-3 ${dia.tipo === "Partido" ? "border-red-800 bg-red-900/10" : "border-zinc-800 bg-zinc-900"}`}>
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="w-20 flex-shrink-0">
-                <div className="text-white text-sm font-semibold">{dia.dia}</div>
-                <div className="text-zinc-500 text-xs">{fechaDia(i)}</div>
+      <div className="space-y-2">
+        {plan.map((dia, i) => {
+          const trainsReales = trainingsDe(i);
+          const matchesReales = matchesDe(i);
+          return (
+            <div key={i} className={`border rounded-xl p-3 ${dia.tipo === "Partido" || matchesReales.length ? "border-red-800 bg-red-900/10" : "border-zinc-800 bg-zinc-900"}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="w-20 flex-shrink-0">
+                  <div className="text-white text-sm font-semibold">{dia.dia}</div>
+                  <div className="text-zinc-500 text-xs">{fechaDia(i)}</div>
+                </div>
+                <select value={dia.tipo} onChange={e => updateDia(i, "tipo", e.target.value)}
+                  className={`text-xs rounded-lg px-2 py-1.5 border-0 font-medium cursor-pointer ${COLORES_TIPO[dia.tipo] || "bg-zinc-800 text-zinc-300"}`}>
+                  {TIPOS.map(t => <option key={t}>{t}</option>)}
+                </select>
+                {dia.tipo !== "Descanso" && (
+                  <>
+                    <input value={dia.objetivo} onChange={e => updateDia(i, "objetivo", e.target.value)}
+                      placeholder="Objetivo del día..."
+                      className="flex-1 min-w-28 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-zinc-100 text-xs focus:outline-none" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-zinc-500 text-xs">Carga:</span>
+                      <input type="range" min="1" max="10" value={dia.carga}
+                        onChange={e => updateDia(i, "carga", parseInt(e.target.value))}
+                        className="w-16 accent-red-600" />
+                      <span className="text-white text-xs font-bold w-4">{dia.carga}</span>
+                    </div>
+                    <select value={dia.intensidad} onChange={e => updateDia(i, "intensidad", e.target.value)}
+                      className={`text-xs bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 font-medium ${COLORES_INT[dia.intensidad] || ""}`}>
+                      {INTENSIDADES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </>
+                )}
               </div>
-              <select value={dia.tipo} onChange={e => updateDia(i, "tipo", e.target.value)}
-                className={`text-xs rounded px-2 py-1 border-0 font-medium cursor-pointer ${COLORES_TIPO[dia.tipo] || "bg-zinc-800 text-zinc-300"}`}>
-                {TIPOS.map(t => <option key={t}>{t}</option>)}
-              </select>
-              {dia.tipo !== "Descanso" && (
-                <>
-                  <input value={dia.objetivo} onChange={e => updateDia(i, "objetivo", e.target.value)}
-                    placeholder="Objetivo del dia..."
-                    className="flex-1 min-w-28 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-100 text-xs focus:outline-none" />
-                  <div className="flex items-center gap-1">
-                    <span className="text-zinc-500 text-xs">Carga:</span>
-                    <input type="range" min="1" max="10" value={dia.carga}
-                      onChange={e => updateDia(i, "carga", parseInt(e.target.value))}
-                      className="w-16 accent-red-600" />
-                    <span className="text-white text-xs font-bold w-4">{dia.carga}</span>
-                  </div>
-                  <select value={dia.intensidad} onChange={e => updateDia(i, "intensidad", e.target.value)}
-                    className={`text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 font-medium ${COLORES_INT[dia.intensidad] || ""}`}>
-                    {INTENSIDADES.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </>
-              )}
+
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {matchesReales.map(m => (
+                  <span key={m.id} className="text-xs px-2 py-1 rounded-full bg-red-900/40 border border-red-700 text-red-300">⚽ vs {m.rival}{m.resultado ? " · " + m.resultado : ""}</span>
+                ))}
+                {trainsReales.map(t => (
+                  <span key={t.id} className="text-xs px-2 py-1 rounded-full bg-green-900/30 border border-green-700/60 text-green-300">✓ Sesión creada · {t.duracion || 90} min · {(t.tasks||[]).length} tareas</span>
+                ))}
+                {dia.tipo !== "Descanso" && dia.tipo !== "Partido" && trainsReales.length === 0 && (
+                  <button onClick={() => crearSesion(i)} disabled={guardando}
+                    className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-600 text-zinc-300 hover:border-zinc-400 hover:text-white transition-all">➕ Crear entrenamiento</button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <Btn onClick={guardar} disabled={guardando} className="w-full justify-center">
-        {guardando ? "Guardando..." : "Guardar microciclo"}
+        {guardando ? "Guardando..." : "💾 Guardar microciclo"}
       </Btn>
     </div>
   );
 }
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: Barra de navegación inferior (solo móvil, 4 más recientes)
@@ -6559,6 +6894,7 @@ export default function App() {
 
   const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || null);
   const [activeSection, setActiveSection] = useState("plantilla");
+  const [ajustesVista, setAjustesVista] = useState("club");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [informesPlayer, setInformesPlayer] = useState(null);
 
@@ -6610,17 +6946,13 @@ export default function App() {
     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
-    ...(isCoord ? [{ id: "banco", label: "Banco de Jugadores", icon: "🗂️" }] : []),
-    ...(isCoord ? [{ id: "mejoresrivales", label: "Mejores Rivales", icon: "⭐" }] : []),
-    { id: "avisos", label: "Avisos", icon: "🔔" },
+    ...(!isCoord ? [{ id: "avisos", label: "Avisos", icon: "🔔" }] : []),
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
     { id: "partidos", label: "Partidos", icon: "⚽" },
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
-    { id: "tacticas", label: "Tácticas", icon: "🎬" },
-    { id: "microciclo", label: "Microciclo", icon: "📅" },
   ];
 
   useEffect(() => {
@@ -7014,23 +7346,30 @@ export default function App() {
             {activeSection === "entrenadores" && isCoord && (
               <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} />
             )}
-            {activeSection === "mejoresrivales" && isCoord && (
-        <MejoresRivalesSection db={db} />
-      )}
-      {activeSection === "banco" && isCoord && (
-              <BancoJugadoresSection clubActual={clubActual} />
-            )}
       {activeSection === "gestion" && isCoord && (
-              <div>
-                <GestionClubSection clubActual={clubActual} onEquiposChange={(eqs) => setEquiposDinamicos(eqs.map(e => e.nombre))} />
-                <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <button onClick={() => setAjustesVista("club")}
+                    className={`px-4 py-2 rounded-lg text-sm border transition-all ${ajustesVista === "club" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🏟️ Club</button>
+                  <button onClick={() => setAjustesVista("avisos")}
+                    className={`px-4 py-2 rounded-lg text-sm border transition-all ${ajustesVista === "avisos" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🔔 Avisos</button>
+                </div>
+                {ajustesVista === "club" && (
+                  <div>
+                    <GestionClubSection clubActual={clubActual} onEquiposChange={(eqs) => setEquiposDinamicos(eqs.map(e => e.nombre))} />
+                    <GestionSection db={db} onArchive={archiveSeason} onRestore={restoreSeason} passwords={{...TEAM_PASSWORDS, ...teamPasswords}} onSavePasswords={savePasswords} />
+                  </div>
+                )}
+                {ajustesVista === "avisos" && (
+                  <AvisosSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} clubId={clubActual?.id || "magdalena"} />
+                )}
               </div>
             )}
             {activeSection === "avisos" && (
               <AvisosSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} clubId={clubActual?.id || "magdalena"} />
             )}
             {activeSection === "plantilla" && (
-              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} />
+              <PlantillaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} seasons={seasons} db={db} clubActual={clubActual} />
             )}
 
             {activeSection === "informes" && informesPlayer && (
@@ -7052,16 +7391,10 @@ export default function App() {
               <PartidosSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
             )}
             {activeSection === "clasificacion" && (
-              <ClasificacionSection team={activeTeam} data={teamData} />
+              <ClasificacionSection team={activeTeam} data={teamData} db={db} isCoord={isCoord} />
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
-            )}
-            {activeSection === "microciclo" && (
-              <MicrocicloSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
-            )}
-            {activeSection === "tacticas" && (
-              <TacticasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
             )}
           </div>
         </div>
