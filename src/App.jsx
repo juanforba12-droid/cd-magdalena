@@ -324,21 +324,27 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
       {tab === "convocatoria" && <ConvocatoriaContent team={team} data={data} onSave={onSave} isCoord={isCoord} db={db || {}} />}
-      {tab === "banco" && isCoord && <BancoJugadoresSection clubActual={clubActual} onAddToEquipo={(j) => {
-        if (!window.confirm("¿Añadir a " + j.nombre + " a la plantilla de " + team + "?")) return;
-        const yaEsta = (data.players || []).some(p => (p.name || "").toLowerCase() === (j.nombre || "").toLowerCase() || (j.dni && p.dni === j.dni));
-        if (yaEsta) { alert(j.nombre + " ya está en la plantilla de " + team); return; }
-        const nuevo = {
-          id: Date.now(),
-          name: j.nombre || "",
-          dni: j.dni || "",
-          telefono: j.telefono || "",
-          posicionPrincipal: j.posicion || "",
-          fechaNac: j.fechaNac || "",
-          status: "disponible",
-        };
-        onSave({ ...data, players: [...(data.players || []), nuevo] });
-        setTab("oficial");
+      {tab === "banco" && isCoord && <BancoJugadoresSection clubActual={clubActual} onAddToEquipo={(js) => {
+        const lista = Array.isArray(js) ? js : [js];
+        if (!window.confirm("¿Añadir " + (lista.length === 1 ? "a " + lista[0].nombre : lista.length + " jugadores") + " a la plantilla de " + team + "?")) return;
+        const nuevos = [];
+        const duplicados = [];
+        lista.forEach((j, idx) => {
+          const yaEsta = (data.players || []).some(p => (p.name || "").toLowerCase() === (j.nombre || "").toLowerCase() || (j.dni && p.dni === j.dni));
+          if (yaEsta) { duplicados.push(j.nombre); return; }
+          nuevos.push({
+            id: Date.now() + idx,
+            name: j.nombre || "",
+            dni: j.dni || "",
+            telefono: j.telefono || "",
+            posicionPrincipal: j.posicion || "",
+            fechaNac: j.fechaNac || "",
+            status: "disponible",
+          });
+        });
+        if (nuevos.length) onSave({ ...data, players: [...(data.players || []), ...nuevos] });
+        if (duplicados.length) alert("Ya estaban en " + team + ": " + duplicados.join(", "));
+        if (nuevos.length) setTab("oficial");
       }} />}
       {tab === "oficial" && <>
 
@@ -5963,6 +5969,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
   const [tab, setTab] = React.useState("todos");
   const [menuBanco, setMenuBanco] = React.useState(null);
+  const [seleccion, setSeleccion] = React.useState([]);
+  const toggleSel = (id) => setSeleccion(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const [filtroPosicion, setFiltroPosicion] = React.useState("");
   const [filtroAnioMin, setFiltroAnioMin] = React.useState("");
   const [filtroAnioMax, setFiltroAnioMax] = React.useState("");
@@ -6194,6 +6202,10 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
         {jugadoresFiltrados.map(j => (
           <div key={j.id} onClick={() => setMenuBanco(j)}
             className="flex items-center gap-3 py-3 border-b border-zinc-800 last:border-0 cursor-pointer active:bg-zinc-800/50 transition-colors">
+            <input type="checkbox" checked={seleccion.includes(j.id)}
+              onClick={e => e.stopPropagation()}
+              onChange={() => toggleSel(j.id)}
+              className="w-5 h-5 accent-red-600 shrink-0 cursor-pointer" />
             <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
               {j.nombre[0]?.toUpperCase()}
             </div>
@@ -6208,6 +6220,27 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
           </div>
         ))}
       </Card>
+
+      {/* Barra de acciones de seleccion multiple */}
+      {seleccion.length > 0 && (
+        <div className="fixed bottom-20 md:bottom-6 inset-x-3 md:inset-x-auto md:right-6 z-50 bg-zinc-800 border border-zinc-600 rounded-2xl shadow-2xl p-3 flex items-center gap-2 flex-wrap md:max-w-md">
+          <span className="text-white text-sm font-semibold px-1">{seleccion.length} seleccionado{seleccion.length > 1 ? "s" : ""}</span>
+          <div className="flex gap-2 ml-auto">
+            {onAddToEquipo && <Btn small onClick={() => {
+              const elegidos = jugadores.filter(j => seleccion.includes(j.id));
+              onAddToEquipo(elegidos);
+              setSeleccion([]);
+            }}>➕ Al equipo</Btn>}
+            <Btn small variant="danger" onClick={() => {
+              if (!window.confirm("¿Eliminar " + seleccion.length + " jugador(es) del banco?")) return;
+              const restantes = jugadores.filter(j => !seleccion.includes(j.id));
+              save(restantes);
+              setSeleccion([]);
+            }}>🗑️</Btn>
+            <Btn small variant="ghost" onClick={() => setSeleccion([])}>✕</Btn>
+          </div>
+        </div>
+      )}
 
       {/* Ficha del jugador del banco */}
       {menuBanco && (() => {
