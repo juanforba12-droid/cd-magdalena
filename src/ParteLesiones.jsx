@@ -2,6 +2,7 @@ import React from "react";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 const H = 841.92;
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 const PUESTO_X = { PORTERO: 104, DEFENSA: 134, MEDIO: 162, DELANTERO: 191 };
 const LICENCIA_X = { PROFESIONAL: 269, AFICIONADO: 308, JUVENIL: 340, CADETE: 367, INFANTIL: 395, ALEVIN: 423 };
@@ -68,6 +69,7 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
       localidad: prev.localidad || "Castellón",
       provincia: prev.provincia || "Castellón",
       superficie: prev.superficie || "C.ARTIFICIAL",
+      fechaParte: prev.fechaParte || new Date().toISOString().slice(0, 10),
     }));
   };
 
@@ -91,6 +93,12 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
         if (!text) return;
         page.drawText(String(text), { x, y: H - bottom + 3, size, font });
       };
+
+      const fp = f.fechaParte ? new Date(f.fechaParte + "T12:00:00") : new Date();
+      txt(f.localidadParte || f.localidad || "Castellón", 292, 122);
+      txt(fp.getDate(), 385, 122);
+      txt(MESES[fp.getMonth()], 409, 122);
+      txt(fp.getFullYear(), 463, 122);
 
       txt(f.dni, 102, 296);
       txt(fmtFecha(f.fechaNac), 155, 314, 7);
@@ -175,7 +183,10 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
             <p className="text-xs text-zinc-500 uppercase tracking-wider">La lesión</p>
-            <Field label="Fecha de la lesión"><input type="date" className={inputCls} value={f.fechaLesion || ""} onChange={set("fechaLesion")} /></Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Fecha de la lesión"><input type="date" className={inputCls} value={f.fechaLesion || ""} onChange={set("fechaLesion")} /></Field>
+              <Field label="Fecha del parte (cabecera)"><input type="date" className={inputCls} value={f.fechaParte || ""} onChange={set("fechaParte")} /></Field>
+            </div>
             <Field label="¿Dónde se produjo?"><Pills opts={["Partido", "Entrenamiento", "Otros"]} value={f.donde || ""} onChange={v => setF({ ...f, donde: v })} /></Field>
             {f.donde === "Otros" && <Field label="Especificar"><input className={inputCls} value={f.dondeOtros || ""} onChange={set("dondeOtros")} /></Field>}
             {f.donde === "Partido" && (
