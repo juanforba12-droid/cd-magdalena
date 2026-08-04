@@ -49,6 +49,7 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
   const [f, setF] = React.useState({});
   const [generando, setGenerando] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [descargadoOk, setDescargadoOk] = React.useState(false);
 
   const players = ((db || {})[equipo] || {}).players || [];
 
@@ -132,6 +133,8 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
       a.download = `Parte_${(f.apellidos || "jugador").replace(/\s+/g, "_")}_${f.nombre || ""}.pdf`;
       a.click();
       URL.revokeObjectURL(a.href);
+      setDescargadoOk(true);
+      setTimeout(() => setDescargadoOk(false), 2500);
     } catch (e) {
       setError(e.message);
     }
@@ -199,9 +202,10 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
           </div>
 
           {error && <p className="text-red-400 text-sm">❌ {error}</p>}
+          {descargadoOk && <p className="text-green-400 text-sm">✓ Descargado — mira la carpeta de descargas de tu navegador.</p>}
           <button onClick={generar} disabled={generando}
             className="w-full py-3 rounded-lg bg-red-700 hover:bg-red-600 text-white font-semibold transition-all disabled:opacity-50">
-            {generando ? "Generando..." : "📄 Descargar parte relleno"}
+            {generando ? "Generando..." : descargadoOk ? "✓ Descargado" : "📄 Descargar parte relleno"}
           </button>
         </>
       )}

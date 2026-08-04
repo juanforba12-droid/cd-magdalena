@@ -1,0 +1,210 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 753be95..80c3de5 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1872,16 +1872,28 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
+     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+     <title>Entrenamiento ${t.fecha} — ${team}</title>
+     <style>
+-      * { box-sizing: border-box; }
+-      body { font-family: Arial, sans-serif; padding: 32px; max-width: 820px; margin: 0 auto; color: #111; }
++      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
++      body { font-family: Arial, sans-serif; padding: 0 0 32px; margin: 0; color: #111; }
++      .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
++        display: flex; gap: 10px; justify-content: flex-end; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
++      .toolbar button { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 10px 18px;
++        border-radius: 8px; border: none; cursor: pointer; }
++      .btn-exportar { background: #b91c1c; color: #fff; }
++      .btn-cerrar { background: #52525b; color: #fff; }
++      .contenido { max-width: 820px; margin: 0 auto; padding: 32px; }
+       h1 { font-size: 22px; margin: 0 0 6px; color: #1a1a1a; }
+       .club { font-size: 13px; color: #888; margin-bottom: 4px; }
+       .meta { display:flex; gap:16px; font-size:13px; color:#555; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #dc2626; }
+       .desc-box { background:#f8f8f8; border-left:4px solid #dc2626; padding:12px 16px; border-radius:4px; margin-bottom:28px; font-size:13px; color:#333; white-space:pre-wrap; }
+       .section-title { font-size:16px; font-weight:700; color:#1e3a5f; margin-bottom:14px; padding-bottom:4px; border-bottom:1px solid #ddd; }
+       .no-tasks { color:#999; font-style:italic; font-size:13px; }
+-      @media print { body { padding:16px; } button { display:none; } }
++      @media print { .toolbar { display: none; } body { padding:16px; } }
+     </style></head><body>
++    <div class="toolbar">
++      <button class="btn-exportar" onclick="window.print()">🖨️ Exportar / Guardar PDF</button>
++      <button class="btn-cerrar" onclick="window.close()">✕ Cerrar y volver</button>
++    </div>
++    <div class="contenido">
+     <div class="club">CD La Magdalena — ${team}</div>
+     <h1>Entrenamiento del ${t.fecha}</h1>
+     <div class="meta">
+@@ -1891,12 +1903,13 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
+     ${t.desc ? `<div class="desc-box">${t.desc}</div>` : ""}
+     <div class="section-title">Tareas</div>
+     ${(t.tasks||[]).length > 0 ? tasksHTML : '<p class="no-tasks">Sin tareas registradas.</p>'}
++    </div>
+     </body></html>`;
+ 
+     const win = window.open("", "_blank");
++    if (!win) { window.alert("El navegador ha bloqueado la ventana del PDF. Permite las ventanas emergentes para este sitio e inténtalo de nuevo."); return; }
+     win.document.write(html);
+     win.document.close();
+-    win.onload = () => win.print();
+   };
+ 
+   const players = data.players || [];
+@@ -2189,12 +2202,16 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
+ // SECCIÓN: Alineación — campo visual, banquillo, objetivos y convocatoria
+ // ══════════════════════════════════════════════════════════════════════════════
+ function LineupChip({ jugador, size = "field", vacio, duplicado, seleccionado, tag, onClick, draggable, onDragStart }) {
++  // touchAction:"none" solo en los que se pueden arrastrar (los ocupados): sin esto,
++  // en iPhone/Android el dedo lo interpreta como "hacer scroll" en vez de arrastrar
++  // el jugador, y la pantalla se desliza hacia abajo en lugar de moverlo.
+   if (size === "field") {
+     return (
+       <div
+         onClick={onClick}
+         draggable={draggable}
+         onDragStart={onDragStart}
++        style={{ touchAction: draggable ? "none" : "auto" }}
+         className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer select-none transition-all border-2 ${
+           vacio
+             ? "bg-black/30 border-dashed border-white/40 hover:border-white/70"
+@@ -2216,6 +2233,7 @@ function LineupChip({ jugador, size = "field", vacio, duplicado, seleccionado, t
+       onClick={onClick}
+       draggable={draggable}
+       onDragStart={onDragStart}
++      style={{ touchAction: draggable ? "none" : "auto" }}
+       className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer select-none transition-all ${
+         seleccionado ? "bg-red-900/40 border-yellow-500" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"
+       }`}
+@@ -2414,7 +2432,7 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
+   );
+ }
+ 
+-function AlineacionSection({ team, data, db, onSave, onBack }) {
++function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBack }) {
+   const saved = data.alineacion || {};
+   const [sistema, setSistemaState] = useState(saved.sistema || "4-3-3");
+   const [posiciones, setPosicionesState] = useState(saved.posiciones || {});
+@@ -2629,7 +2647,7 @@ function AlineacionSection({ team, data, db, onSave, onBack }) {
+       ? escudoHTML(escudoRival)
+       : `<div style="width:64px;height:64px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;font-size:26px;">🛡️</div>`;
+ 
+-    const html = `<html><head><style>
++    const html = `<html><head><title>Alineación${team ? " " + team : ""}${rivalExport ? " vs " + rivalExport : ""}</title><style>
+       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+       body { font-family: Arial, sans-serif; padding: 0 0 24px; color: #111; }
+       .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
+@@ -2640,7 +2658,9 @@ function AlineacionSection({ team, data, db, onSave, onBack }) {
+       .btn-cerrar { background: #52525b; color: #fff; }
+       .contenido { padding: 24px; }
+       .cabecera { position: relative; padding-right: 130px; }
+-      .escudo-esquina { position: absolute; top: 0; right: 0; width: 100px; }
++      .escudo-esquina { position: absolute; top: 0; right: 0; width: 100px; text-align: center; }
++      .escudo-esquina img { width: 100px; display: block; }
++      .escudo-esquina span { display: block; font-size: 10px; font-weight: 700; margin-top: 2px; }
+       h1 { font-size: 20px; margin-bottom: 4px; }
+       h2 { font-size: 13px; color: #666; margin-bottom: 16px; font-weight: normal; }
+       h3 { font-size: 14px; margin: 18px 0 8px; color: #b91c1c; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+@@ -2663,12 +2683,12 @@ function AlineacionSection({ team, data, db, onSave, onBack }) {
+       </div>
+       <div class="contenido">
+         <div class="cabecera">
+-          <img class="escudo-esquina" src="${ESCUDO_MAGDALENA}" />
+-          <h1>🧩 Alineación — ${esc(team)}</h1>
++          <div class="escudo-esquina"><img src="${ESCUDO_MAGDALENA}" /><span>CD La Magdalena</span></div>
++          <h1>🧩 Alineación${team ? ` — ${esc(team)}` : ""}</h1>
+           <h2>Sistema: ${sistema}</h2>
+         </div>
+         <div class="vs">
+-          <div class="equipo">${escudoHTML(ESCUDO_MAGDALENA)}<span>${esc(team)}</span></div>
++          <div class="equipo">${escudoHTML(ESCUDO_MAGDALENA)}<span>CD La Magdalena</span></div>
+           <div class="letras">VS</div>
+           <div class="equipo">${rivalVisual}<span>${esc(rivalExport)}</span></div>
+         </div>
+@@ -2701,6 +2721,12 @@ function AlineacionSection({ team, data, db, onSave, onBack }) {
+         <h2 className="text-xl font-bold text-white flex-1">Alineación — {team}</h2>
+       </div>
+ 
++      {rivalPreseleccionado && (
++        <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-2 text-red-200 text-sm">
++          Preparando para <span className="font-bold">vs {rivalPreseleccionado}</span> — es la misma alineación base de siempre, solo se precarga el rival al exportar el PDF.
++        </div>
++      )}
++
+       <Card>
+         <div className="flex items-center justify-between gap-3 flex-wrap">
+           <div>
+@@ -2811,7 +2837,7 @@ function AlineacionSection({ team, data, db, onSave, onBack }) {
+         <Btn className="flex-1 justify-center" onClick={() => { guardar({}); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 1800); }}>
+           {guardadoOk ? "✓ Guardado" : "💾 Guardar alineación"}
+         </Btn>
+-        <Btn variant="secondary" className="flex-1 justify-center" onClick={() => { setRivalExport(rivalExport || data.matches?.[0]?.rival || ""); setRivalManual(false); setBusquedaRival(""); setRivalModal(true); }}>📄 Guardar y exportar PDF</Btn>
++        <Btn variant="secondary" className="flex-1 justify-center" onClick={() => { setRivalExport(rivalPreseleccionado || rivalExport || data.matches?.[0]?.rival || ""); setRivalManual(false); setBusquedaRival(""); setRivalModal(true); }}>📄 Guardar y exportar PDF</Btn>
+       </div>
+ 
+       {picker && (
+@@ -2901,6 +2927,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
+   const [attMatch, setAttMatch] = useState(null);
+   const [coachAttMatch, setCoachAttMatch] = useState(null);
+   const [menuMatch, setMenuMatch] = useState(null);
++  const [rivalAlineacion, setRivalAlineacion] = useState(null); // rival precargado al entrar desde un partido concreto
+ 
+   const coachAttStatusOpts = [
+     { val: "present", label: "Asistió", color: "green" },
+@@ -3040,7 +3067,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
+   const statusLabel = { titular: "Titular", suplente: "Suplente", no_conv: "No conv." };
+ 
+   if (view === "alineacion") return (
+-    <AlineacionSection team={team} data={data} db={db} onSave={onSave} onBack={() => setView("list")} />
++    <AlineacionSection team={team} data={data} db={db} onSave={onSave} rivalPreseleccionado={rivalAlineacion} onBack={() => { setRivalAlineacion(null); setView("list"); }} />
+   );
+ 
+   if (view === "form") return (
+@@ -3159,7 +3186,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
+       <div className="flex justify-between items-center gap-2 flex-wrap">
+         <h2 className="text-xl font-bold text-white">Partidos — {team}</h2>
+         <div className="flex gap-2">
+-          <Btn variant="secondary" onClick={() => setView("alineacion")}>🧩 Alineación</Btn>
++          <Btn variant="secondary" onClick={() => { setRivalAlineacion(null); setView("alineacion"); }}>🧩 Alineación</Btn>
+           <Btn onClick={() => openForm()}>+ Nuevo partido</Btn>
+         </div>
+       </div>
+@@ -3258,6 +3285,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
+               <div className="grid grid-cols-2 gap-2">
+                 <Btn variant="primary" onClick={() => { setMenuMatch(null); openDetail(m); }}>⭐ Valorar</Btn>
+                 <Btn variant="secondary" onClick={() => { setMenuMatch(null); setAttMatch(m); }}>📋 Jugadores</Btn>
++                <Btn variant="secondary" onClick={() => { setMenuMatch(null); setRivalAlineacion(m.rival); setView("alineacion"); }}>🧩 Alineación</Btn>
+                 {(data.coaches || []).length > 0 && isCoord && <Btn variant="secondary" onClick={() => { setMenuMatch(null); setCoachAttMatch(m); }}>🧑‍🏫 Entrenadores</Btn>}
+                 <Btn variant="secondary" onClick={() => { setMenuMatch(null); openForm(m); }}>✏️ Editar</Btn>
+                 <Btn variant="danger" onClick={() => { setMenuMatch(null); delMatch(m.id); }}>🗑️ Eliminar</Btn>
+diff --git a/src/ParteLesiones.jsx b/src/ParteLesiones.jsx
+index c592c52..bcf7469 100644
+--- a/src/ParteLesiones.jsx
++++ b/src/ParteLesiones.jsx
+@@ -49,6 +49,7 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
+   const [f, setF] = React.useState({});
+   const [generando, setGenerando] = React.useState(false);
+   const [error, setError] = React.useState("");
++  const [descargadoOk, setDescargadoOk] = React.useState(false);
+ 
+   const players = ((db || {})[equipo] || {}).players || [];
+ 
+@@ -132,6 +133,8 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
+       a.download = `Parte_${(f.apellidos || "jugador").replace(/\s+/g, "_")}_${f.nombre || ""}.pdf`;
+       a.click();
+       URL.revokeObjectURL(a.href);
++      setDescargadoOk(true);
++      setTimeout(() => setDescargadoOk(false), 2500);
+     } catch (e) {
+       setError(e.message);
+     }
+@@ -199,9 +202,10 @@ export default function ParteLesionesSection({ teams, db, isCoord, teamAccess })
+           </div>
+ 
+           {error && <p className="text-red-400 text-sm">❌ {error}</p>}
++          {descargadoOk && <p className="text-green-400 text-sm">✓ Descargado — mira la carpeta de descargas de tu navegador.</p>}
+           <button onClick={generar} disabled={generando}
+             className="w-full py-3 rounded-lg bg-red-700 hover:bg-red-600 text-white font-semibold transition-all disabled:opacity-50">
+-            {generando ? "Generando..." : "📄 Descargar parte relleno"}
++            {generando ? "Generando..." : descargadoOk ? "✓ Descargado" : "📄 Descargar parte relleno"}
+           </button>
+         </>
+       )}
