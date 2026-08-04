@@ -1952,7 +1952,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       )}
 
       <div className="space-y-3">
-        {(data.trainings || []).map(t => {
+        {[...(data.trainings || [])].sort((a, b) => (a.fecha || "").localeCompare(b.fecha || "")).map(t => {
           const sessionId = `t_${t.id}`;
           const recs = (data.attendance || []).filter(a => a.sessionId === sessionId);
           const present = recs.filter(r => r.status === "present").length;
