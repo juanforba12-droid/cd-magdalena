@@ -1677,7 +1677,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     } else {
       trainings.push({ id: Date.now(), fecha, desc, duracion });
     }
-    onSave({ ...data, trainings: trainings.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
+    onSave({ ...data, trainings: trainings.sort((a, b) => a.fecha.localeCompare(b.fecha)) });
     if (!editing) enviarAviso({ titulo: "🏃 Nuevo entrenamiento — " + team, mensaje: "Entrenamiento el " + fecha + (desc ? ": " + desc.slice(0, 80) : ""), destino: team, clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setShowForm(false);
   };
@@ -2329,6 +2329,68 @@ function coincidePosicion(jugadorRaw, posicionObjetivo) {
   return propias.some(p => buscadas.includes(p));
 }
 
+// Selector de rival reutilizable: por defecto arranca en modo "escribir el nombre"
+// (la mayoría de rivales nuevos no van a tener escudo todavía), con la opción de
+// cambiar a elegir de la lista de escudos ya guardados. Se usa tanto al exportar
+// la Alineación a PDF como al crear/editar un partido.
+function RivalPickerModal({ value, onChange, onClose }) {
+  const [manual, setManual] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [texto, setTexto] = useState(value || "");
+
+  const nombres = Object.keys(ESCUDOS_RIVALES)
+    .filter(n => !busqueda.trim() || n.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  const confirmarManual = () => { if (texto.trim()) { onChange(texto.trim()); onClose(); } };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="p-5 pb-3 shrink-0">
+          <p className="text-white font-bold mb-3">Rival</p>
+          {manual ? (
+            <input
+              autoFocus value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmarManual()}
+              placeholder="Nombre del equipo rival"
+              className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm w-full focus:outline-none focus:border-red-600"
+            />
+          ) : (
+            <input
+              autoFocus value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar rival..."
+              className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm w-full focus:outline-none focus:border-red-600"
+            />
+          )}
+        </div>
+        {manual ? (
+          <div className="px-5 pb-3">
+            <button onClick={() => setManual(false)} className="text-xs text-zinc-400 hover:text-white">🛡️ Elegir de la lista de escudos</button>
+          </div>
+        ) : (
+          <div className="overflow-auto px-5 pb-3 space-y-1.5 flex-1">
+            {nombres.map(nombre => (
+              <button
+                key={nombre} onClick={() => { onChange(nombre); onClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all bg-zinc-800 border-zinc-700 hover:border-zinc-500"
+              >
+                <img src={ESCUDOS_RIVALES[nombre]} alt="" className="w-9 h-9 object-contain rounded shrink-0 bg-white" />
+                <span className="text-white text-sm flex-1">{nombre}</span>
+              </button>
+            ))}
+            <button onClick={() => setManual(true)} className="w-full text-center text-xs text-zinc-400 hover:text-white py-2.5 mt-1 border-t border-zinc-800">
+              ✏️ Escribir el nombre
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2 p-5 pt-3 border-t border-zinc-800 shrink-0">
+          {manual && <Btn className="flex-1 justify-center" disabled={!texto.trim()} onClick={confirmarManual}>Guardar</Btn>}
+          <Btn variant="secondary" className="flex-1 justify-center" onClick={onClose}>Cancelar</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo, onPick, onClose }) {
   const [busqueda, setBusqueda] = useState("");
   const q = busqueda.trim().toLowerCase();
@@ -2445,8 +2507,6 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
   const [intercambio, setIntercambio] = useState(null);  // { tipo: "slot"|"suplente", slotId?, index? } armado
   const [rivalModal, setRivalModal] = useState(false);
   const [rivalExport, setRivalExport] = useState("");
-  const [rivalManual, setRivalManual] = useState(false);
-  const [busquedaRival, setBusquedaRival] = useState("");
   const [guardadoOk, setGuardadoOk] = useState(false);
 
   // Nunca se guarda `undefined` en una posición: o hay jugador, o la clave no existe.
@@ -2622,7 +2682,8 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
   };
 
   // ── Exportar PDF ─────────────────────────────────────────────────────
-  const generarPDF = () => {
+  const generarPDF = (rivalParaExportar) => {
+    const rival = rivalParaExportar || rivalExport;
     guardar({});
     const esc = (s) => (s || "—").replace(/</g, "&lt;");
     const campoHTML = slots.map(slot => {
@@ -2641,13 +2702,13 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
       <td>${j.dorsal || "—"}</td><td>${esc(j.playerName)}</td><td>${j.rol}</td><td>${j.equipo !== team ? j.equipo : ""}</td>
     </tr>`).join("");
 
-    const escudoRival = ESCUDOS_RIVALES[rivalExport.trim()] || null;
+    const escudoRival = ESCUDOS_RIVALES[rival.trim()] || null;
     const escudoHTML = (src) => `<img src="${src}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;background:#fff;" />`;
     const rivalVisual = escudoRival
       ? escudoHTML(escudoRival)
       : `<div style="width:64px;height:64px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;font-size:26px;">🛡️</div>`;
 
-    const html = `<html><head><title>Alineación${team ? " " + team : ""}${rivalExport ? " vs " + rivalExport : ""}</title><style>
+    const html = `<html><head><title>Alineación${team ? " " + team : ""}${rival ? " vs " + rival : ""}</title><style>
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
       body { font-family: Arial, sans-serif; padding: 0 0 24px; color: #111; }
       .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
@@ -2690,7 +2751,7 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
         <div class="vs">
           <div class="equipo">${escudoHTML(ESCUDO_MAGDALENA)}<span>CD La Magdalena</span></div>
           <div class="letras">VS</div>
-          <div class="equipo">${rivalVisual}<span>${esc(rivalExport)}</span></div>
+          <div class="equipo">${rivalVisual}<span>${esc(rival)}</span></div>
         </div>
         <div class="campo">${campoHTML}</div>
         <h3>🎯 Objetivos generales</h3>
@@ -2837,7 +2898,7 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
         <Btn className="flex-1 justify-center" onClick={() => { guardar({}); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 1800); }}>
           {guardadoOk ? "✓ Guardado" : "💾 Guardar alineación"}
         </Btn>
-        <Btn variant="secondary" className="flex-1 justify-center" onClick={() => { setRivalExport(rivalPreseleccionado || rivalExport || data.matches?.[0]?.rival || ""); setRivalManual(false); setBusquedaRival(""); setRivalModal(true); }}>📄 Guardar y exportar PDF</Btn>
+        <Btn variant="secondary" className="flex-1 justify-center" onClick={() => { setRivalExport(rivalPreseleccionado || rivalExport || data.matches?.[0]?.rival || ""); setRivalModal(true); }}>📄 Guardar y exportar PDF</Btn>
       </div>
 
       {picker && (
@@ -2870,48 +2931,11 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
       )}
 
       {rivalModal && (
-        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4" onClick={() => setRivalModal(false)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-5 pb-3 shrink-0">
-              <p className="text-white font-bold mb-3">Exportar alineación a PDF</p>
-              {rivalManual ? (
-                <>
-                  <Input label="Rival" value={rivalExport} onChange={e => setRivalExport(e.target.value)} placeholder="Nombre del equipo rival" />
-                  <button onClick={() => { setRivalManual(false); setRivalExport(""); }} className="text-xs text-zinc-400 hover:text-white mt-2">← Elegir de la lista</button>
-                </>
-              ) : (
-                <input
-                  autoFocus value={busquedaRival} onChange={e => setBusquedaRival(e.target.value)} placeholder="Buscar rival..."
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm w-full focus:outline-none focus:border-red-600"
-                />
-              )}
-            </div>
-            {!rivalManual && (
-              <div className="overflow-auto px-5 pb-3 space-y-1.5 flex-1">
-                {Object.keys(ESCUDOS_RIVALES)
-                  .filter(nombre => !busquedaRival.trim() || nombre.toLowerCase().includes(busquedaRival.trim().toLowerCase()))
-                  .sort((a, b) => a.localeCompare(b))
-                  .map(nombre => (
-                    <button
-                      key={nombre} onClick={() => setRivalExport(nombre)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all ${rivalExport === nombre ? "bg-red-900/40 border-red-600" : "bg-zinc-800 border-zinc-700 hover:border-zinc-500"}`}
-                    >
-                      <img src={ESCUDOS_RIVALES[nombre]} alt="" className="w-9 h-9 object-contain rounded shrink-0 bg-white" />
-                      <span className="text-white text-sm flex-1">{nombre}</span>
-                      {rivalExport === nombre && <span className="text-red-400 shrink-0">✓</span>}
-                    </button>
-                  ))}
-                <button onClick={() => { setRivalManual(true); setRivalExport(""); }} className="w-full text-center text-xs text-zinc-400 hover:text-white py-2.5 mt-1 border-t border-zinc-800">
-                  ✏️ Escribir otro rival
-                </button>
-              </div>
-            )}
-            <div className="flex gap-2 p-5 pt-3 border-t border-zinc-800 shrink-0">
-              <Btn className="flex-1 justify-center" disabled={!rivalExport.trim()} onClick={generarPDF}>Generar PDF</Btn>
-              <Btn variant="secondary" className="flex-1 justify-center" onClick={() => setRivalModal(false)}>Cancelar</Btn>
-            </div>
-          </div>
-        </div>
+        <RivalPickerModal
+          value={rivalExport}
+          onChange={(nombre) => { setRivalExport(nombre); generarPDF(nombre); }}
+          onClose={() => setRivalModal(false)}
+        />
       )}
     </div>
   );
@@ -2957,6 +2981,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
 
   // Match form state
   const [rival, setRival] = useState("");
+  const [rivalPickerOpen, setRivalPickerOpen] = useState(false);
   const [lugar, setLugar] = useState("");
   const [fecha, setFecha] = useState("");
   const [golesLocal, setGolesLocal] = useState("");
@@ -3078,7 +3103,14 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       </div>
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Rival" value={rival} onChange={e => setRival(e.target.value)} />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-zinc-400 uppercase tracking-wider">Rival</label>
+            <button type="button" onClick={() => setRivalPickerOpen(true)}
+              className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-left flex items-center gap-2 hover:border-zinc-500">
+              {ESCUDOS_RIVALES[rival] && <img src={ESCUDOS_RIVALES[rival]} alt="" className="w-6 h-6 object-contain rounded bg-white shrink-0" />}
+              <span className={rival ? "text-zinc-100" : "text-zinc-500"}>{rival || "Elegir rival..."}</span>
+            </button>
+          </div>
           <Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
           <Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
           <div className="flex flex-col gap-1">
@@ -3118,6 +3150,9 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
           ))}
         </div>
       </Card>
+      {rivalPickerOpen && (
+        <RivalPickerModal value={rival} onChange={setRival} onClose={() => setRivalPickerOpen(false)} />
+      )}
     </div>
   );
 
@@ -3250,6 +3285,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
         {(data.matches || []).map(m => (
           <Card key={m.id} className="hover:border-zinc-600 transition-colors cursor-pointer" onClick={() => setMenuMatch(m)}>
             <div className="flex items-center justify-between gap-3">
+              {ESCUDOS_RIVALES[m.rival] && <img src={ESCUDOS_RIVALES[m.rival]} alt="" className="w-9 h-9 object-contain rounded bg-white shrink-0" />}
               <div className="flex-1 min-w-0">
                 <span className="text-white font-bold block truncate">vs {m.rival}</span>
                 <div className="flex gap-3 text-xs text-zinc-400">
@@ -3275,6 +3311,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
             <div className="bg-zinc-900 border-t border-zinc-700 md:border md:rounded-xl rounded-t-2xl w-full md:max-w-md p-5 pb-8 space-y-4 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
               <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto md:hidden" />
               <div className="text-center">
+                {ESCUDOS_RIVALES[m.rival] && <img src={ESCUDOS_RIVALES[m.rival]} alt="" className="w-14 h-14 object-contain rounded bg-white mx-auto mb-2" />}
                 <p className="text-white font-bold text-lg">vs {m.rival}</p>
                 {m.resultado && <p className="text-white font-black text-4xl my-1">{m.resultado}</p>}
                 <div className="flex gap-3 text-xs text-zinc-400 justify-center flex-wrap">
@@ -7382,11 +7419,19 @@ function MicrocicloSection({ team, data, onSave }) {
   };
   const COLORES_INT = { "Baja":"text-green-400","Media":"text-yellow-400","Alta":"text-orange-400","Maxima":"text-red-400" };
 
+  // Fechas siempre en local, nunca pasando por UTC: "new Date('2026-08-03')" lo
+  // interpreta el navegador como medianoche UTC, y luego toISOString() lo vuelve
+  // a convertir a UTC — cerca de medianoche esto puede desplazar el día (y en
+  // casos límite el mes/año) según la zona horaria. Con estas dos funciones la
+  // fecha que ves es siempre la fecha real de tu reloj, sin conversiones raras.
+  const aISOLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const deISOLocal = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
+
   const semanaActual = () => {
     const hoy = new Date();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - (hoy.getDay() || 7) + 1);
-    return lunes.toISOString().slice(0, 10);
+    return aISOLocal(lunes);
   };
 
   const [semana, setSemana] = React.useState(semanaActual());
@@ -7401,11 +7446,11 @@ function MicrocicloSection({ team, data, onSave }) {
   }, [semana, data]);
 
   const fechaISO = (i) => {
-    const d = new Date(semana);
+    const d = deISOLocal(semana);
     d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return aISOLocal(d);
   };
-  const fechaDia = (i) => new Date(fechaISO(i)).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  const fechaDia = (i) => deISOLocal(fechaISO(i)).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 
   const trainingsDe = (i) => (data?.trainings || []).filter(t => t.fecha === fechaISO(i));
   const matchesDe = (i) => (data?.matches || []).filter(m => m.fecha === fechaISO(i));
@@ -7433,7 +7478,7 @@ function MicrocicloSection({ team, data, onSave }) {
       desc: [dia.tipo !== "Descanso" ? "[" + dia.tipo + (dia.intensidad ? " · " + dia.intensidad : "") + "]" : "", dia.objetivo].filter(Boolean).join(" "),
       duracion: 90,
     };
-    const trainings = [...(data.trainings || []), nuevo].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    const trainings = [...(data.trainings || []), nuevo].sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
     setGuardando(true);
     await onSave(dataConPlan({ ...data, trainings }));
     setGuardando(false);
@@ -7453,14 +7498,14 @@ function MicrocicloSection({ team, data, onSave }) {
     });
     if (!nuevos.length) { alert("Todos los días planificados ya tienen sesión creada."); return; }
     if (!window.confirm("¿Crear " + nuevos.length + " entrenamiento(s) a partir del plan?")) return;
-    const trainings = [...(data.trainings || []), ...nuevos].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    const trainings = [...(data.trainings || []), ...nuevos].sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
     setGuardando(true);
     await onSave(dataConPlan({ ...data, trainings }));
     setGuardando(false);
   };
 
-  const semanaAnterior = () => { const d = new Date(semana); d.setDate(d.getDate() - 7); setSemana(d.toISOString().slice(0,10)); };
-  const semanaSiguiente = () => { const d = new Date(semana); d.setDate(d.getDate() + 7); setSemana(d.toISOString().slice(0,10)); };
+  const semanaAnterior = () => { const d = deISOLocal(semana); d.setDate(d.getDate() - 7); setSemana(aISOLocal(d)); };
+  const semanaSiguiente = () => { const d = deISOLocal(semana); d.setDate(d.getDate() + 7); setSemana(aISOLocal(d)); };
 
   const cargaTotal = plan.reduce((s, d) => d.tipo !== "Descanso" ? s + (d.carga || 0) : s, 0);
   const sesionesPlan = plan.filter(d => d.tipo !== "Descanso").length;
@@ -7471,7 +7516,7 @@ function MicrocicloSection({ team, data, onSave }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button onClick={semanaAnterior} className="text-zinc-400 hover:text-white px-3 py-1.5 bg-zinc-800 rounded-lg">‹</button>
-          <span className="text-zinc-300 text-sm font-medium">Semana {new Date(semana).toLocaleDateString("es-ES", {day:"numeric",month:"short"})}</span>
+          <span className="text-zinc-300 text-sm font-medium">Semana {deISOLocal(semana).toLocaleDateString("es-ES", {day:"numeric",month:"short"})}</span>
           <button onClick={semanaSiguiente} className="text-zinc-400 hover:text-white px-3 py-1.5 bg-zinc-800 rounded-lg">›</button>
         </div>
         <Btn small variant="secondary" onClick={crearSemana} disabled={guardando}>⚡ Crear sesiones de la semana</Btn>
