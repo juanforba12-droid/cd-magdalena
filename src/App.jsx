@@ -55,6 +55,28 @@ const ESCUDOS_RIVALES = {
 };
 
 const TEAMS = ["Escoleta", "Prebenjamín", "Benjamín C", "Benjamín B", "Benjamín A", "Alevín B", "Alevín A", "Transición", "Infantil B", "Infantil A", "Cadete", "Juvenil"];
+
+// Hook reutilizable: mientras una pantalla a pantalla completa esté abierta,
+// intercepta el botón/gesto "atrás" de Android para que cierre SOLO esa
+// pantalla en vez de salir de toda la app. En iPhone no hace falta (no hay
+// gesto de "atrás" del sistema), así que ahí simplemente no actúa.
+function useCloseOnBack(abierto, onClose) {
+  const cerradoPorAtras = useRef(false);
+  useEffect(() => {
+    if (!abierto) return;
+    cerradoPorAtras.current = false;
+    window.history.pushState({ overlay: true }, "");
+    const handler = () => { cerradoPorAtras.current = true; onClose(); };
+    window.addEventListener("popstate", handler);
+    return () => {
+      window.removeEventListener("popstate", handler);
+      // Si se cerró con el botón "Cerrar" (no con "atrás"), quitamos la
+      // entrada de historial que habíamos añadido para no dejarla huérfana.
+      if (!cerradoPorAtras.current) window.history.back();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re-ejecutar al abrir/cerrar, no en cada render
+  }, [abierto]);
+}
 const COORDINATORS = ["Lalo", "Patri", "Jose", "Juan", "Xuso", "Fer", "Oscar"];
 
 const POSITIONS = [
@@ -246,6 +268,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
   const [search, setSearch] = useState("");
   const [fichaUploading, setFichaUploading] = useState({});
   const [fichaVisor, setFichaVisor] = useState(null);
+  useCloseOnBack(!!fichaVisor, () => { if (fichaVisor) { URL.revokeObjectURL(fichaVisor.blobUrl); setFichaVisor(null); } });
   const [fichas, setFichas] = useState(null);
   const [menuPlayer, setMenuPlayer] = useState(null);
 
@@ -756,10 +779,14 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
             <div className="flex gap-2">
               {navigator.share && (
                 <button onClick={async () => {
+                  const file = new File([fichaVisor.blob], fichaVisor.nombre, { type: "application/pdf" });
+                  if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
+                    alert("Este móvil no permite compartir archivos directamente.\n\nDescarga el PDF y compártelo desde tu galería o gestor de archivos.");
+                    return;
+                  }
                   try {
-                    const file = new File([fichaVisor.blob], fichaVisor.nombre, { type: "application/pdf" });
                     await navigator.share({ files: [file], title: fichaVisor.nombre });
-                  } catch(e) { if (e.name !== "AbortError") alert("Error: " + e.message); }
+                  } catch(e) { if (e.name !== "AbortError") alert("No se ha podido compartir el archivo."); }
                 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-white text-sm font-semibold">
                   📤 Compartir
                 </button>
@@ -1368,7 +1395,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
       <p className="text-xs text-zinc-600">Haz clic para añadir · Arrastra para mover · Doble clic en jugador para editar número</p>
       {/* Field */}
       <div ref={fieldRef} className="relative w-full rounded-xl overflow-hidden select-none pizarra-field"
-        style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair" }}
+        style={{ paddingBottom:"65%", background:"#1a6b2e", cursor: tool==="pencil"?"crosshair":tool==="erase"?"cell":"crosshair", touchAction:"none" }}
         onClick={(e) => { if(tool==="pencil") return; addItem(e); }}
         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => { setDragging(null); onMouseUp(); }}
         onMouseDown={(e) => { if(tool==="pencil") startPencil(e); if(tool==="erase") erasingRef.current=true; }}
@@ -3928,6 +3955,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const canvasRef = useRef(null);
   const [nombre, setNombre] = useState(tactica.nombre);
   const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j, tipo: j.tipo || "local" })));
+  useCloseOnBack(true, onCancelar);
 
   // Valores por defecto — se declaran ANTES de los useState que los usan
   const rivsDefault = tactica.rivales || [
@@ -4334,14 +4362,36 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
       return;
     }
 
-    setGrabando(true);
-
     // Canvas de alta resolución para renderizar (2x del canvas visible)
     const SCALE = 2;
     const W = FIELD_W * SCALE;
     const H = FIELD_H * SCALE;
     const FPS = 60;
     const MS_POR_FRAME = 1000 / FPS;
+
+    const CODEC_CONFIG = {
+      codec: "avc1.4d0028",  // H.264 Main Profile Level 4.0 — alta calidad
+      width: W,
+      height: H,
+      bitrate: 6_000_000,    // 6 Mbps — calidad alta
+      framerate: FPS,
+    };
+
+    // Muchos móviles Android (sobre todo gama media/baja) no soportan por
+    // hardware este códec/resolución. Comprobarlo ANTES de arrancar evita que
+    // "Exportando..." se quede colgado sin avisar al usuario.
+    try {
+      const soporte = await VideoEncoder.isConfigSupported(CODEC_CONFIG);
+      if (!soporte.supported) {
+        alert("Este móvil no puede grabar vídeo MP4 con esta calidad.\n\nUsa el botón GIF como alternativa.");
+        return;
+      }
+    } catch {
+      alert("Tu navegador no soporta grabación de vídeo MP4.\n\nUsa Chrome o Safari actualizados. Puedes usar el botón GIF como alternativa.");
+      return;
+    }
+
+    setGrabando(true);
 
     // Canvas offscreen a 2x resolución
     const offCanvas = document.createElement("canvas");
@@ -4386,6 +4436,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
       return { ...j, x: j.x + (d.x - j.x)*ease, y: j.y + (d.y - j.y)*ease };
     });
 
+    try {
     const muxer = new Muxer({
       target: new ArrayBufferTarget(),
       video: { codec: "avc", width: W, height: H },
@@ -4397,13 +4448,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
       error: (e) => { console.error(e); setGrabando(false); alert("Error al exportar el vídeo."); },
     });
 
-    encoder.configure({
-      codec: "avc1.4d0028",  // H.264 Main Profile Level 4.0 — alta calidad
-      width: W,
-      height: H,
-      bitrate: 6_000_000,    // 6 Mbps — calidad alta
-      framerate: FPS,
-    });
+    encoder.configure(CODEC_CONFIG);
 
     let frameIdx = 0;
 
@@ -4442,13 +4487,18 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     a.click();
     URL.revokeObjectURL(url);
 
-    // Redibujar canvas visible en posición inicial
-    const ctx = canvasRef.current.getContext("2d");
-    dibujarCampo(ctx);
-    dibujarJugadores(ctx, jugadores);
-    dibujarJugadores(ctx, rivales);
-    dibujarBalon(ctx, balon);
-    setGrabando(false);
+    } catch (e) {
+      console.error(e);
+      alert("No se ha podido exportar el vídeo en este móvil.\n\nUsa el botón GIF como alternativa.");
+    } finally {
+      // Redibujar canvas visible en posición inicial
+      const ctx = canvasRef.current.getContext("2d");
+      dibujarCampo(ctx);
+      dibujarJugadores(ctx, jugadores);
+      dibujarJugadores(ctx, rivales);
+      dibujarBalon(ctx, balon);
+      setGrabando(false);
+    }
   };
 
   const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
@@ -5254,8 +5304,8 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
 }
 
 
-function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
-  const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
+function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
+  const [selectedTeam, setSelectedTeam] = useState(teams[0]);
   const [newCoachName, setNewCoachName] = useState("");
   const [statsCoach, setStatsCoach] = useState(null);
   const [attCoach, setAttCoach] = useState(null); // coach whose attendance panel is open
@@ -5358,7 +5408,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 
       {/* Team selector */}
       <div className="flex flex-wrap gap-2">
-        {TEAMS.map(t => (
+        {teams.map(t => (
           <button key={t} onClick={() => setSelectedTeam(t)}
             className={`px-3 py-1.5 rounded text-sm border transition-all ${selectedTeam === t ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"}`}
           >{t}</button>
@@ -5552,8 +5602,8 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Resumen (coordinadores)
 // ══════════════════════════════════════════════════════════════════════════════
-function ResumenSection({ db }) {
-  const [selectedTeam, setSelectedTeam] = useState(TEAMS[0]);
+function ResumenSection({ db, teams = TEAMS }) {
+  const [selectedTeam, setSelectedTeam] = useState(teams[0]);
   const teamData = db[selectedTeam] || { matches: [] };
   const matches = (teamData.matches || []).sort((a, b) => b.fecha.localeCompare(a.fecha));
 
@@ -5592,7 +5642,7 @@ function ResumenSection({ db }) {
 
       {/* Team selector */}
       <div className="flex flex-wrap gap-2">
-        {TEAMS.map(t => (
+        {teams.map(t => (
           <button key={t} onClick={() => setSelectedTeam(t)}
             className={`px-3 py-1.5 rounded text-sm border transition-all ${selectedTeam === t ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"}`}
           >{t}</button>
@@ -8321,10 +8371,10 @@ export default function App() {
         <div className="flex-1 overflow-auto p-5 pb-24 md:p-8 md:pb-8">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
-              <ResumenSection db={db} />
+              <ResumenSection db={db} teams={teamsToUse} />
             )}
             {activeSection === "entrenadores" && isCoord && (
-              <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} />
+              <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} teams={teamsToUse} />
             )}
       {activeSection === "gestion" && isCoord && (
               <div className="space-y-4">
