@@ -310,6 +310,14 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
     { val: "duda",       label: "Duda",       color: "bg-orange-900/40 border-orange-700 text-orange-300" },
   ];
 
+  const PLAYER_FORMAS = [
+    { val: "muy_arriba", label: "Muy en forma", icon: "⬆", color: "text-emerald-400", chipColor: "bg-emerald-900/40 border-emerald-700 text-emerald-300" },
+    { val: "subiendo",   label: "Subiendo",     icon: "↗", color: "text-green-400",   chipColor: "bg-green-900/40 border-green-700 text-green-300" },
+    { val: "estable",    label: "Estable",      icon: "→", color: "text-yellow-400",  chipColor: "bg-yellow-900/40 border-yellow-700 text-yellow-300" },
+    { val: "bajando",    label: "Bajando",      icon: "↘", color: "text-orange-400",  chipColor: "bg-orange-900/40 border-orange-700 text-orange-300" },
+    { val: "muy_abajo",  label: "Muy bajo",     icon: "⬇", color: "text-red-400",     chipColor: "bg-red-900/40 border-red-700 text-red-300" },
+  ];
+
   const posColorMap = {
     Portero:      { bg: "bg-yellow-900/30", text: "text-yellow-300", border: "border-yellow-700/50", dot: "bg-yellow-400" },
     Defensa:      { bg: "bg-blue-900/30",   text: "text-blue-300",   border: "border-blue-700/50",   dot: "bg-blue-400" },
@@ -330,6 +338,12 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
 
   const setPlayerStatus = (playerId, status) => {
     const players = (data.players || []).map(p => p.id !== playerId ? p : { ...p, status });
+    onSave({ ...data, players });
+  };
+
+  const setPlayerForma = (playerId, forma) => {
+    // Toca el mismo valor que ya tiene → lo quita (queda "sin marcar")
+    const players = (data.players || []).map(p => p.id !== playerId ? p : { ...p, forma: p.forma === forma ? null : forma });
     onSave({ ...data, players });
   };
 
@@ -541,11 +555,13 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
                 <div className="space-y-1.5 mb-2">
                   {players.map(p => {
                     const st = PLAYER_STATUSES.find(s => s.val === (p.status || "disponible")) || PLAYER_STATUSES[0];
+                    const fm = PLAYER_FORMAS.find(f => f.val === p.forma);
                     return (
                       <div key={p.id} onClick={() => setMenuPlayer(p)}
                         className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 cursor-pointer active:bg-zinc-800 transition-colors">
                         <span className={`font-black text-base w-9 shrink-0 ${c.text}`}>{p.dorsal ? `#${p.dorsal}` : "—"}</span>
                         <span className="text-white font-semibold flex-1 truncate">{p.name}</span>
+                        {fm && <span className={`text-lg font-bold shrink-0 ${fm.color}`} title={`Forma: ${fm.label}`}>{fm.icon}</span>}
                         <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${st.color}`}>{st.label}</span>
                         <span className="text-zinc-500 text-lg shrink-0">›</span>
                       </div>
@@ -759,6 +775,19 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
                   ))}
                 </div>
               </div>
+              {isCoord && (
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Forma (opcional — toca de nuevo para quitarla)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PLAYER_FORMAS.map(f => (
+                      <button key={f.val} onClick={() => setPlayerForma(p.id, f.val)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all flex items-center gap-1 ${p.forma === f.val ? f.chipColor : "bg-zinc-800 border-zinc-700 text-zinc-500"}`}>
+                        <span className="font-bold">{f.icon}</span> {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Btn variant="secondary" onClick={() => { setMenuPlayer(null); setStatsPlayer(p); }}>📈 Estadísticas</Btn>
                 <Btn variant="secondary" onClick={() => { setMenuPlayer(null); setAttPlayer(p); }}>📋 Asistencia</Btn>
@@ -1025,9 +1054,9 @@ const MATERIALS = [
   { id:"chino_naranja", label:"Chino 🟠", svg: <svg viewBox="0 0 24 24" fill="#f97316" className="w-5 h-5"><path d="M12 2L5 21h14L12 2z"/><circle cx="12" cy="21" r="2.5"/></svg> },
   { id:"chino_rojo", label:"Chino 🔴", svg: <svg viewBox="0 0 24 24" fill="#dc2626" className="w-5 h-5"><path d="M12 2L5 21h14L12 2z"/><circle cx="12" cy="21" r="2.5"/></svg> },
   { id:"chino_azul", label:"Chino 🔵", svg: <svg viewBox="0 0 24 24" fill="#2563eb" className="w-5 h-5"><path d="M12 2L5 21h14L12 2z"/><circle cx="12" cy="21" r="2.5"/></svg> },
-  { id:"porteria_grande", label:"Portería G", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5 text-white"><rect x="2" y="5" width="20" height="12" rx="0.5"/><line x1="2" y1="17" x2="2" y2="21"/><line x1="22" y1="17" x2="22" y2="21"/><line x1="2" y1="21" x2="22" y2="21" strokeDasharray="2 2"/></svg> },
-  { id:"porteria_pequeña", label:"Portería P", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5 text-zinc-300"><rect x="5" y="8" width="14" height="9" rx="0.5"/><line x1="5" y1="17" x2="5" y2="20"/><line x1="19" y1="17" x2="19" y2="20"/><line x1="5" y1="20" x2="19" y2="20" strokeDasharray="2 2"/></svg> },
-  { id:"escalera", label:"Escalera", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5 text-amber-400"><line x1="4" y1="4" x2="4" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="11" x2="20" y2="11"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="4" y1="19" x2="20" y2="19"/></svg> },
+  { id:"porteria_grande", label:"Portería G", svg: <svg viewBox="0 0 24 24" className="w-5 h-5"><g stroke="white" strokeWidth="0.5" opacity="0.55"><line x1="7" y1="5" x2="7" y2="17"/><line x1="12" y1="5" x2="12" y2="17"/><line x1="17" y1="5" x2="17" y2="17"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="2" y1="13" x2="22" y2="13"/></g><rect x="2" y="5" width="20" height="12" rx="1.5" fill="none" stroke="white" strokeWidth="2.2" strokeLinejoin="round"/></svg> },
+  { id:"porteria_pequeña", label:"Portería P", svg: <svg viewBox="0 0 24 24" className="w-5 h-5"><g stroke="#d4d4d8" strokeWidth="0.5" opacity="0.55"><line x1="8.5" y1="8" x2="8.5" y2="17"/><line x1="12" y1="8" x2="12" y2="17"/><line x1="15.5" y1="8" x2="15.5" y2="17"/><line x1="5" y1="11" x2="19" y2="11"/><line x1="5" y1="14" x2="19" y2="14"/></g><rect x="5" y="8" width="14" height="9" rx="1.5" fill="none" stroke="#d4d4d8" strokeWidth="2.2" strokeLinejoin="round"/></svg> },
+  { id:"escalera", label:"Escalera", svg: <svg viewBox="0 0 24 24" className="w-5 h-5"><line x1="5" y1="3" x2="5" y2="21" stroke="#161616" strokeWidth="2.2"/><line x1="19" y1="3" x2="19" y2="21" stroke="#161616" strokeWidth="2.2"/><line x1="6.5" y1="4.5" x2="17.5" y2="4.5" stroke="#FFD400" strokeWidth="2.2" strokeLinecap="round"/><line x1="6.5" y1="8.7" x2="17.5" y2="8.7" stroke="#FFD400" strokeWidth="2.2" strokeLinecap="round"/><line x1="6.5" y1="12.9" x2="17.5" y2="12.9" stroke="#FFD400" strokeWidth="2.2" strokeLinecap="round"/><line x1="6.5" y1="17.1" x2="17.5" y2="17.1" stroke="#FFD400" strokeWidth="2.2" strokeLinecap="round"/><line x1="6.5" y1="21" x2="17.5" y2="21" stroke="#FFD400" strokeWidth="2.2" strokeLinecap="round"/></svg> },
   { id:"pesa", label:"Pesa", svg: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-zinc-400"><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><rect x="6" y="7" width="4" height="10" rx="1"/><rect x="14" y="7" width="4" height="10" rx="1"/><rect x="10" y="10.5" width="4" height="3" rx="0.5"/></svg> },
   { id:"pica", label:"Pica", svg: <svg viewBox="0 0 24 24" className="w-5 h-5 text-pink-400"><rect x="11" y="4" width="2" height="17" rx="1" fill="currentColor"/><polygon points="12,2 10,6 14,6" fill="currentColor"/><ellipse cx="12" cy="21" rx="3" ry="1.5" fill="currentColor" opacity="0.6"/></svg> },
   { id:"aro", label:"Aro 🔵", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
@@ -1035,7 +1064,7 @@ const MATERIALS = [
   { id:"aro_amarillo", label:"Aro 🟡", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"aro_verde", label:"Aro 🟢", svg: <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" className="w-5 h-5"><circle cx="12" cy="12" r="8"/></svg> },
   { id:"flecha", label:"Flecha", svg: <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-5 h-5"><line x1="4" y1="20" x2="20" y2="4"/><polyline points="10,4 20,4 20,14"/></svg> },
-  { id:"balon", label:"Balón", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 8 L12 13 L15 8 Z" fill="currentColor" opacity="0.5"/><path d="M3.5 9 L9 8 L12 13 L8 17 Z" fill="currentColor" opacity="0.3"/><path d="M20.5 9 L15 8 L12 13 L16 17 Z" fill="currentColor" opacity="0.3"/></svg> },
+  { id:"balon", label:"Balón", svg: <svg viewBox="0 0 24 24" className="w-5 h-5"><circle cx="12" cy="12" r="9" fill="white" stroke="#161616" strokeWidth="1.1"/><polygon points="12,9.2 14.66,11.13 13.65,14.27 10.35,14.27 9.34,11.13" fill="#161616"/><g stroke="#161616" strokeWidth="0.9"><line x1="12" y1="10.55" x2="12" y2="3.6"/><line x1="13.38" y1="11.55" x2="19.99" y2="9.4"/><line x1="12.85" y1="13.17" x2="16.94" y2="18.8"/><line x1="11.15" y1="13.17" x2="7.06" y2="18.8"/><line x1="10.62" y1="11.55" x2="4.01" y2="9.4"/></g><g fill="#161616"><polygon points="12,3.05 13.09,3.84 12.68,5.13 11.32,5.13 10.91,3.84"/><polygon points="20.51,9.23 20.1,10.52 18.74,10.52 18.33,9.23 19.42,8.44"/><polygon points="17.26,19.24 15.9,19.24 15.49,17.95 16.58,17.16 17.67,17.95"/><polygon points="6.74,19.24 6.33,17.95 7.42,17.16 8.51,17.95 8.1,19.24"/><polygon points="3.49,9.23 4.58,8.44 5.67,9.23 5.26,10.52 3.9,10.52"/></g></svg> },
   { id:"valla", label:"Valla", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-lime-400"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> },
 
 ];
@@ -3891,6 +3920,7 @@ function TacticasSection({ team, data, onSave }) {
   const tacticas = data.tacticas || [];
   const [view, setView] = useState("lista"); // "lista" | "editor"
   const [editando, setEditando] = useState(null);
+  const [modoVisor, setModoVisor] = useState(null); // null | { soloLectura, autoPlay }
 
   const nuevaTactica = () => {
     setEditando({
@@ -3931,6 +3961,13 @@ function TacticasSection({ team, data, onSave }) {
 
   const abrirEditor = (t) => {
     setEditando(JSON.parse(JSON.stringify(t))); // copia profunda
+    setModoVisor(null);
+    setView("editor");
+  };
+
+  const abrirVisor = (t, autoPlay) => {
+    setEditando(JSON.parse(JSON.stringify(t)));
+    setModoVisor({ soloLectura: true, autoPlay });
     setView("editor");
   };
 
@@ -3939,7 +3976,9 @@ function TacticasSection({ team, data, onSave }) {
       <TacticaEditor
         tactica={editando}
         onGuardar={guardarTactica}
-        onCancelar={() => { setView("lista"); setEditando(null); }}
+        onCancelar={() => { setView("lista"); setEditando(null); setModoVisor(null); }}
+        soloLectura={modoVisor?.soloLectura || false}
+        autoPlay={modoVisor?.autoPlay || false}
       />
     );
   }
@@ -3960,7 +3999,7 @@ function TacticasSection({ team, data, onSave }) {
       )}
 
       {tacticas.map(t => (
-        <Card key={t.id} className="flex items-center justify-between gap-3">
+        <Card key={t.id} className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-white font-semibold">{t.nombre}</p>
             <p className="text-zinc-500 text-sm">
@@ -3968,7 +4007,9 @@ function TacticasSection({ team, data, onSave }) {
               {t.keyframes?.length > 0 ? ` · ${t.keyframes.length} paso${t.keyframes.length > 1 ? "s" : ""}` : " · sin animación"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Btn small variant="secondary" disabled={!t.keyframes?.length} onClick={() => abrirVisor(t, true)}>▶️ Ver</Btn>
+            <Btn small variant="secondary" disabled={!t.keyframes?.length} onClick={() => abrirVisor(t, false)}>⬇️ Exportar</Btn>
             <Btn small onClick={() => abrirEditor(t)}>✏️ Editar</Btn>
             <Btn small variant="danger" onClick={() => eliminarTactica(t.id)}>🗑️</Btn>
           </div>
@@ -4095,11 +4136,12 @@ function dibujarFlechaBalon(ctx, origen, destino) {
   ctx.closePath(); ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fill();
 }
 
-function TacticaEditor({ tactica, onGuardar, onCancelar }) {
+function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, autoPlay = false }) {
   const canvasRef = useRef(null);
   const [nombre, setNombre] = useState(tactica.nombre);
   const [jugadores, setJugadores] = useState(tactica.jugadores.map(j => ({ ...j, tipo: j.tipo || "local" })));
   useCloseOnBack(true, onCancelar);
+  const autoPlayedRef = useRef(false);
 
   // Valores por defecto — se declaran ANTES de los useState que los usan
   const rivsDefault = tactica.rivales || [
@@ -4419,6 +4461,16 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     animFrameRef.current = requestAnimationFrame(step);
   };
 
+  // Al abrir directamente en modo "Ver" desde la lista, arrancar la
+  // animación sola — así no hace falta entrar a editar solo para verla.
+  useEffect(() => {
+    if (autoPlay && !autoPlayedRef.current && tactica.keyframes?.length > 0) {
+      autoPlayedRef.current = true;
+      const t = setTimeout(() => playAnimacion(), 300);
+      return () => clearTimeout(t);
+    }
+  }, [autoPlay]);
+
   const stopAnimacion = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setPlaying(false);
@@ -4660,6 +4712,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     <div className="fixed inset-0 z-[70] bg-zinc-950 overflow-auto p-4 pb-10 space-y-4 md:static md:z-auto md:bg-transparent md:p-0 md:overflow-visible">
       <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 bg-zinc-950/95 border-b border-zinc-800 flex items-center gap-3 flex-wrap md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-0">
         <button onClick={() => {
+          if (soloLectura) { onCancelar(); return; }
           // Normalizar quitando campos internos (tipo) antes de comparar
           const normJugs = jugs => jugs.map(({ tipo, ...rest }) => rest);
           const haycambios =
@@ -4670,16 +4723,20 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
           if (haycambios && !window.confirm("¿Salir sin guardar? Se perderán los cambios.")) return;
           onCancelar();
         }} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
-        <input
-          value={nombre}
-          onChange={e => setNombre(e.target.value)}
-          className="bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-white text-sm flex-1 min-w-40"
-          placeholder="Nombre de la táctica"
-        />
-        <Btn onClick={guardar}>💾 Guardar</Btn>
+        {soloLectura ? (
+          <span className="text-white font-semibold flex-1">{nombre} <span className="text-zinc-500 font-normal text-xs">(solo lectura)</span></span>
+        ) : (
+          <input
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            className="bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-white text-sm flex-1 min-w-40"
+            placeholder="Nombre de la táctica"
+          />
+        )}
+        {!soloLectura && <Btn onClick={guardar}>💾 Guardar</Btn>}
       </div>
 
-      <Card>
+      {!soloLectura && <Card>
         <p className="text-zinc-400 text-xs font-semibold mb-1">CÓMO CREAR UNA ANIMACIÓN</p>
         <ol className="text-zinc-500 text-xs space-y-0.5 list-decimal list-inside">
           <li><span className="text-zinc-300">Posición inicial:</span> arrastra jugadores, rivales y el balón</li>
@@ -4688,12 +4745,12 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
           <li><span className="text-zinc-300">Elige duración</span> y arrastra al destino</li>
           <li>Repite. Luego <span className="text-zinc-300">▶ Ver animación</span></li>
         </ol>
-      </Card>
+      </Card>}
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
 
-          <Card>
+          {!soloLectura && <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 LOCAL</p>
             <div className="flex gap-2 flex-wrap mb-2">
               {["#ef4444","#f97316","#22c55e","#f59e0b","#a855f7","#ffffff"].map(c => (
@@ -4716,9 +4773,9 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
                 <span className="text-zinc-600 text-xs self-center">{jugadores.length} jugadores</span>
               </div>
             )}
-          </Card>
+          </Card>}
 
-          <Card>
+          {!soloLectura && <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-1">🔵 VISITANTE</p>
             <div className="flex gap-2 flex-wrap mb-2">
               {["#1d4ed8","#0891b2","#16a34a","#7c3aed","#db2777","#ffffff"].map(c => (
@@ -4741,7 +4798,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
                 <span className="text-zinc-600 text-xs self-center">{rivales.length} jugadores</span>
               </div>
             )}
-          </Card>
+          </Card>}
 
           <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-2">MOVIMIENTOS</p>
@@ -4756,14 +4813,14 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
                     className={`flex-1 text-left px-2 py-1.5 rounded text-sm transition-all ${frameActivo === i ? "bg-red-900/50 text-red-300 font-semibold" : "text-zinc-400 hover:bg-zinc-700 hover:text-white"}`}>
                     🔑 Paso {i + 1} <span className="text-zinc-500 text-xs">({kf.duracion || 1.5}s)</span>
                   </button>
-                  <button onClick={() => eliminarKeyframe(i)} className="text-zinc-600 hover:text-red-400 text-xs px-1.5 py-1">✕</button>
+                  {!soloLectura && <button onClick={() => eliminarKeyframe(i)} className="text-zinc-600 hover:text-red-400 text-xs px-1.5 py-1">✕</button>}
                 </div>
               ))}
             </div>
-            <Btn small onClick={addKeyframe}>+ Añadir paso</Btn>
+            {!soloLectura && <Btn small onClick={addKeyframe}>+ Añadir paso</Btn>}
           </Card>
 
-          {frameActivo !== null && kfActivo && (
+          {!soloLectura && frameActivo !== null && kfActivo && (
             <Card>
               <p className="text-zinc-400 text-xs font-semibold mb-2">PASO {frameActivo + 1} — OPCIONES</p>
               <div className="mb-3">
@@ -4835,17 +4892,17 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
             style={{
               width: "100%",
               maxWidth: "380px",
-              touchAction: "none",
-              cursor: modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab"),
+              touchAction: soloLectura ? "auto" : "none",
+              cursor: soloLectura ? "default" : (modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab")),
               outline: modoEliminar ? "2px solid #ef4444" : "none",
             }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onTouchStart={onMouseDown}
-            onTouchMove={onMouseMove}
-            onTouchEnd={onMouseUp}
+            onMouseDown={soloLectura ? undefined : onMouseDown}
+            onMouseMove={soloLectura ? undefined : onMouseMove}
+            onMouseUp={soloLectura ? undefined : onMouseUp}
+            onMouseLeave={soloLectura ? undefined : onMouseUp}
+            onTouchStart={soloLectura ? undefined : onMouseDown}
+            onTouchMove={soloLectura ? undefined : onMouseMove}
+            onTouchEnd={soloLectura ? undefined : onMouseUp}
           />
         </div>
       </div>
@@ -6783,7 +6840,7 @@ function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }
   if (!c) return null;
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
-      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
         <div className="flex flex-col leading-none">
           <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
           <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
@@ -6924,7 +6981,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
-      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
         <div className="flex flex-col leading-none">
           <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
           <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
@@ -7015,7 +7072,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
-      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3">
+      <div className="bg-black border-b border-zinc-800 flex items-center justify-between px-5 py-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
         <div className="flex flex-col leading-none">
           <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
           <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
@@ -7884,31 +7941,33 @@ function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, 
     <>
       {showMore && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setShowMore(false)}>
-          <div className="absolute bottom-16 inset-x-0 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl p-4 max-h-[70vh] overflow-auto"
+          <div className="absolute inset-x-0 bottom-16 top-14 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl flex flex-col"
             onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
-            {isCoord && (
-              <div className="mb-4">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {teams.map(t => (
-                    <button key={t} onClick={() => { setActiveTeam(t); }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTeam === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
-                      {t}
-                    </button>
-                  ))}
+            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto my-3 shrink-0" />
+            <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: "touch" }}>
+              {isCoord && (
+                <div className="mb-4">
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {teams.map(t => (
+                      <button key={t} onClick={() => { setActiveTeam(t); }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTeam === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              )}
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Más secciones</p>
+              <div className="grid grid-cols-3 gap-2">
+                {more.map(s => (
+                  <button key={s.id} onClick={() => go(s.id)}
+                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${activeSection === s.id ? "bg-red-900/40 border-red-700 text-red-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                    <span className="text-xl">{s.icon}</span>
+                    <span className="text-xs font-medium text-center leading-tight">{s.label}</span>
+                  </button>
+                ))}
               </div>
-            )}
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Más secciones</p>
-            <div className="grid grid-cols-3 gap-2">
-              {more.map(s => (
-                <button key={s.id} onClick={() => go(s.id)}
-                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${activeSection === s.id ? "bg-red-900/40 border-red-700 text-red-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
-                  <span className="text-xl">{s.icon}</span>
-                  <span className="text-xs font-medium text-center leading-tight">{s.label}</span>
-                </button>
-              ))}
             </div>
           </div>
         </div>
@@ -8551,7 +8610,8 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0">
+        <div className="min-h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 hidden md:flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
