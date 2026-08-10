@@ -2,3 +2,21 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: #09090b; }
+
+/* Toda la app es de tema oscuro, pero por defecto el navegador dibuja los
+   controles nativos (selector de fecha, checkboxes, barra de scroll...) en
+   claro. Esto hace que el selector de fecha nativo de iPhone/Android se vea
+   blanco chocando con el resto de la app. */
+html { color-scheme: dark; }
+
+/* Evita el zoom con pellizco (pinch-to-zoom) en móvil; complementa el
+   meta viewport de index.html, que algunos navegadores ignoran. */
+html, body { touch-action: pan-x pan-y; }
+
+/* Safari en iPhone hace zoom automático de toda la página al enfocar un
+   campo de texto/select con letra menor de 16px (nuestros inputs usan
+   14px). Esto pasa incluso con user-scalable=no. Forzamos 16px solo en
+   móvil para no tocar el tamaño en escritorio. */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px !important; }
+}

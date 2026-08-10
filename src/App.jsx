@@ -1282,6 +1282,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
     }));
   };
   const saveEditNum = (id, num) => { onChange(items.map(i => i.id === id ? { ...i, num } : i)); setEditingItem(null); };
+  const toggleEscaleraRot = (id) => onChange(items.map(i => i.id === id ? { ...i, rot: i.rot === 180 ? 0 : 180 } : i));
 
   const renderItem = (item, idx) => { if (!item || typeof item !== 'object' || !item.type || typeof item.type !== 'string') return null;
     if (item.type === "flecha") {
@@ -1304,7 +1305,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
         style={{ left:`${item.x}%`, top:`${item.y}%`, cursor: tool==="erase"?"crosshair":"grab", zIndex: dragging===item.id?10:1 }}
         onMouseDown={e => { if(tool==="erase"){e.stopPropagation();removeItem(item.id);}else startDrag(e,item.id); }}
         onTouchStart={e => { e.stopPropagation(); if(tool==="erase"){removeItem(item.id);}else{ const t=e.touches[0]; startDrag({clientX:t.clientX,clientY:t.clientY,stopPropagation:()=>e.stopPropagation(),preventDefault:()=>e.preventDefault()},item.id);} }}
-        onDoubleClick={e => { e.stopPropagation(); if(isPlayer) setEditingItem({id:item.id,num:item.num??""}); }}
+        onDoubleClick={e => { e.stopPropagation(); if(isPlayer) setEditingItem({id:item.id,num:item.num??""}); else if(item.type==="escalera") toggleEscaleraRot(item.id); }}
       >
         {isPlayer ? (
           (editingItem !== null && editingItem?.id !== undefined && editingItem?.id === item.id) ? (
@@ -1321,7 +1322,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
             </div>
           )
         ) : (
-          <div className="w-7 h-7 flex items-center justify-center drop-shadow-lg">{mat?.svg}</div>
+          <div className="w-7 h-7 flex items-center justify-center drop-shadow-lg" style={item.type==="escalera" && item.rot===180 ? {transform:"rotate(180deg)"} : undefined} title={item.type==="escalera" ? "Doble clic para rotar 180°" : undefined}>{mat?.svg}</div>
         )}
       </div>
     );
@@ -1550,7 +1551,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
   const filteredTasks = filterCat === "all" ? activeTasks : activeTasks.filter(t=>t.categoria===filterCat);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Biblioteca de tareas</h2>
         <Btn onClick={() => { if(libTab==="equipo"){setEditing(null);setShowEditor(true);}else{setEditingGlobal(null);setShowGlobalEditor(true);} }}>+ Nueva tarea</Btn>
@@ -1570,7 +1571,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
         ))}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {filteredTasks.map(t => (
           <Card key={t.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
@@ -1626,7 +1627,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
               </div>
               <Btn small variant="secondary" onClick={() => setPreview(null)}>✕</Btn>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-5">
               {preview.descripcion && <p className="text-zinc-300 text-sm whitespace-pre-wrap">{preview.descripcion}</p>}
               {preview.pizarra?.length > 0 && (
                 <div>
@@ -1809,6 +1810,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const printTraining = (t) => {
     const PLAYER_COLOR_HEX = { red:"#dc2626", yellow:"#eab308", blue:"#2563eb", green:"#16a34a" };
     const W = 500, H = 320;
+    const esc = (s) => (s || "").replace(/</g, "&lt;");
 
     const renderFieldSVG = (rawItems, fieldType) => { const items = (rawItems || []).filter(item => item != null && typeof item === 'object');
       const fieldBg = `<rect width="${W}" height="${H}" fill="#2d6a4f"/>`;
@@ -1828,7 +1830,47 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         <rect x="420" y="90" width="70" height="145" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
         <rect x="460" y="115" width="30" height="85" fill="none" stroke="white" stroke-width="2" opacity="0.6"/>
       `;
-  const getIcon = (type, cx, cy) => {
+  const getIcon = (type, cx, cy, rot) => {
+    // Portería estilo "sticker": marco blanco grueso + red de fondo, en vez
+    // del simple rectángulo semitransparente anterior.
+    const porteria = (w, h) => {
+      let net = "";
+      const cols = 4, rows = 3;
+      const x = cx - w / 2, y = cy - h / 2;
+      for (let i = 1; i < cols; i++) {
+        const nx = x + (w / cols) * i;
+        net += `<line x1="${nx}" y1="${y}" x2="${nx}" y2="${y + h}" stroke="white" stroke-width="0.6" opacity="0.5"/>`;
+      }
+      for (let j = 1; j < rows; j++) {
+        const ny = y + (h / rows) * j;
+        net += `<line x1="${x}" y1="${ny}" x2="${x + w}" y2="${ny}" stroke="white" stroke-width="0.6" opacity="0.5"/>`;
+      }
+      return `<g>${net}<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round"/></g>`;
+    };
+    // Escalera de agilidad realista: dos cintas laterales negras + peldaños
+    // amarillos finos, con soporte de rotación 180° (item.rot).
+    const escalera = () => {
+      const w = 15, h = 20, rungs = 5;
+      const x = cx - w / 2, y = cy - h / 2;
+      let out = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + h}" stroke="#161616" stroke-width="2.2"/>`;
+      out += `<line x1="${x + w}" y1="${y}" x2="${x + w}" y2="${y + h}" stroke="#161616" stroke-width="2.2"/>`;
+      for (let i = 0; i < rungs; i++) {
+        const ry = y + (h / (rungs - 1)) * i;
+        out += `<line x1="${x + 1.5}" y1="${ry}" x2="${x + w - 1.5}" y2="${ry}" stroke="#FFD400" stroke-width="2.2" stroke-linecap="round"/>`;
+      }
+      return `<g transform="rotate(${rot === 180 ? 180 : 0} ${cx} ${cy})">${out}</g>`;
+    };
+    // Balón clásico: pentágono central + costuras, en vez del círculo liso.
+    const balon = () => {
+      const p = (dx, dy) => `${cx + dx},${cy + dy}`;
+      let out = `<circle cx="${cx}" cy="${cy}" r="7" fill="white" stroke="#161616" stroke-width="1.3"/>`;
+      out += `<polygon points="${p(0,-2.2)} ${p(2.09,-0.68)} ${p(1.29,1.78)} ${p(-1.29,1.78)} ${p(-2.09,-0.68)}" fill="#161616"/>`;
+      const seams = [[0,-1.15,0,-7],[1.09,-0.36,6.66,-2.16],[0.68,0.93,4.11,5.66],[-0.68,0.93,-4.11,5.66],[-1.09,-0.36,-6.66,-2.16]];
+      seams.forEach(([x1,y1,x2,y2]) => { out += `<line x1="${cx+x1}" y1="${cy+y1}" x2="${cx+x2}" y2="${cy+y2}" stroke="#161616" stroke-width="1"/>`; });
+      const caps = [[[0,-7.15],[0.9,-6.49],[0.56,-5.43],[-0.56,-5.43],[-0.9,-6.49]],[[6.8,-2.21],[6.46,-1.15],[5.34,-1.15],[5,-2.21],[5.9,-2.87]],[[4.2,5.79],[3.08,5.79],[2.74,4.73],[3.64,4.07],[4.54,4.73]],[[-4.2,5.79],[-4.54,4.73],[-3.64,4.07],[-2.74,4.73],[-3.08,5.79]],[[-6.8,-2.21],[-5.9,-2.87],[-5,-2.21],[-5.34,-1.15],[-6.46,-1.15]]];
+      caps.forEach(cap => { out += `<polygon points="${cap.map(([dx,dy])=>p(dx,dy)).join(" ")}" fill="#161616"/>`; });
+      return `<g clip-path="circle(7px at ${cx}px ${cy}px)">${out}</g>`;
+    };
     if (type==="cono") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#f97316"/>`;
     if (type==="cono_amarillo") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#eab308"/>`;
     if (type==="cono_rojo") return `<polygon points="${cx},${cy-7} ${cx-4},${cy+3} ${cx+4},${cy+3}" fill="#dc2626"/>`;
@@ -1847,13 +1889,13 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     if (type==="flecha_diagr") return `<line x1="${cx-8}" y1="${cy-8}" x2="${cx+8}" y2="${cy+8}" stroke="white" stroke-width="2"/><polygon points="${cx+4},${cy+10} ${cx+10},${cy+4} ${cx+10},${cy+10}" fill="white"/>`;
     if (type==="flecha_diagl") return `<line x1="${cx+8}" y1="${cy-8}" x2="${cx-8}" y2="${cy+8}" stroke="white" stroke-width="2"/><polygon points="${cx-4},${cy+10} ${cx-10},${cy+4} ${cx-10},${cy+10}" fill="white"/>`;
     if (type==="chino") return `<polygon points="${cx},${cy-6} ${cx-3},${cy+4} ${cx+3},${cy+4}" fill="#eab308"/><circle cx="${cx}" cy="${cy+5}" r="1.5" fill="#eab308"/>`;
-    if (type==="porteria_grande") return `<rect x="${cx-11}" y="${cy-7}" width="22" height="12" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2"/>`;
-    if (type==="porteria_pequeña") return `<rect x="${cx-7}" y="${cy-5}" width="14" height="9" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2"/>`;
-    if (type==="escalera") return `<rect x="${cx-8}" y="${cy-10}" width="16" height="20" fill="none" stroke="#f59e0b" stroke-width="1.5"/><line x1="${cx-8}" y1="${cy-4}" x2="${cx+8}" y2="${cy-4}" stroke="#f59e0b" stroke-width="1.5"/><line x1="${cx-8}" y1="${cy+3}" x2="${cx+8}" y2="${cy+3}" stroke="#f59e0b" stroke-width="1.5"/>`;
+    if (type==="porteria_grande") return porteria(24, 14);
+    if (type==="porteria_pequeña") return porteria(15, 10);
+    if (type==="escalera") return escalera();
     if (type==="pesa") return `<circle cx="${cx-6}" cy="${cy}" r="4" fill="none" stroke="#a78bfa" stroke-width="2"/><circle cx="${cx+6}" cy="${cy}" r="4" fill="none" stroke="#a78bfa" stroke-width="2"/><line x1="${cx-6}" y1="${cy}" x2="${cx+6}" y2="${cy}" stroke="#a78bfa" stroke-width="3"/>`;
     if (type==="pica") return `<line x1="${cx}" y1="${cy-12}" x2="${cx}" y2="${cy+8}" stroke="#ef4444" stroke-width="2"/><polygon points="${cx},${cy-12} ${cx+8},${cy-6} ${cx},${cy-2}" fill="#ef4444"/>`;
     if (type==="aro") return `<circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#22d3ee" stroke-width="1.5"/>`;
-    if (type==="balon") return `<circle cx="${cx}" cy="${cy}" r="6" fill="white" opacity="0.9"/><circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#333" stroke-width="1"/>`;
+    if (type==="balon") return balon();
     if (type==="valla") return `<rect x="${cx-10}" y="${cy-5}" width="20" height="10" fill="none" stroke="#a3e635" stroke-width="2"/>`;
     if (type==="linea_azul") return `<line x1="${cx-12}" y1="${cy}" x2="${cx+12}" y2="${cy}" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>`;
     if (type==="linea_naranja") return `<line x1="${cx-12}" y1="${cy}" x2="${cx+12}" y2="${cy}" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>`;
@@ -1878,7 +1920,7 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
           const color = item.type.replace("player_", "");
           return `<circle cx="${cx}" cy="${cy}" r="14" fill="${PLAYER_COLOR_HEX[color]}" stroke="white" stroke-width="1.5"/><text x="${cx}" y="${cy+4}" text-anchor="middle" fill="white" font-size="11" font-weight="bold">${item.num ?? ""}</text>`;
         }
-        return getIcon(item.type, cx, cy);
+        return getIcon(item.type, cx, cy, item.rot);
       }).join("");
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#1a6b2e;border-radius:8px;display:block;margin:8px auto"><rect width="${W}" height="${H}" fill="#1a6b2e"/><g transform="scale(${W/500},${H/325})">${markings}</g>${drawingsSVG}${itemsSVG}</svg>`;
     };
@@ -1886,51 +1928,91 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
 
     const tasksHTML = (t.tasks || []).map((task, i) => `
-      <div style="page-break-inside:avoid;margin-bottom:28px;border:1px solid #ccc;border-radius:8px;overflow:hidden">
-        <div style="background:#1e3a5f;color:white;padding:10px 16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:700;font-size:15px">#${i+1} — ${task.nombre}</span>
-          <span style="background:#3b82f6;color:white;padding:3px 12px;border-radius:12px;font-size:12px">⏱ ${task.minutos} min</span>
+      <div class="task-card">
+        <div class="task-head">
+          <div><span class="num">#${i+1}</span><span class="name">${esc(task.nombre)}</span></div>
+          <span class="dur">⏱ ${task.minutos} min</span>
         </div>
-        ${task.descripcion ? `<div style="padding:12px 16px;font-size:13px;color:#333;white-space:pre-wrap;border-bottom:1px solid #eee">${task.descripcion}</div>` : ""}
-        ${(task.pizarra?.length > 0) ? `<div style="padding:12px 16px;background:#f0f0f0">${renderFieldSVG(task.pizarra, task.fieldType || "full")}</div>` : `<div style="padding:10px 16px;font-size:12px;color:#999;font-style:italic">Sin pizarra</div>`}
+        ${task.descripcion ? `<div class="task-desc">${esc(task.descripcion)}</div>` : ""}
+        ${(task.pizarra?.length > 0) ? `<div class="task-field">${renderFieldSVG(task.pizarra, task.fieldType || "full")}</div>` : `<div class="task-nofield">Sin pizarra</div>`}
       </div>
     `).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
     <title>Entrenamiento ${t.fecha} — ${team}</title>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap');
+      :root{ --pitch:#1B4332; --pitch-dark:#163a2a; --red:#C8102E; --red-dark:#9c0c23; --paper:#F6F4EF; --ink:#1A1A1A; --ink-soft:#5B5952; --line:#E4E0D6; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      body { font-family: Arial, sans-serif; padding: 0 0 32px; margin: 0; color: #111; }
+      body { font-family:'Work Sans',Arial,sans-serif; padding:0; margin:0; color:var(--ink); background:var(--paper); }
       .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
         display: flex; gap: 10px; justify-content: flex-end; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
       .toolbar button { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 10px 18px;
         border-radius: 8px; border: none; cursor: pointer; }
       .btn-exportar { background: #b91c1c; color: #fff; }
       .btn-cerrar { background: #52525b; color: #fff; }
-      .contenido { max-width: 820px; margin: 0 auto; padding: 32px; }
-      h1 { font-size: 22px; margin: 0 0 6px; color: #1a1a1a; }
-      .club { font-size: 13px; color: #888; margin-bottom: 4px; }
-      .meta { display:flex; gap:16px; font-size:13px; color:#555; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #dc2626; }
-      .desc-box { background:#f8f8f8; border-left:4px solid #dc2626; padding:12px 16px; border-radius:4px; margin-bottom:28px; font-size:13px; color:#333; white-space:pre-wrap; }
-      .section-title { font-size:16px; font-weight:700; color:#1e3a5f; margin-bottom:14px; padding-bottom:4px; border-bottom:1px solid #ddd; }
+
+      .header{ background:var(--ink); color:#fff; padding:26px 32px 20px; position:relative; overflow:hidden; }
+      .header::after{ content:""; position:absolute; right:-60px; top:-60px; width:220px; height:220px; border-radius:50%; background:var(--red); opacity:.15; }
+      .crest-row{ display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; }
+      .crest{ width:42px; height:42px; border-radius:6px; background:#000; border:2px solid rgba(255,255,255,.3); overflow:hidden; flex-shrink:0; }
+      .crest img{ width:100%; height:100%; object-fit:contain; }
+      .club-meta{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.6); font-weight:600; }
+      .club-meta b{ color:#fff; }
+      h1.title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:36px; line-height:1; margin:2px 0 0; text-transform:uppercase; position:relative; }
+      .title .accent{ color:var(--red); }
+      .stat-row{ display:flex; gap:22px; margin-top:14px; position:relative; }
+      .stat{ font-size:12.5px; color:rgba(255,255,255,.85); font-weight:500; }
+      .stat b{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:700; font-size:16px; color:#fff; }
+
+      .desc-box{ background:#fff; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:6px;
+        padding:12px 16px; font-size:13px; color:var(--ink); white-space:pre-wrap; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+
+      .contenido{ max-width:820px; margin:0 auto; padding:26px 32px 36px; }
+      .section-title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
+        letter-spacing:.14em; color:var(--ink-soft); display:flex; align-items:center; gap:10px; margin:24px 0 14px; }
+      .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
       .no-tasks { color:#999; font-style:italic; font-size:13px; }
-      @media print { .toolbar { display: none; } body { padding:16px; } }
+
+      .task-card{ page-break-inside:avoid; margin-bottom:22px; background:#fff; border:1px solid var(--line);
+        border-radius:8px; overflow:hidden; box-shadow:0 3px 14px rgba(0,0,0,.07); }
+      .task-head{ background:var(--pitch); color:#fff; padding:11px 18px; display:flex; justify-content:space-between; align-items:center; }
+      .task-head .num{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; color:rgba(255,255,255,.5); font-size:14px; margin-right:8px; }
+      .task-head .name{ font-weight:600; font-size:15px; }
+      .task-head .dur{ background:var(--red); font-size:11.5px; font-weight:700; padding:4px 12px; border-radius:20px; white-space:nowrap; }
+      .task-desc{ padding:11px 18px; font-size:13px; color:#333; white-space:pre-wrap; border-bottom:1px solid var(--line); }
+      .task-field{ padding:16px; background:var(--paper); }
+      .task-nofield{ padding:10px 18px; font-size:12px; color:#999; font-style:italic; }
+
+      .footer{ max-width:820px; margin:8px auto 0; padding:14px 32px; display:flex; justify-content:space-between;
+        border-top:1px solid var(--line); font-size:11px; color:var(--ink-soft); }
+      .footer b{ color:var(--ink); }
+
+      @media print { .toolbar { display: none; } .header{ padding:18px 24px 14px; } .contenido{ padding:18px 24px 24px; } }
     </style></head><body>
     <div class="toolbar">
       <button class="btn-exportar" onclick="window.print()">🖨️ Exportar / Guardar PDF</button>
       <button class="btn-cerrar" onclick="window.close()">✕ Cerrar y volver</button>
     </div>
-    <div class="contenido">
-    <div class="club">CD La Magdalena — ${team}</div>
-    <h1>Entrenamiento del ${t.fecha}</h1>
-    <div class="meta">
-      <span>🗂 ${(t.tasks||[]).length} tareas</span>
-      <span>⏱ ${totalMin} minutos totales</span>
+
+    <div class="header">
+      <div class="crest-row">
+        <div class="crest"><img src="${ESCUDO_MAGDALENA}" /></div>
+        <div class="club-meta"><b>CD La Magdalena</b> · ${team}</div>
+      </div>
+      <h1 class="title">Entrenamiento <span class="accent">${t.fecha}</span></h1>
+      <div class="stat-row">
+        <div class="stat"><b>${(t.tasks||[]).length}</b> tareas</div>
+        <div class="stat"><b>${totalMin}</b> min totales</div>
+      </div>
     </div>
-    ${t.desc ? `<div class="desc-box">${t.desc}</div>` : ""}
+
+    <div class="contenido">
+    ${t.desc ? `<div class="desc-box" style="margin-top:20px">${esc(t.desc)}</div>` : ""}
     <div class="section-title">Tareas</div>
     ${(t.tasks||[]).length > 0 ? tasksHTML : '<p class="no-tasks">Sin tareas registradas.</p>'}
     </div>
+    <div class="footer"><span><b>CD La Magdalena</b> · Fútbol 11</span><span>Generado con MiClubFUT</span></div>
     </body></html>`;
 
     const win = window.open("", "_blank");
@@ -2715,9 +2797,9 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
     const esc = (s) => (s || "—").replace(/</g, "&lt;");
     const campoHTML = slots.map(slot => {
       const j = posiciones[slot.id];
-      return `<div style="position:absolute; top:${slot.top}%; left:${slot.left}%; transform:translate(-50%,-50%); text-align:center;">
-        <div style="width:32px;height:32px;border-radius:50%;background:${j ? "#b91c1c" : "rgba(0,0,0,.25)"};border:2px solid ${j ? "#fff" : "rgba(255,255,255,.5)"};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;margin:0 auto;">${j ? (j.dorsal || "-") : ""}</div>
-        <div style="font-size:9px;color:#fff;background:rgba(0,0,0,.45);border-radius:3px;padding:1px 3px;margin-top:2px;display:inline-block;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j ? esc(j.playerName.split(" ")[0]) : slot.label}</div>
+      return `<div class="pin" style="top:${slot.top}%; left:${slot.left}%;">
+        <div class="pin-dot ${j ? "filled" : ""}">${j ? (j.dorsal || "-") : ""}</div>
+        <div class="pin-label">${j ? esc(j.playerName.split(" ")[0]) : slot.label}</div>
       </div>`;
     }).join("");
 
@@ -2726,68 +2808,130 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
       ...suplentes.map(j => ({ ...j, rol: "Susp." })),
     ];
     const filasHTML = convocatoriaRows.map(j => `<tr>
-      <td>${j.dorsal || "—"}</td><td>${esc(j.playerName)}</td><td>${j.rol}</td><td>${j.equipo !== team ? j.equipo : ""}</td>
+      <td><span class="dorsal-chip">${j.dorsal || "—"}</span></td><td>${esc(j.playerName)}</td><td><span class="role-chip">${j.rol}</span></td><td>${j.equipo !== team ? j.equipo : ""}</td>
     </tr>`).join("");
 
     const escudoRival = ESCUDOS_RIVALES[rival.trim()] || null;
-    const escudoHTML = (src) => `<img src="${src}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;background:#fff;" />`;
+    const escudoHTML = (src) => `<img src="${src}" style="width:100%;height:100%;object-fit:contain;" />`;
     const rivalVisual = escudoRival
       ? escudoHTML(escudoRival)
-      : `<div style="width:64px;height:64px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;font-size:26px;">🛡️</div>`;
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;">🛡️</div>`;
 
     const html = `<html><head><title>Alineación${team ? " " + team : ""}${rival ? " vs " + rival : ""}</title><style>
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-      body { font-family: Arial, sans-serif; padding: 0 0 24px; color: #111; }
+      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap');
+      :root{ --pitch:#1B4332; --pitch-dark:#163a2a; --red:#C8102E; --red-dark:#9c0c23; --paper:#F6F4EF; --ink:#1A1A1A; --ink-soft:#5B5952; --line:#E4E0D6; }
+      * { box-sizing:border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      body { font-family:'Work Sans',Arial,sans-serif; padding: 0; margin:0; color: var(--ink); background:var(--paper); }
       .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
         display: flex; gap: 10px; justify-content: flex-end; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
       .toolbar button { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 10px 18px;
         border-radius: 8px; border: none; cursor: pointer; }
       .btn-exportar { background: #b91c1c; color: #fff; }
       .btn-cerrar { background: #52525b; color: #fff; }
-      .contenido { padding: 24px; }
-      .cabecera { position: relative; padding-right: 130px; }
-      .escudo-esquina { position: absolute; top: 0; right: 0; width: 100px; text-align: center; }
-      .escudo-esquina img { width: 100px; display: block; }
-      .escudo-esquina span { display: block; font-size: 10px; font-weight: 700; margin-top: 2px; }
-      h1 { font-size: 20px; margin-bottom: 4px; }
-      h2 { font-size: 13px; color: #666; margin-bottom: 16px; font-weight: normal; }
-      h3 { font-size: 14px; margin: 18px 0 8px; color: #b91c1c; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-      .vs { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 12px 0 22px; }
-      .vs .equipo { text-align: center; width: 90px; }
-      .vs .equipo span { display: block; font-size: 11px; font-weight: 700; margin-top: 4px; }
-      .vs .letras { font-size: 20px; font-weight: 900; color: #b91c1c; }
-      .campo { position: relative; width: 360px; height: 540px; margin: 0 auto 20px; border-radius: 8px;
-        background: repeating-linear-gradient(0deg, #15803d 0, #15803d 40px, #16a34a 40px, #16a34a 80px); border: 2px solid #14532d; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-      th { background: #f0f0f0; text-align: left; padding: 6px 8px; font-size: 12px; }
-      td { padding: 5px 8px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
-      tr:nth-child(even) td { background: #fafafa; }
-      p.obj { font-size: 12px; white-space: pre-wrap; background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 8px; }
-      @media print { .toolbar { display: none; } }
+
+      .header{ background:var(--ink); color:#fff; padding:24px 32px 18px; position:relative; overflow:hidden; }
+      .header::after{ content:""; position:absolute; right:-60px; top:-60px; width:220px; height:220px; border-radius:50%; background:var(--red); opacity:.15; }
+      .crest-row{ display:flex; align-items:center; gap:12px; position:relative; }
+      .crest{ width:42px; height:42px; border-radius:6px; background:#000; border:2px solid rgba(255,255,255,.3); overflow:hidden; flex-shrink:0; }
+      .crest img{ width:100%; height:100%; object-fit:contain; }
+      .club-meta{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.6); font-weight:600; }
+      .club-meta b{ color:#fff; }
+      h1.title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:34px; line-height:1; margin:6px 0 0; text-transform:uppercase; position:relative; }
+      .title .accent{ color:var(--red); }
+      .sistema-pill{ display:inline-flex; align-items:center; gap:6px; margin-top:12px; background:rgba(255,255,255,.1);
+        border:1px solid rgba(255,255,255,.2); padding:4px 13px; border-radius:20px; font-size:12px; font-weight:600; position:relative; }
+      .sistema-pill b{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:13px; }
+
+      .matchup{ display:flex; align-items:center; justify-content:center; gap:30px; background:#fff; margin:-16px 32px 0;
+        padding:18px 26px; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.1); position:relative; z-index:2; }
+      .team{ display:flex; flex-direction:column; align-items:center; gap:7px; width:120px; }
+      .team .badge{ width:50px; height:50px; border-radius:8px; overflow:hidden; background:#000; }
+      .team .badge.rival{ background:#fff; border:1px solid var(--line); }
+      .team .tname{ font-weight:700; font-size:12.5px; text-align:center; line-height:1.25; }
+      .vs{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:19px; color:var(--red); background:var(--paper);
+        width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid var(--red); flex-shrink:0; }
+
+      .contenido { padding: 30px 32px 36px; max-width:820px; margin:0 auto; }
+      .section-title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
+        letter-spacing:.14em; color:var(--ink-soft); display:flex; align-items:center; gap:10px; margin:26px 0 12px; }
+      .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+      .pitch-wrap{ display:flex; justify-content:center; }
+      .campo { position: relative; width: 340px; height: 480px; border-radius: 10px; overflow:hidden;
+        box-shadow: inset 0 0 0 3px rgba(255,255,255,.85), 0 6px 20px rgba(0,0,0,.25);
+        background: repeating-linear-gradient(0deg, var(--pitch) 0, var(--pitch) 48px, var(--pitch-dark) 48px, var(--pitch-dark) 96px); }
+      .campo svg{ position:absolute; inset:0; width:100%; height:100%; }
+      .campo-lines{ stroke: rgba(255,255,255,.8); stroke-width:2; fill:none; }
+      .pin{ position:absolute; transform:translate(-50%,-50%); text-align:center; }
+      .pin-dot{ width:30px; height:30px; border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center;
+        color:#fff; font-weight:800; font-family:'Barlow Condensed',Arial,sans-serif; font-size:13px;
+        background:linear-gradient(155deg,#2E7D5B 0%,#1B4332 100%); border:2.5px solid #fff; box-shadow:0 3px 7px rgba(0,0,0,.35); }
+      .pin-dot.filled{ background:linear-gradient(155deg,var(--red) 0%,var(--red-dark) 100%); }
+      .pin-label{ font-size:9.5px; font-weight:600; color:#fff; background:rgba(0,0,0,.5); border-radius:9px; padding:1.5px 7px;
+        margin-top:3px; display:inline-block; max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+      .obj-card{ background:#fff; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:6px;
+        padding:11px 15px; font-size:12.5px; color:var(--ink); white-space:pre-wrap; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+
+      table.roster{ width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+      table.roster thead th{ background:var(--pitch); color:#fff; text-align:left; font-size:10.5px; text-transform:uppercase;
+        letter-spacing:.06em; font-weight:700; padding:9px 14px; }
+      table.roster tbody td{ padding:9px 14px; font-size:12.5px; border-top:1px solid var(--line); }
+      table.roster tbody tr:nth-child(even){ background:#FBFAF7; }
+      .dorsal-chip{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+        background:var(--ink); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:11px; }
+      .role-chip{ font-size:10px; font-weight:700; color:var(--red); background:rgba(200,16,46,.08); padding:2px 8px; border-radius:9px; }
+
+      .footer{ max-width:820px; margin:8px auto 0; padding:14px 32px; display:flex; justify-content:space-between;
+        border-top:1px solid var(--line); font-size:11px; color:var(--ink-soft); }
+      .footer b{ color:var(--ink); }
+
+      @media print { .toolbar { display: none; } .header{ padding:16px 22px 12px; } .contenido{ padding:20px 22px 24px; } }
     </style></head><body>
       <div class="toolbar">
         <button class="btn-exportar" onclick="window.print()">🖨️ Exportar / Guardar PDF</button>
         <button class="btn-cerrar" onclick="window.close()">✕ Cerrar y volver</button>
       </div>
-      <div class="contenido">
-        <div class="cabecera">
-          <div class="escudo-esquina"><img src="${ESCUDO_MAGDALENA}" /><span>CD La Magdalena</span></div>
-          <h1>🧩 Alineación${team ? ` — ${esc(team)}` : ""}</h1>
-          <h2>Sistema: ${sistema}</h2>
+
+      <div class="header">
+        <div class="crest-row">
+          <div class="crest"><img src="${ESCUDO_MAGDALENA}" /></div>
+          <div class="club-meta"><b>CD La Magdalena</b>${team ? ` · ${esc(team)}` : ""}</div>
         </div>
-        <div class="vs">
-          <div class="equipo">${escudoHTML(ESCUDO_MAGDALENA)}<span>CD La Magdalena</span></div>
-          <div class="letras">VS</div>
-          <div class="equipo">${rivalVisual}<span>${esc(rival)}</span></div>
-        </div>
-        <div class="campo">${campoHTML}</div>
-        <h3>🎯 Objetivos generales</h3>
-        <p class="obj">${esc(objetivosGenerales)}</p>
-        <h3>🎯 Objetivos específicos</h3>
-        <p class="obj">${esc(objetivosEspecificos)}</p>
-        <h3>📋 Convocatoria (${convocatoriaRows.length})</h3>
-        <table><tr><th>Dorsal</th><th>Nombre</th><th>Rol</th><th>Categoría</th></tr>${filasHTML}</table>
+        <h1 class="title">Aline<span class="accent">ación</span></h1>
+        <div class="sistema-pill">Sistema <b>${esc(sistema)}</b></div>
       </div>
+
+      <div class="matchup">
+        <div class="team"><div class="badge">${escudoHTML(ESCUDO_MAGDALENA)}</div><div class="tname">CD La Magdalena</div></div>
+        <div class="vs">VS</div>
+        <div class="team"><div class="badge rival">${rivalVisual}</div><div class="tname">${esc(rival)}</div></div>
+      </div>
+
+      <div class="contenido">
+        <div class="section-title">Formación</div>
+        <div class="pitch-wrap">
+          <div class="campo">
+            <svg viewBox="0 0 340 480">
+              <rect class="campo-lines" x="5" y="5" width="330" height="470" rx="4"/>
+              <line class="campo-lines" x1="5" y1="240" x2="335" y2="240"/>
+              <circle class="campo-lines" cx="170" cy="240" r="45"/>
+              <rect class="campo-lines" x="100" y="5" width="140" height="68"/>
+              <rect class="campo-lines" x="100" y="407" width="140" height="68"/>
+            </svg>
+            ${campoHTML}
+          </div>
+        </div>
+
+        <div class="section-title">Objetivos generales</div>
+        <p class="obj-card">${esc(objetivosGenerales)}</p>
+        <div class="section-title">Objetivos específicos</div>
+        <p class="obj-card">${esc(objetivosEspecificos)}</p>
+
+        <div class="section-title">Convocatoria (${convocatoriaRows.length})</div>
+        <table class="roster"><thead><tr><th>Dorsal</th><th>Nombre</th><th>Rol</th><th>Categoría</th></tr></thead><tbody>${filasHTML}</tbody></table>
+      </div>
+      <div class="footer"><span><b>CD La Magdalena</b> · Fútbol 11</span><span>Generado con MiClubFUT</span></div>
     </body></html>`;
 
     // Pestaña nueva con dos botones propios (Exportar/Cerrar) en vez de disparar
@@ -3988,6 +4132,18 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
   const [frameActivo, setFrameActivo] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [grabando, setGrabando] = useState(false);
+  const [mediaVisor, setMediaVisor] = useState(null); // { blob, blobUrl, nombre, tipo: "video"|"gif" } — preview del MP4/GIF exportado
+  useCloseOnBack(!!mediaVisor, () => { if (mediaVisor) { URL.revokeObjectURL(mediaVisor.blobUrl); setMediaVisor(null); } });
+  // Red de seguridad: si se sale del editor (p.ej. con el "← Volver" de
+  // arriba del todo) mientras el visor de vídeo/GIF está abierto, el
+  // componente se desmonta sin pasar por los botones de cerrar del visor y
+  // el blob se queda en memoria. Revocarlo aquí cubre ese caso y cualquier
+  // otro; revocar una URL ya revocada no da error, así que es seguro que
+  // coincida con los revokes explícitos de los botones.
+  useEffect(() => {
+    if (!mediaVisor) return;
+    return () => URL.revokeObjectURL(mediaVisor.blobUrl);
+  }, [mediaVisor]);
   const animFrameRef = useRef(null);
   const gifRef = useRef(null);
 
@@ -4339,12 +4495,10 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     gif.on("finished", (blob) => {
       setGrabando(false);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
       const nombreArchivo = nombre.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
-      a.href = url;
-      a.download = `tactica_${nombreArchivo}.gif`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Mismo motivo que en el MP4: evitar el visor de archivos genérico de
+      // iOS y mostrar el GIF dentro de la app con nuestros propios botones.
+      setMediaVisor({ blob, blobUrl: url, nombre: `tactica_${nombreArchivo}.gif`, tipo: "gif" });
       dibujarCampo(ctx);
       dibujarJugadores(ctx, jugadores);
       dibujarJugadores(ctx, rivales);
@@ -4480,12 +4634,11 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
     const { buffer } = muxer.target;
     const blob = new Blob([buffer], { type: "video/mp4" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     const nombreArchivo = nombre.replace(/[\/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").trim() || "tactica";
-    a.href = url;
-    a.download = `tactica_${nombreArchivo}.mp4`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // En vez de disparar una descarga automática (que en iOS abre el visor
+    // de archivos genérico de Quick Look con "Abrir en Moodle"/"Más..."),
+    // mostramos el vídeo dentro de la app con nuestros propios botones.
+    setMediaVisor({ blob, blobUrl: url, nombre: `tactica_${nombreArchivo}.mp4`, tipo: "video" });
 
     } catch (e) {
       console.error(e);
@@ -4664,7 +4817,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
               : <Btn variant="secondary" onClick={stopAnimacion}>⏹ Parar</Btn>
             }
             <Btn variant="secondary" onClick={grabarMP4} disabled={grabando || playing || keyframes.length === 0}>
-              {grabando ? "⏳ Exportando..." : "🎬 Exportar MP4"}
+              {grabando ? "⏳ Exportando..." : "🎬 Exportar Animación"}
             </Btn>
             <Btn variant="secondary" onClick={generarGif} disabled={grabando || playing || keyframes.length === 0}>
               🎞️ Exportar GIF
@@ -4696,6 +4849,39 @@ function TacticaEditor({ tactica, onGuardar, onCancelar }) {
           />
         </div>
       </div>
+
+      {mediaVisor && (
+        <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950">
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
+            <span className="text-white font-semibold text-sm truncate max-w-xs">{mediaVisor.nombre}</span>
+            <div className="flex gap-2">
+              {navigator.share && (
+                <button onClick={async () => {
+                  const file = new File([mediaVisor.blob], mediaVisor.nombre, { type: mediaVisor.tipo === "gif" ? "image/gif" : "video/mp4" });
+                  if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
+                    alert(`Este móvil no permite compartir archivos directamente.\n\nDescarga el ${mediaVisor.tipo === "gif" ? "GIF" : "vídeo"} y compártelo desde tu galería o gestor de archivos.`);
+                    return;
+                  }
+                  try {
+                    await navigator.share({ files: [file], title: mediaVisor.nombre });
+                  } catch(e) { if (e.name !== "AbortError") alert(`No se ha podido compartir el ${mediaVisor.tipo === "gif" ? "GIF" : "vídeo"}.`); }
+                }} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-white text-sm font-semibold">
+                  📤 Compartir
+                </button>
+              )}
+              <button onClick={() => { URL.revokeObjectURL(mediaVisor.blobUrl); setMediaVisor(null); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold">
+                ← Volver
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+            {mediaVisor.tipo === "gif"
+              ? <img src={mediaVisor.blobUrl} alt={mediaVisor.nombre} className="max-w-full max-h-full rounded-lg border border-zinc-800" />
+              : <video src={mediaVisor.blobUrl} controls autoPlay muted loop playsInline className="max-w-full max-h-full rounded-lg border border-zinc-800" />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4752,7 +4938,7 @@ function ClasificacionSection({ team, data, db, isCoord }) {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <h2 className="text-xl font-bold text-white">Clasificaciones{scope === "equipo" ? ` — ${team}` : " — Todo el club"}</h2>
 
       {/* Ámbito */}
@@ -4777,7 +4963,7 @@ function ClasificacionSection({ team, data, db, isCoord }) {
 
       {scope !== "rivales" && sorted.length === 0 && <p className="text-zinc-500 text-sm">Sin datos registrados todavía{scope === "global" ? " en ningún equipo" : ""}.</p>}
 
-      {scope !== "rivales" && <div className="space-y-1.5">
+      {scope !== "rivales" && <div className="space-y-2">
         {sorted.map((p, i) => {
           const pod = i < 3 ? PODIO[i] : null;
           return (
@@ -4851,7 +5037,7 @@ function MejoresRivalesSection({ db, embed }) {
   const categoriesWithData = [...new Set(allRivales.map(r => teamToCategoria(r.equipo)))];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {!embed && <h2 className="text-xl font-bold text-white">⭐ Mejores Jugadores Rivales</h2>}
       <p className="text-zinc-400 text-sm">Jugadores rivales destacados registrados por los entrenadores en cada partido.</p>
 
@@ -4883,14 +5069,14 @@ function MejoresRivalesSection({ db, embed }) {
 
         if (filterTeam !== "all") {
           const cat = CATEGORIAS.find(c => teamToCategoria(filterTeam) === c.id) || {color:"bg-zinc-800 border-zinc-700 text-white"};
-          return <div className="space-y-2">{filtered.map((r,i) => renderRival(r,i,cat.color))}</div>;
+          return <div className="space-y-3">{filtered.map((r,i) => renderRival(r,i,cat.color))}</div>;
         }
 
         return CATEGORIAS.map(cat => {
           const catRivales = filtered.filter(r => teamToCategoria(r.equipo) === cat.id);
           if (catRivales.length === 0) return null;
           return (
-            <div key={cat.id} className="space-y-2">
+            <div key={cat.id} className="space-y-3">
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${cat.color}`}>{cat.id}</div>
               {catRivales.map((r,i) => renderRival(r,i,cat.color))}
             </div>
@@ -4953,7 +5139,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
     const stats = matches.reduce((acc, m) => { const p = parseResult(m.resultado); if (!p) return acc; const [g,gc]=p; acc.pj++; acc.gf+=g; acc.gc+=gc; if(g>gc){acc.v++;acc.pts+=3;}else if(g===gc){acc.e++;acc.pts+=1;}else acc.d++; return acc; }, {pj:0,v:0,e:0,d:0,gf:0,gc:0,pts:0});
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center gap-3">
           <Btn variant="ghost" onClick={() => setViewingSeason(null)}>← Volver</Btn>
           <h2 className="text-xl font-bold text-white">📦 {viewingSeason.name}</h2>
@@ -4987,7 +5173,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
           </div>
           <p className="text-xs text-zinc-500">Jugadores: {(teamData.players||[]).length} · Entrenamientos: {(teamData.trainings||[]).length} · Partidos: {matches.length}</p>
         </Card>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {matches.map(m => (
             <Card key={m.id}>
               <div className="flex items-center gap-2 flex-wrap">
@@ -5014,7 +5200,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">⚙️ Ajustes</h2>
       <div className="flex gap-2 border-b border-zinc-700 pb-2">
         <button onClick={() => setAjustesTab("temporadas")} className={`px-4 py-1.5 rounded-t text-sm font-medium transition-all ${ajustesTab==="temporadas"?"bg-zinc-700 text-white":"text-zinc-400 hover:text-white"}`}>📦 Temporadas</button>
@@ -5022,7 +5208,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
       </div>
 
       {ajustesTab === "entrenadores" && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p className="text-zinc-400 text-sm">Gestiona las contraseñas de acceso de cada entrenador. Cada entrenador inicia sesión con el nombre de su equipo y su contraseña.</p>
           {TEAMS.map(team => (
             <Card key={team} className="flex items-center gap-3 flex-wrap">
@@ -5054,12 +5240,12 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
         <p className="text-white font-semibold mb-1">Archivar temporada actual</p>
         <p className="text-zinc-400 text-sm mb-4">Guarda todos los datos actuales y empieza limpio para la nueva temporada. Los jugadores se mantienen pero se borran partidos, entrenamientos y asistencias.</p>
         {!confirming ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Input label="Nombre de la temporada" value={seasonName} onChange={e => setSeasonName(e.target.value)} placeholder="Ej: Temporada 2025-26" />
             <Btn onClick={() => seasonName.trim() && setConfirming(true)}>📦 Archivar y empezar nueva temporada</Btn>
           </div>
         ) : (
-          <div className="bg-red-900/30 border border-red-800 rounded-lg p-4 space-y-3">
+          <div className="bg-red-900/30 border border-red-800 rounded-lg p-4 space-y-4">
             <p className="text-red-300 font-semibold">⚠️ ¿Estás seguro?</p>
             <p className="text-zinc-400 text-sm">Se archivará la temporada <strong className="text-white">"{seasonName}"</strong> y se borrarán partidos, entrenamientos y asistencias de todos los equipos. Los jugadores y entrenadores se mantienen.</p>
             <div className="flex gap-2">
@@ -5071,7 +5257,7 @@ function GestionSection({ db, onArchive, onRestore, passwords, onSavePasswords }
       </Card>
 
       {/* Past seasons */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <p className="text-xs text-zinc-500 uppercase tracking-wider">Temporadas archivadas</p>
         {loading && <p className="text-zinc-500 text-sm animate-pulse">Cargando...</p>}
         {!loading && seasons.length === 0 && <p className="text-zinc-500 text-sm">No hay temporadas archivadas todavía.</p>}
@@ -5112,7 +5298,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
   // STEP: list — mostrar valoraciones existentes
   if (step === "informes") {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center gap-2">
           <Btn small variant="ghost" onClick={() => setStep("list")}>← Volver</Btn>
           <p className="text-white font-semibold">📊 Informes de entrenadores</p>
@@ -5122,13 +5308,13 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
           const history = getCoachHistory(c.id);
           const avg = history.length ? (history.reduce((s,h)=>s+h.nota,0)/history.length).toFixed(2) : null;
           return (
-            <Card key={c.id} className="space-y-3">
+            <Card key={c.id} className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-white font-bold text-lg">👤 {c.name}</span>
                 {avg ? <div className="text-center"><div className={`text-2xl font-black ${avg>=7?"text-green-400":avg>=5?"text-yellow-400":"text-red-400"}`}>{avg}</div><div className="text-xs text-zinc-500">Media temporada</div></div> : <span className="text-zinc-500 text-sm">Sin valoraciones</span>}
               </div>
               {history.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {history.map((h,i) => (
                     <div key={i} className="flex items-center gap-3 bg-zinc-800 rounded-lg px-3 py-2">
                       <div className="flex-1">
@@ -5153,7 +5339,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
   }
 
   if (step === "list") return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-xs text-zinc-500 uppercase tracking-wider">Valoraciones por partido</p>
         <div className="flex gap-2">
@@ -5179,7 +5365,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
 
   // STEP: pickMatch
   if (step === "pickMatch") return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={reset}>← Volver</Btn><p className="text-white font-semibold">1. Selecciona un partido</p></div>
       {matches.map(m => (
         <div key={m.id} className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 cursor-pointer transition-colors"
@@ -5196,7 +5382,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
 
   // STEP: pickType — entrenador o equipo
   if (step === "pickType") return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickMatch")}>← Volver</Btn><p className="text-white font-semibold">2. ¿Qué quieres valorar?</p></div>
       <p className="text-zinc-400 text-xs">Partido: vs {matchObj?.rival} — {matchObj?.fecha}</p>
       <div className="bg-zinc-900 border border-zinc-700 hover:border-blue-700 rounded-xl p-4 cursor-pointer transition-colors"
@@ -5214,7 +5400,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
 
   // STEP: pickCoach
   if (step === "pickCoach") return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickType")}>← Volver</Btn><p className="text-white font-semibold">3. Selecciona un entrenador</p></div>
       {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
       {coaches.map(c => (
@@ -5231,10 +5417,10 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
     const c = coaches.find(x => x.id === selCoach);
     const val = (matchObj?.coachValuations || []).find(v => v.coachId === selCoach) || {};
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickCoach")}>← Volver</Btn><p className="text-white font-semibold">Valorar a {c?.name}</p></div>
         <p className="text-zinc-400 text-xs">Partido: vs {matchObj?.rival} — {matchObj?.fecha}</p>
-        <Card className="space-y-3">
+        <Card className="space-y-4">
           <Input label="Tu nombre (coordinador)" value={val.coordinador || coordProfile || ""} onChange={e => saveValuation(matchObj.id, selCoach, "coordinador", e.target.value)} placeholder="¿Quién hace esta valoración?" />
           <Input label="Nota (0-10)" type="number" step="0.1" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(matchObj.id, selCoach, "nota", e.target.value)} />
           <Textarea label="Observación" value={val.comentario || ""} onChange={e => saveValuation(matchObj.id, selCoach, "comentario", e.target.value)} placeholder="Escribe tu observación..." rows={3} />
@@ -5248,7 +5434,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
   if (step === "valorEquipo") {
     const convocados = (matchObj?.convocatoria || []).filter(c => c.status !== "no_conv");
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center gap-2"><Btn small variant="ghost" onClick={() => setStep("pickType")}>← Volver</Btn><p className="text-white font-semibold">Valorar equipo — vs {matchObj?.rival}</p></div>
 
         {coaches.length > 0 && <>
@@ -5256,7 +5442,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
           {coaches.map(c => {
             const val = (matchObj?.coachValuations || []).find(v => v.coachId === c.id) || {};
             return (
-              <Card key={c.id} className="space-y-2">
+              <Card key={c.id} className="space-y-3">
                 <span className="text-white font-semibold">👤 {c.name}</span>
                 <div className="grid grid-cols-2 gap-2">
                   <Input label="Nota (0-10)" type="number" step="0.1" min="0" max="10" value={val.nota || ""} onChange={e => saveValuation(matchObj.id, c.id, "nota", e.target.value)} />
@@ -5280,7 +5466,7 @@ function ValoracionesTab({ matches, coaches, coordProfile, saveValuation, delete
               saveValuation(matchObj.id, null, "__playerVals__", newVals, newMatches);
             };
             return (
-              <Card key={c.playerId} className="space-y-2">
+              <Card key={c.playerId} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-white font-semibold">{c.playerName}</span>
                   <Badge color={c.status==="titular"?"green":"blue"}>{c.status==="titular"?"Titular":"Suplente"}</Badge>
@@ -5403,7 +5589,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">Entrenadores</h2>
 
       {/* Team selector */}
@@ -5438,7 +5624,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
           />
           <Btn onClick={addCoach}>+ Añadir</Btn>
         </div>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
           {coaches.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenadores registrados.</p>}
           {coaches.map(c => {
             const stats = getCoachAttStats(c.id);
@@ -5471,7 +5657,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
 
       {/* Asistencia tab */}
       {tab === "asistencia" && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {!attCoach ? (
             <>
               <p className="text-xs text-zinc-500 uppercase tracking-wider">Selecciona un entrenador</p>
@@ -5520,7 +5706,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
                   </Card>
                 );
               })()}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {sessions.length === 0 && <p className="text-zinc-500 text-sm">No hay sesiones registradas.</p>}
                 {sessions.map(s => {
                   const rec = (teamData.coachAttendance || []).find(a => a.sessionId === s.id && a.coachId === attCoach.id);
@@ -5573,7 +5759,7 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
                   <Btn small variant="secondary" onClick={() => setStatsCoach(null)}>✕</Btn>
                 </div>
               </div>
-              <div className="p-5 space-y-3">
+              <div className="p-5 space-y-4">
                 {history.length === 0 && <p className="text-zinc-500 text-sm">Sin valoraciones todavía.</p>}
                 {history.map((h, i) => (
                   <div key={i} className="flex items-center gap-3 bg-zinc-800 rounded-lg px-4 py-3">
@@ -5637,7 +5823,7 @@ function ResumenSection({ db, teams = TEAMS }) {
   const total = stats.v + stats.e + stats.d;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <h2 className="text-xl font-bold text-white">Resumen de partidos</h2>
 
       {/* Team selector */}
@@ -5688,7 +5874,7 @@ function ResumenSection({ db, teams = TEAMS }) {
       )}
 
       {/* Match list */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {matches.length === 0 && <p className="text-zinc-500 text-sm">No hay partidos registrados para {selectedTeam}.</p>}
         {matches.map(m => (
           <Card key={m.id} className="flex items-center gap-4">
@@ -5903,7 +6089,15 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
 
     const equipos = [...new Set(conv.jugadores.map(j => j.equipo))];
     let html = `<html><head><style>
-      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { font-family: Arial, sans-serif; padding: 0 0 24px; margin: 0; color: #111; }
+      .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
+        display: flex; gap: 10px; justify-content: flex-end; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+      .toolbar button { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 10px 18px;
+        border-radius: 8px; border: none; cursor: pointer; }
+      .btn-exportar { background: #b91c1c; color: #fff; }
+      .btn-cerrar { background: #52525b; color: #fff; }
+      .contenido { padding: 24px; }
       h1 { font-size: 20px; margin-bottom: 4px; }
       h2 { font-size: 13px; color: #666; margin-bottom: 16px; font-weight: normal; }
       h3 { font-size: 14px; margin: 16px 0 6px; color: #c00; border-bottom: 1px solid #eee; padding-bottom: 4px; }
@@ -5911,7 +6105,13 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
       th { background: #f0f0f0; text-align: left; padding: 6px 8px; font-size: 12px; }
       td { padding: 5px 8px; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
       tr:nth-child(even) td { background: #fafafa; }
+      @media print { .toolbar { display: none; } }
     </style></head><body>
+    <div class="toolbar">
+      <button class="btn-exportar" onclick="window.print()">🖨️ Exportar / Guardar PDF</button>
+      <button class="btn-cerrar" onclick="window.close()">✕ Cerrar y volver</button>
+    </div>
+    <div class="contenido">
     <h1>📋 ${conv.nombre}</h1>
     <h2>Fecha: ${conv.fecha} · Total jugadores: ${conv.jugadores.length}</h2>`;
 
@@ -5930,12 +6130,15 @@ function ConvocatoriaContent({ team, data, onSave, isCoord, db }) {
       });
       html += `</table>`;
     });
-    html += `</body></html>`;
+    html += `</div></body></html>`;
 
+    // Mismo patrón que el resto de exportaciones PDF de la app: aviso si el
+    // navegador bloquea la ventana, y botones propios en vez de w.print()
+    // automático (en algunos móviles ese print() automático no abre el diálogo).
     const w = window.open("", "_blank");
+    if (!w) { window.alert("El navegador ha bloqueado la ventana del PDF. Permite las ventanas emergentes para este sitio e inténtalo de nuevo."); return; }
     w.document.write(html);
     w.document.close();
-    w.print();
   };
 
   // ── VISTA LISTA ─────────────────────────────────────────────────────────
@@ -6726,7 +6929,7 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
           <span className="text-zinc-500 text-xs uppercase tracking-widest">{c.deporte}</span>
           <span className="text-white text-lg font-black uppercase tracking-wide">{c.nombreCorto}</span>
         </div>
-        <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>
+        {onVolver && <button onClick={onVolver} className="text-zinc-400 text-xs hover:text-white">Volver</button>}
       </div>
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
@@ -6736,8 +6939,8 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
           </div>
           {error && <div className="bg-red-900/40 border border-red-800 text-red-300 text-xs p-3 rounded-lg mb-4">{error}</div>}
           <div className="space-y-3">
-            <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
-            <Input label="Contrasena" type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <Input label="Email" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
+            <Input label="Contrasena" type="password" autoComplete="current-password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={recordar} onChange={e => setRecordar(e.target.checked)} className="w-4 h-4" />
               <span className="text-zinc-400 text-xs">Recordar email y contrasena</span>
@@ -6836,9 +7039,9 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
             <div className="space-y-3">
               <h1 className="text-white text-lg font-bold mb-1">Crea tu cuenta</h1>
               <Input label="Nombre completo" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Juan Garcia" />
-              <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
-              <Input label="Contrasena" type="password" value={pass1} onChange={e => setPass1(e.target.value)} placeholder="Minimo 6 caracteres" />
-              <Input label="Repite la contrasena" type="password" value={pass2} onChange={e => setPass2(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && irPaso2()} />
+              <Input label="Email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
+              <Input label="Contrasena" type="password" autoComplete="new-password" value={pass1} onChange={e => setPass1(e.target.value)} placeholder="Minimo 6 caracteres" />
+              <Input label="Repite la contrasena" type="password" autoComplete="new-password" value={pass2} onChange={e => setPass2(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && irPaso2()} />
               <Btn onClick={irPaso2} className="w-full justify-center">Siguiente</Btn>
             </div>
           )}
@@ -7889,7 +8092,7 @@ export default function App() {
       return s;
     } catch(e) { return null; }
   })();
-  const [authState, setAuthState] = useState(savedSession ? "app" : (SINGLE_CLUB_ID ? "home" : "selector"));
+  const [authState, setAuthState] = useState(savedSession ? "app" : (SINGLE_CLUB_ID ? "login" : "selector"));
   const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : (SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null));
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
   const savedRolRaw = savedSession?.user?.rolActual || savedSession?.user?.rol;
@@ -8205,7 +8408,7 @@ export default function App() {
   if (authState === "login") return (
     <LoginScreen
       club={clubActual}
-      onVolver={() => setAuthState("home")}
+      onVolver={SINGLE_CLUB_ID ? null : () => setAuthState("selector")}
       onLoginOk={handleLoginUsuario}
       onIrRegistro={() => setAuthState("register")}
       onLoginLegacy={() => setAuthState("login_legacy")}
@@ -8237,7 +8440,7 @@ export default function App() {
                 {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <Input label="Contrasena" type="password" value={password}
+            <Input label="Contrasena" type="password" autoComplete="current-password" value={password}
               onChange={e => { setPassword(e.target.value); setLoginError(""); }}
               onKeyDown={e => e.key === "Enter" && login()}
               placeholder="Introduce tu clave" />
@@ -8354,11 +8557,7 @@ export default function App() {
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 hidden md:flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
           >☰</button>
           <button
-            onClick={() => setAuthState("home")}
-            className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all ml-1"
-          >🏠 Inicio</button>
-          <button
-            onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "home" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
+            onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "login" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
             className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all"
           >Salir</button>
           <span className="text-white font-semibold">
