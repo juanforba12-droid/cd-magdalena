@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.miclubfut.magdalena",
+        "sha256_cert_fingerprints": ["AF:F8:AF:DE:C5:CC:86:1D:33:B2:B5:ED:DD:C3:CB:34:FE:B4:F0:AD:FE:77:84:44:8C:D6:CF:A3:34:A5:A3:E2"]
+      }
+    }]
