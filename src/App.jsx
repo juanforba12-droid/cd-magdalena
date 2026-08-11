@@ -322,6 +322,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
     { val: "lesionado",  label: "Lesionado",  color: "bg-red-900/40 border-red-700 text-red-300" },
     { val: "sancionado", label: "Sancionado", color: "bg-yellow-900/40 border-yellow-700 text-yellow-300" },
     { val: "duda",       label: "Duda",       color: "bg-orange-900/40 border-orange-700 text-orange-300" },
+    { val: "sin_ficha",  label: "Sin ficha",  color: "bg-zinc-700/60 border-zinc-500 text-zinc-300" },
   ];
 
   const PLAYER_FORMAS = [
@@ -817,7 +818,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
 
       {fichaVisor && (
         <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">
-          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
             <span className="text-white font-semibold text-sm truncate max-w-xs">{fichaVisor.nombre}</span>
             <div className="flex gap-2">
               {navigator.share && (
@@ -4724,7 +4725,8 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
 
   return (
     <div className="fixed inset-0 z-[70] bg-zinc-950 overflow-auto p-4 pb-10 space-y-4 md:static md:z-auto md:bg-transparent md:p-0 md:overflow-visible">
-      <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 bg-zinc-950/95 border-b border-zinc-800 flex items-center gap-3 flex-wrap md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-0">
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 bg-zinc-950/95 border-b border-zinc-800 flex items-center gap-3 flex-wrap md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-0"
+        style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}>
         <button onClick={() => {
           if (soloLectura) { onCancelar(); return; }
           // Normalizar quitando campos internos (tipo) antes de comparar
@@ -4923,7 +4925,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
 
       {mediaVisor && (
         <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950">
-          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-700 shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
             <span className="text-white font-semibold text-sm truncate max-w-xs">{mediaVisor.nombre}</span>
             <div className="flex gap-2">
               {navigator.share && (
@@ -7955,7 +7957,7 @@ function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, 
     <>
       {showMore && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setShowMore(false)}>
-          <div className="absolute inset-x-0 bottom-16 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl flex flex-col max-h-[min(65dvh,34rem)]"
+          <div className="absolute inset-x-0 bottom-16 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl flex flex-col max-h-[min(80dvh,40rem)]"
             onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto my-3 shrink-0" />
             <div className="overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: "touch" }}>
