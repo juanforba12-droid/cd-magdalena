@@ -7956,33 +7956,36 @@ function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, 
   return (
     <>
       {showMore && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setShowMore(false)}>
-          <div className="absolute inset-x-0 bottom-16 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl flex flex-col max-h-[min(80dvh,40rem)]"
-            onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto my-3 shrink-0" />
-            <div className="overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: "touch" }}>
-              {isCoord && (
-                <div className="mb-4">
-                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {teams.map(t => (
-                      <button key={t} onClick={() => { setActiveTeam(t); }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTeam === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
-                        {t}
-                      </button>
-                    ))}
+        <div className="md:hidden fixed inset-0 z-40 bg-black/60 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }} onClick={() => setShowMore(false)}>
+          <div className="min-h-full flex flex-col justify-end">
+            <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-2xl"
+              style={{ marginBottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto my-3 shrink-0" />
+              <div className="px-4 pb-4">
+                {isCoord && (
+                  <div className="mb-4">
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Equipo</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {teams.map(t => (
+                        <button key={t} onClick={() => { setActiveTeam(t); }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTeam === t ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                )}
+                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Más secciones</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {more.map(s => (
+                    <button key={s.id} onClick={() => go(s.id)}
+                      className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${activeSection === s.id ? "bg-red-900/40 border-red-700 text-red-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                      <span className="text-xl">{s.icon}</span>
+                      <span className="text-xs font-medium text-center leading-tight">{s.label}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Más secciones</p>
-              <div className="grid grid-cols-3 gap-2">
-                {more.map(s => (
-                  <button key={s.id} onClick={() => go(s.id)}
-                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${activeSection === s.id ? "bg-red-900/40 border-red-700 text-red-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
-                    <span className="text-xl">{s.icon}</span>
-                    <span className="text-xs font-medium text-center leading-tight">{s.label}</span>
-                  </button>
-                ))}
               </div>
             </div>
           </div>
