@@ -1492,13 +1492,16 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4 overflow-auto" onClick={onClose}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl my-4" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-zinc-800 flex justify-between items-center sticky top-0 z-10 bg-zinc-900 rounded-t-xl">
+    <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl my-4 flex flex-col"
+        style={{ maxHeight: "calc(100% - 2rem)" }}
+        onClick={e => e.stopPropagation()}>
+        <div className="p-5 border-b border-zinc-800 flex justify-between items-center shrink-0"
+          style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top))" }}>
           <h3 className="text-white font-bold text-lg">{task?.id ? "Editar tarea" : "Nueva tarea"}</h3>
           <Btn small variant="secondary" onClick={onClose}>✕</Btn>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: "touch" }}>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Nombre de la tarea" value={nombre} onChange={e => setNombre(e.target.value)} />
             <Input label="Duración (minutos)" type="number" min="1" value={minutos} onChange={e => setMinutos(Number(e.target.value))} />
@@ -1518,7 +1521,8 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
             <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
           </div>
         </div>
-        <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap sticky bottom-0 z-10 bg-zinc-900 rounded-b-xl shadow-[0_-4px_12px_rgba(0,0,0,0.4)]">
+        <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap shrink-0"
+          style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}>
           <Btn onClick={() => handleSave(false)}>Guardar en entrenamiento</Btn>
           {saveToLibrary && <Btn variant="secondary" onClick={() => handleSave(true)}>💾 Guardar también en biblioteca</Btn>}
           <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
