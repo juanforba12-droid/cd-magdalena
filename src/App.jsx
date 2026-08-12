@@ -7996,7 +7996,7 @@ function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, 
         </div>
       )}
 
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-zinc-900 border-t border-zinc-800 flex"
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-[45] bg-zinc-900 border-t border-zinc-800 flex"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {main.map(s => (
           <button key={s.id} onClick={() => go(s.id)}
