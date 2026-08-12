@@ -1354,14 +1354,14 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
         {isPlayer ? (
           (editingItem !== null && editingItem?.id !== undefined && editingItem?.id === item.id) ? (
             <input autoFocus type="number" defaultValue={editingItem?.num ?? ""}
-              className="w-7 h-7 rounded-full text-center font-bold border-2 bg-zinc-900 text-white border-white outline-none"
-              style={{fontSize:10}}
+              className="w-5 h-5 rounded-full text-center font-bold border-2 bg-zinc-900 text-white border-white outline-none"
+              style={{fontSize:8}}
               onBlur={e => saveEditNum(item.id, e.target.value)}
               onKeyDown={e => { if(e.key==="Enter") saveEditNum(item.id,e.target.value); if(e.key==="Escape") setEditingItem(null); }}
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{backgroundColor: PLAYER_COLOR_HEX2[color]||"#dc2626", borderColor: PLAYER_COLOR_HEX2[color]||"#dc2626", fontSize:10}} title="Doble clic para editar número">
+            <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-white font-bold shadow-lg" style={{backgroundColor: PLAYER_COLOR_HEX2[color]||"#dc2626", borderColor: PLAYER_COLOR_HEX2[color]||"#dc2626", fontSize:8}} title="Doble clic para editar número">
               {(item.num != null ? item.num : "")}
             </div>
           )
@@ -1494,7 +1494,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4 overflow-auto" onClick={onClose}>
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl my-4" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
+        <div className="p-5 border-b border-zinc-800 flex justify-between items-center sticky top-0 z-10 bg-zinc-900 rounded-t-xl">
           <h3 className="text-white font-bold text-lg">{task?.id ? "Editar tarea" : "Nueva tarea"}</h3>
           <Btn small variant="secondary" onClick={onClose}>✕</Btn>
         </div>
@@ -1518,7 +1518,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
             <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
           </div>
         </div>
-        <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap">
+        <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap sticky bottom-0 z-10 bg-zinc-900 rounded-b-xl shadow-[0_-4px_12px_rgba(0,0,0,0.4)]">
           <Btn onClick={() => handleSave(false)}>Guardar en entrenamiento</Btn>
           {saveToLibrary && <Btn variant="secondary" onClick={() => handleSave(true)}>💾 Guardar también en biblioteca</Btn>}
           <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
