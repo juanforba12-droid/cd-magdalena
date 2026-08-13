@@ -1,0 +1,13 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index d6ee78b..0273dbd 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -8419,7 +8419,7 @@ export default function App() {
+       setShowProfilePicker(false);
+       setAuthState("app");
+     } else if (r === "entrenador") {
+-      const equipo = user.equipo && TEAMS.includes(user.equipo) ? user.equipo : TEAMS[0];
++      const equipo = user.equipo || TEAMS[0];
+       setRole("trainer");
+       setTeamAccess(equipo);
+       setActiveTeam(equipo);
