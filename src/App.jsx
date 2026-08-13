@@ -7057,6 +7057,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
   const [equipoSel, setEquipoSel] = useState(TEAMS[0]);
   const [equiposDisponibles, setEquiposDisponibles] = useState(TEAMS);
   const [equiposPasswords, setEquiposPasswords] = useState({});
+  const equipoTocadoPorUsuario = useRef(false);
 
   useEffect(() => {
     const prefix = c?.firestorePrefix || "cdmagdalena";
@@ -7064,7 +7065,10 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
       if (eqs && eqs.length > 0) {
         const nombres = eqs.map(e => e.nombre);
         setEquiposDisponibles(nombres);
-        setEquipoSel(nombres[0]);
+        // Solo fijamos el primero de la lista real si el usuario todavía no
+        // ha tocado el desplegable a mano — si no, le pisaríamos su elección
+        // en cuanto termine de cargar esta lista.
+        if (!equipoTocadoPorUsuario.current) setEquipoSel(nombres[0]);
         const pwds = {};
         eqs.forEach(e => { pwds[e.nombre] = (e.password || "").toUpperCase(); });
         setEquiposPasswords(pwds);
@@ -7165,7 +7169,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
                   {rol === "entrenador" && (
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-zinc-400 uppercase tracking-wider">Tu equipo</label>
-                      <select value={equipoSel} onChange={e => setEquipoSel(e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{equiposDisponibles.map(t => <option key={t}>{t}</option>)}</select>
+                      <select value={equipoSel} onChange={e => { equipoTocadoPorUsuario.current = true; setEquipoSel(e.target.value); }} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{equiposDisponibles.map(t => <option key={t}>{t}</option>)}</select>
                     </div>
                   )}
                 </div>
