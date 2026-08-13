@@ -8419,7 +8419,7 @@ export default function App() {
       setShowProfilePicker(false);
       setAuthState("app");
     } else if (r === "entrenador") {
-      const equipo = user.equipo || TEAMS[0];
+      const equipo = user.equipoActual || user.equipo || TEAMS[0];
       setRole("trainer");
       setTeamAccess(equipo);
       setActiveTeam(equipo);
