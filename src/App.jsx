@@ -77,7 +77,6 @@ function useCloseOnBack(abierto, onClose) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re-ejecutar al abrir/cerrar, no en cada render
   }, [abierto]);
 }
-const COORDINATORS = ["Lalo", "Patri", "Jose", "Juan", "Xuso", "Fer", "Oscar"];
 
 const POSITIONS = [
   "Portero","Lateral Derecho","Central","Lateral Izquierdo",
@@ -6964,7 +6963,7 @@ function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Login con email
 // ══════════════════════════════════════════════════════════════════════════════
-function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club }) {
+function LoginScreen({ onVolver, onLoginOk, onIrRegistro, club }) {
   const c = club || CLUBS[0];
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -7029,9 +7028,6 @@ function LoginScreen({ onVolver, onLoginOk, onIrRegistro, onLoginLegacy, club })
           <div className="text-center mt-4">
             <span className="text-zinc-500 text-xs">No tienes cuenta? </span>
             <button onClick={onIrRegistro} className="text-red-400 text-xs hover:text-red-300">Registrate</button>
-          </div>
-          <div className="text-center mt-2">
-            <button onClick={onLoginLegacy} className="text-zinc-600 text-xs hover:text-zinc-400">Acceso con clave de equipo</button>
           </div>
         </div>
       </div>
@@ -8207,15 +8203,16 @@ export default function App() {
   const savedRole = savedRolRaw === "coordinador" ? "coordinator" : savedRolRaw === "entrenador" ? "trainer" : savedRolRaw === "familiar" ? "familiar" : null;
   const [role, setRole] = useState(savedRole);
   const [teamAccess, setTeamAccess] = useState(savedSession?.user?.equipo || null);
-  const [password, setPassword] = useState("");
   const [teamPasswords, setTeamPasswords] = useState({});
   const [globalTasks, setGlobalTasks] = useState([]);
   const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
   const [equiposDinamicos, setEquiposDinamicos] = useState([]);
   const [equipoAbierto, setEquipoAbierto] = useState(null);
-  // Cargar equipos al inicializar si hay sesion
+  // Cargar equipos al inicializar — sin esperar a que haya sesion, porque
+  // hace falta esta lista incluso antes de entrar (p.ej. en el registro),
+  // no solo dentro de la app ya logueada.
   React.useEffect(() => {
-    if (authState === "app" && clubActual?.id) {
+    if (clubActual?.id) {
       const { CLUBS: C } = { CLUBS };
       const clubInfo = CLUBS.find(c => c.id === clubActual.id) || CLUBS[0];
       const prefix = clubInfo?.firestorePrefix || "cdmagdalena";
@@ -8224,9 +8221,6 @@ export default function App() {
       }).catch(() => {});
     }
   }, []);
-  const [showProfilePicker, setShowProfilePicker] = useState(false); // nunca mostrar si hay sesion guardada
-  const [teamInput, setTeamInput] = useState("Coordinador");
-  const [loginError, setLoginError] = useState("");
 
   const [db, setDb] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -8323,23 +8317,6 @@ export default function App() {
     "Juvenil": "FVL",
   };
 
-  const login = () => {
-    if (teamInput === "Coordinador" && password === "MGD") {
-      setRole("coordinator");
-      setTeamAccess(null);
-      setActiveTeam(TEAMS[0]);
-      setActiveSection("resumen");
-      setShowProfilePicker(true);
-    } else if (teamInput !== "Coordinador" && ({...TEAM_PASSWORDS, ...teamPasswords})[teamInput] === password) {
-      setRole("trainer");
-      setTeamAccess(teamInput);
-      setActiveTeam(teamInput);
-      setAuthState("app");
-    } else {
-      setLoginError("Contraseña incorrecta.");
-    }
-  };
-
   const updateTeamData = async (team, newData) => {
     if (window._setSaving) window._setSaving(true);
     let freshDb;
@@ -8416,7 +8393,6 @@ export default function App() {
       setActiveTeam(TEAMS[0]);
       setActiveSection("resumen");
       setCoordProfile(user.nombre || "Coordinador");
-      setShowProfilePicker(false);
       setAuthState("app");
     } else if (r === "entrenador") {
       const equipo = user.equipoActual || user.equipo || TEAMS[0];
@@ -8438,26 +8414,6 @@ export default function App() {
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="text-zinc-400 text-sm animate-pulse">Cargando...</div>
-    </div>
-  );
-
-  if (showProfilePicker) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-700 mb-4"><span className="text-2xl">⚽</span></div>
-          <h1 className="text-xl font-black text-white">¿Quién eres?</h1>
-          <p className="text-zinc-500 text-sm mt-1">Selecciona tu perfil de coordinador</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {COORDINATORS.map(name => (
-            <button key={name} onClick={() => { setCoordProfile(name); setShowProfilePicker(false); setAuthState("app"); }}
-              className="bg-zinc-800 hover:bg-red-900/60 border border-zinc-700 hover:border-red-700 rounded-xl p-4 text-white font-semibold text-sm transition-all">
-              {name}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 
@@ -8518,7 +8474,6 @@ export default function App() {
       onVolver={SINGLE_CLUB_ID ? null : () => setAuthState("selector")}
       onLoginOk={handleLoginUsuario}
       onIrRegistro={() => setAuthState("register")}
-      onLoginLegacy={() => setAuthState("login_legacy")}
     />
   );
   if (authState === "register") return (
@@ -8527,61 +8482,6 @@ export default function App() {
       onVolver={() => setAuthState("login")}
       onRegistroOk={handleLoginUsuario}
     />
-  );
-  if (authState === "login_legacy") return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-700 mb-4 shadow-lg shadow-red-900/50">
-            <span className="text-3xl">⚽</span>
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">CD La Magdalena</h1>
-          <p className="text-zinc-500 text-sm mt-1">Acceso con clave de equipo</p>
-        </div>
-        <Card className="border-zinc-700">
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Rol / Equipo</label>
-              <select value={teamInput} onChange={e => setTeamInput(e.target.value)}
-                className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">
-                {["Coordinador", ...TEAMS].map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <Input label="Contrasena" type="password" autoComplete="current-password" value={password}
-              onChange={e => { setPassword(e.target.value); setLoginError(""); }}
-              onKeyDown={e => e.key === "Enter" && login()}
-              placeholder="Introduce tu clave" />
-            {loginError && <p className="text-red-400 text-xs">{loginError}</p>}
-            <Btn onClick={login} className="w-full justify-center">Entrar</Btn>
-            <button onClick={() => setAuthState("login")} className="w-full text-xs text-zinc-600 hover:text-zinc-400 text-center">
-              Volver al login principal
-            </button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-
-  if (showProfilePicker) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-700 mb-4">
-            <span className="text-2xl">⚽</span>
-          </div>
-          <h1 className="text-xl font-black text-white">¿Quién eres?</h1>
-          <p className="text-zinc-500 text-sm mt-1">Selecciona tu perfil de coordinador</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {COORDINATORS.map(name => (
-            <button key={name} onClick={() => { setCoordProfile(name); setShowProfilePicker(false); setAuthState("app"); }}
-              className="bg-zinc-800 hover:bg-red-900/60 border border-zinc-700 hover:border-red-700 rounded-xl p-4 text-white font-semibold text-sm transition-all">
-              {name}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 
   if (authState === "app" && clubActual?.id === "amics") return <AmicsApp currentUser={currentUser} onVolver={() => setAuthState("home")} onSalir={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState("selector"); setCurrentUser(null); setClubActual(null); setRole(null); }} />;
@@ -8649,7 +8549,7 @@ export default function App() {
 
         {/* Logout */}
         <div className="p-3 border-t border-zinc-800">
-          <Btn variant="ghost" small className="w-full justify-center" onClick={() => { setAuthState("login"); setPassword(""); }}>
+          <Btn variant="ghost" small className="w-full justify-center" onClick={() => setAuthState("login")}>
             Cerrar sesión
           </Btn>
         </div>
