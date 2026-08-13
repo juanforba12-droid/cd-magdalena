@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, loadBancoJugadores, saveBancoJugadores } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos } from "./push";
@@ -7086,15 +7086,17 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
         const codigosEquipo = c.passwords?.equipos || {};
         const coordPwd = c.passwords?.coordinador || "";
         // Primero comprobamos contra la contraseña real del equipo (la misma
-        // que "Acceso con clave de equipo" y la que se gestiona en Ajustes →
-        // Gestión del Club → Equipos); si ese equipo no está ahí (equipos muy
-        // antiguos aún no migrados), caemos al código fijo de clubs.js.
+        // que se gestiona en Ajustes → Gestión del Club → Equipos); si ese
+        // equipo no está ahí (equipos muy antiguos aún no migrados), caemos
+        // al código fijo de clubs.js. Presidente usa el mismo código que
+        // Coordinador, ya que tiene los mismos permisos.
         const codigoEquipoReal = equiposPasswords[equipoSel];
         const codigoEsperado = codigoEquipoReal !== undefined ? codigoEquipoReal : (codigosEquipo[equipoSel] || "");
-        const codigoOk = rol === "coordinador"
+        const esRolCoordinador = rol === "coordinador" || rol === "presidente";
+        const codigoOk = esRolCoordinador
           ? codigo.trim().toUpperCase() === coordPwd
           : codigo.trim().toUpperCase() === codigoEsperado;
-        if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
+        if (!codigoOk) { setError("Codigo incorrecto para " + (esRolCoordinador ? rol : equipoSel) + "."); setLoading(false); return; }
       }
       const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c?.id || "magdalena" });
       if (!res.ok) { setError(res.error); setLoading(false); return; }
@@ -7110,6 +7112,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
     { val: "familiar", label: "Jugador / familia", desc: "Sin codigo - acceso libre" },
     { val: "entrenador", label: "Entrenador", desc: "Requiere codigo de entrenador" },
     { val: "coordinador", label: "Coordinador", desc: "Requiere codigo de coordinador" },
+    { val: "presidente", label: "Presidente", desc: "Requiere codigo de coordinador" },
   ];
 
   return (
@@ -7555,6 +7558,9 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const [tab, setTab] = React.useState("equipos");
+  const [editandoRol, setEditandoRol] = React.useState(null); // email del usuario en edición
+  const [rolSeleccionado, setRolSeleccionado] = React.useState("");
+  const [guardandoRol, setGuardandoRol] = React.useState(false);
 
   React.useEffect(() => {
     const cargar = async () => {
@@ -7583,6 +7589,25 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
     };
     cargar();
   }, [prefix]);
+
+  const cambiarRol = async (usuario, clubId, nuevoRol) => {
+    setGuardandoRol(true);
+    const res = await actualizarRolUsuario(prefix, usuario.email, clubId, nuevoRol);
+    if (res.ok) {
+      setUsuarios(prev => prev.map(u => {
+        if (u.email !== usuario.email) return u;
+        const roles = { ...(u.roles || {}) };
+        const equipoActual = roles[clubId]?.equipo || null;
+        roles[clubId] = { rol: nuevoRol, equipo: nuevoRol === "entrenador" ? equipoActual : null };
+        return { ...u, roles };
+      }));
+      setMsg("Rol actualizado.");
+    } else {
+      setMsg("Error al actualizar el rol: " + res.error);
+    }
+    setEditandoRol(null);
+    setGuardandoRol(false);
+  };
 
   const crearEquipo = async () => {
     if (!nuevoEquipo.trim() || !nuevaPassword.trim()) { setMsg("Pon nombre y contraseña."); return; }
@@ -7649,7 +7674,7 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
     return clubRol?.rol || u.rol || "familiar";
   };
 
-  const ROL_COLOR = { coordinador: "red", entrenador: "blue", familiar: "zinc" };
+  const ROL_COLOR = { coordinador: "red", presidente: "yellow", entrenador: "blue", familiar: "zinc" };
 
   if (loading) return <div className="p-6 text-zinc-500 text-sm">Cargando...</div>;
 
@@ -7726,6 +7751,7 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
       {tab === "usuarios" && (
         <Card>
           <h3 className="text-sm font-semibold text-white mb-3">Usuarios registrados</h3>
+          {msg && <p className="text-xs text-green-400 mb-2">{msg}</p>}
           {usuarios.length === 0 && <p className="text-zinc-500 text-sm">No hay usuarios registrados.</p>}
           {usuarios.map(u => (
             <div key={u.email} className="flex items-center gap-3 py-2 border-b border-zinc-800 last:border-0">
@@ -7742,7 +7768,30 @@ function GestionClubSection({ clubActual, onEquiposChange }) {
                 const roles = u.roles || {};
                 const clubRol = roles[clubId];
                 const rol = clubRol?.rol || u.rol || "familiar";
-                return <Badge color={ROL_COLOR[rol] || "zinc"}>{rol}</Badge>;
+                if (editandoRol === u.email) {
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <select value={rolSeleccionado} onChange={e => setRolSeleccionado(e.target.value)}
+                        className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 text-xs focus:outline-none focus:border-red-600">
+                        <option value="familiar">familiar</option>
+                        <option value="entrenador">entrenador</option>
+                        <option value="coordinador">coordinador</option>
+                        <option value="presidente">presidente</option>
+                      </select>
+                      <button disabled={guardandoRol} onClick={() => cambiarRol(u, clubId, rolSeleccionado)}
+                        className="text-green-400 hover:text-green-300 text-xs font-semibold disabled:opacity-50">✓</button>
+                      <button disabled={guardandoRol} onClick={() => setEditandoRol(null)}
+                        className="text-zinc-500 hover:text-zinc-300 text-xs disabled:opacity-50">✕</button>
+                    </div>
+                  );
+                }
+                return (
+                  <button onClick={() => { setEditandoRol(u.email); setRolSeleccionado(rol); }}
+                    className="flex items-center gap-1">
+                    <Badge color={ROL_COLOR[rol] || "zinc"}>{rol}</Badge>
+                    <span className="text-zinc-600 text-xs">✏️</span>
+                  </button>
+                );
               })()}
             </div>
           ))}
@@ -8200,7 +8249,7 @@ export default function App() {
   const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : (SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null));
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
   const savedRolRaw = savedSession?.user?.rolActual || savedSession?.user?.rol;
-  const savedRole = savedRolRaw === "coordinador" ? "coordinator" : savedRolRaw === "entrenador" ? "trainer" : savedRolRaw === "familiar" ? "familiar" : null;
+  const savedRole = (savedRolRaw === "coordinador" || savedRolRaw === "presidente") ? "coordinator" : savedRolRaw === "entrenador" ? "trainer" : savedRolRaw === "familiar" ? "familiar" : null;
   const [role, setRole] = useState(savedRole);
   const [teamAccess, setTeamAccess] = useState(savedSession?.user?.equipo || null);
   const [teamPasswords, setTeamPasswords] = useState({});
@@ -8387,12 +8436,12 @@ export default function App() {
   const handleLoginUsuario = (user) => {
     setCurrentUser(user);
     const r = user.rolActual || user.rol || "familiar";
-    if (r === "coordinador") {
+    if (r === "coordinador" || r === "presidente") {
       setRole("coordinator");
       setTeamAccess(null);
       setActiveTeam(TEAMS[0]);
       setActiveSection("resumen");
-      setCoordProfile(user.nombre || "Coordinador");
+      setCoordProfile(user.nombre || (r === "presidente" ? "Presidente" : "Coordinador"));
       setAuthState("app");
     } else if (r === "entrenador") {
       const equipo = user.equipoActual || user.equipo || TEAMS[0];

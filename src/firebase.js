@@ -265,6 +265,21 @@ export async function loadUsuariosClub(prefix) {
   } catch(e) { return []; }
 }
 
+export async function actualizarRolUsuario(prefix, email, clubId, nuevoRol) {
+  try {
+    const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const ref = doc(db, prefix + "_usuarios", emailKey);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return { ok: false, error: "Usuario no encontrado" };
+    const existing = snap.data();
+    const roles = existing.roles || {};
+    const equipoActual = roles[clubId]?.equipo || null;
+    roles[clubId] = { rol: nuevoRol, equipo: nuevoRol === "entrenador" ? equipoActual : null };
+    await setDoc(ref, { ...existing, roles }, { merge: true });
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
 // ── Banco de jugadores del club ───────────────────────────────────────────────
 export async function loadBancoJugadores(prefix) {
   try {
