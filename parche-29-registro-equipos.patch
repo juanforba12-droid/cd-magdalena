@@ -1,0 +1,53 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 913ee42..3811440 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -7055,6 +7055,22 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
+   const [loading, setLoading] = useState(false);
+   const [rolFinal, setRolFinal] = useState(null);
+   const [equipoSel, setEquipoSel] = useState(TEAMS[0]);
++  const [equiposDisponibles, setEquiposDisponibles] = useState(TEAMS);
++  const [equiposPasswords, setEquiposPasswords] = useState({});
++
++  useEffect(() => {
++    const prefix = c?.firestorePrefix || "cdmagdalena";
++    loadEquipos(prefix).then(eqs => {
++      if (eqs && eqs.length > 0) {
++        const nombres = eqs.map(e => e.nombre);
++        setEquiposDisponibles(nombres);
++        setEquipoSel(nombres[0]);
++        const pwds = {};
++        eqs.forEach(e => { pwds[e.nombre] = (e.password || "").toUpperCase(); });
++        setEquiposPasswords(pwds);
++      }
++    }).catch(() => {});
++  }, []);
+ 
+   const irPaso2 = () => {
+     if (!nombre.trim() || !email.trim()) { setError("Rellena nombre y email."); return; }
+@@ -7069,9 +7085,15 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
+       if (rol !== "familiar") {
+         const codigosEquipo = c.passwords?.equipos || {};
+         const coordPwd = c.passwords?.coordinador || "";
++        // Primero comprobamos contra la contraseña real del equipo (la misma
++        // que "Acceso con clave de equipo" y la que se gestiona en Ajustes →
++        // Gestión del Club → Equipos); si ese equipo no está ahí (equipos muy
++        // antiguos aún no migrados), caemos al código fijo de clubs.js.
++        const codigoEquipoReal = equiposPasswords[equipoSel];
++        const codigoEsperado = codigoEquipoReal !== undefined ? codigoEquipoReal : (codigosEquipo[equipoSel] || "");
+         const codigoOk = rol === "coordinador"
+           ? codigo.trim().toUpperCase() === coordPwd
+-          : codigo.trim().toUpperCase() === (codigosEquipo[equipoSel] || "");
++          : codigo.trim().toUpperCase() === codigoEsperado;
+         if (!codigoOk) { setError("Codigo incorrecto para " + (rol === "coordinador" ? "coordinador" : equipoSel) + "."); setLoading(false); return; }
+       }
+       const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c?.id || "magdalena" });
+@@ -7143,7 +7165,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
+                   {rol === "entrenador" && (
+                     <div className="flex flex-col gap-1">
+                       <label className="text-xs text-zinc-400 uppercase tracking-wider">Tu equipo</label>
+-                      <select value={equipoSel} onChange={e => setEquipoSel(e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{TEAMS.map(t => <option key={t}>{t}</option>)}</select>
++                      <select value={equipoSel} onChange={e => setEquipoSel(e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{equiposDisponibles.map(t => <option key={t}>{t}</option>)}</select>
+                     </div>
+                   )}
+                 </div>
