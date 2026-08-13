@@ -1,0 +1,31 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 3811440..12409f0 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -8079,7 +8079,7 @@ function AvisosSection({ isCoord, teamAccess, teams, currentUser, clubId }) {
+     cargarAvisos(clubId).then(setAvisos).catch(() => {});
+   };
+ 
+-  const puedeEnviar = isCoord || !!teamAccess;
++  const puedeEnviar = isCoord;
+ 
+   return (
+     <div className="space-y-4">
+@@ -8282,7 +8282,6 @@ export default function App() {
+     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
+     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
+     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
+-    ...(!isCoord ? [{ id: "avisos", label: "Avisos", icon: "🔔" }] : []),
+     { id: "plantilla", label: "Plantilla", icon: "👥" },
+     { id: "parte", label: "Parte lesiones", icon: "🩹" },
+     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
+@@ -8699,9 +8698,6 @@ export default function App() {
+                 )}
+               </div>
+             )}
+-            {activeSection === "avisos" && (
+-              <AvisosSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} clubId={clubActual?.id || "magdalena"} />
+-            )}
+             {activeSection === "parte" && (
+               <ParteLesionesSection teams={teamsToUse} db={db} isCoord={isCoord} teamAccess={teamAccess} />
+             )}
