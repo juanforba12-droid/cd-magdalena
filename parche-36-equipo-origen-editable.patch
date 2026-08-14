@@ -1,0 +1,30 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index f980ea4..b8636b9 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -7205,7 +7205,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
+   const [search, setSearch] = React.useState("");
+   const [showForm, setShowForm] = React.useState(false);
+   const [editJ, setEditJ] = React.useState(null);
+-  const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
++  const [form, setForm] = React.useState({ nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"", equipoOrigen:"" });
+   const [tab, setTab] = React.useState("todos");
+   const [menuBanco, setMenuBanco] = React.useState(null);
+   const [seleccion, setSeleccion] = React.useState([]);
+@@ -7231,7 +7231,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
+ 
+   const openForm = (j = null) => {
+     setEditJ(j?.id || null);
+-    setForm(j ? { nombre:j.nombre||"", fechaNac:j.fechaNac||"", dni:j.dni||"", telefono:j.telefono||"", posicion:j.posicion||"", estado:j.estado||"disponible", notas:j.notas||"" } : { nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"" });
++    setForm(j ? { nombre:j.nombre||"", fechaNac:j.fechaNac||"", dni:j.dni||"", telefono:j.telefono||"", posicion:j.posicion||"", estado:j.estado||"disponible", notas:j.notas||"", equipoOrigen:j.equipoOrigen||"" } : { nombre:"", fechaNac:"", dni:"", telefono:"", posicion:"", estado:"disponible", notas:"", equipoOrigen:"" });
+     setShowForm(true);
+   };
+ 
+@@ -7386,6 +7386,7 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
+             <Input label="Fecha de nacimiento" type="date" value={form.fechaNac} onChange={e => setForm({...form, fechaNac:e.target.value})} />
+             <Input label="DNI / NIE" value={form.dni} onChange={e => setForm({...form, dni:e.target.value})} placeholder="12345678A" />
+             <Input label="Teléfono" value={form.telefono} onChange={e => setForm({...form, telefono:e.target.value})} placeholder="+34 600 000 000" />
++            <Input label="Equipo de origen" value={form.equipoOrigen} onChange={e => setForm({...form, equipoOrigen:e.target.value})} placeholder="Ej: Juvenil A" />
+             <div>
+               <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Posición</label>
+               <select value={form.posicion} onChange={e => setForm({...form, posicion:e.target.value})}
