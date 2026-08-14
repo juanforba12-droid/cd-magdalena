@@ -1,0 +1,15 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index b8636b9..269eac1 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -7221,8 +7221,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
+   }, [prefix]);
+ 
+   const POSICIONES = ["Portero","Defensa Central","Lateral Derecho","Lateral Izquierdo","Mediocentro","Mediapunta","Extremo Derecho","Extremo Izquierdo","Delantero"];
+-  const ESTADOS = ["disponible","probando","lesionado","inactivo"];
+-  const ESTADO_COLOR = { disponible:"green", probando:"yellow", lesionado:"red", inactivo:"zinc" };
++  const ESTADOS = ["disponible","probando","lesionado","inactivo","sin_ficha"];
++  const ESTADO_COLOR = { disponible:"green", probando:"yellow", lesionado:"red", inactivo:"zinc", sin_ficha:"zinc" };
+ 
+   const save = async (nuevos) => {
+     await saveBancoJugadores(prefix, nuevos);

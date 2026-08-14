@@ -7221,8 +7221,8 @@ function BancoJugadoresSection({ clubActual, onAddToEquipo }) {
   }, [prefix]);
 
   const POSICIONES = ["Portero","Defensa Central","Lateral Derecho","Lateral Izquierdo","Mediocentro","Mediapunta","Extremo Derecho","Extremo Izquierdo","Delantero"];
-  const ESTADOS = ["disponible","probando","lesionado","inactivo"];
-  const ESTADO_COLOR = { disponible:"green", probando:"yellow", lesionado:"red", inactivo:"zinc" };
+  const ESTADOS = ["disponible","probando","lesionado","inactivo","sin_ficha"];
+  const ESTADO_COLOR = { disponible:"green", probando:"yellow", lesionado:"red", inactivo:"zinc", sin_ficha:"zinc" };
 
   const save = async (nuevos) => {
     await saveBancoJugadores(prefix, nuevos);
