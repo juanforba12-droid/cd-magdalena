@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, getDocs, collection } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, getDocs, collection } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -126,7 +126,7 @@ function hashSimple(str) {
   }
   return hash.toString(36);
 }
-export async function registrarUsuario({ nombre, email, password, rol, equipo, club }) {
+export async function registrarUsuario({ nombre, email, password, rol, equipo, equiposSeguidos, club }) {
   try {
     const emailKey = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const snap = await getDoc(doc(db, "cdmagdalena_usuarios", emailKey));
@@ -135,15 +135,15 @@ export async function registrarUsuario({ nombre, email, password, rol, equipo, c
       // Usuario ya existe - añadir rol para este club
       const existing = snap.data();
       const roles = existing.roles || {};
-      roles[clubId] = { rol, equipo: equipo || null };
+      roles[clubId] = { rol, equipo: equipo || null, equiposSeguidos: equiposSeguidos || [] };
       await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), { ...existing, roles }, { merge: true });
-      const updatedUser = { ...existing, roles, rolActual: rol, equipoActual: equipo || null };
+      const updatedUser = { ...existing, roles, rolActual: rol, equipoActual: equipo || null, equiposSeguidos: equiposSeguidos || [] };
       return { ok: true, user: updatedUser };
     }
-    const roles = { [clubId]: { rol, equipo: equipo || null } };
+    const roles = { [clubId]: { rol, equipo: equipo || null, equiposSeguidos: equiposSeguidos || [] } };
     const userData = { nombre, email: email.toLowerCase(), passwordHash: hashSimple(password), roles, creadoEn: new Date().toISOString() };
     await setDoc(doc(db, "cdmagdalena_usuarios", emailKey), userData);
-    return { ok: true, user: { ...userData, rolActual: rol, equipoActual: equipo || null } };
+    return { ok: true, user: { ...userData, rolActual: rol, equipoActual: equipo || null, equiposSeguidos: equiposSeguidos || [] } };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 export async function loginUsuario({ email, password, clubId }) {
@@ -159,11 +159,11 @@ export async function loginUsuario({ email, password, clubId }) {
     if (!clubRol) {
       // Si no tiene roles por club, solo permitir acceso a magdalena con el rol legacy
       if (club === "magdalena" && userData.rol) {
-        return { ok: true, user: { ...userData, rolActual: userData.rol, equipoActual: userData.equipo || null } };
+        return { ok: true, user: { ...userData, rolActual: userData.rol, equipoActual: userData.equipo || null, equiposSeguidos: userData.equiposSeguidos || [] } };
       }
       return { ok: false, error: "No tienes acceso a este club. Registrate primero en " + club + "." };
     }
-    return { ok: true, user: { ...userData, rolActual: clubRol.rol, equipoActual: clubRol.equipo, rol: clubRol.rol, equipo: clubRol.equipo } };
+    return { ok: true, user: { ...userData, rolActual: clubRol.rol, equipoActual: clubRol.equipo, rol: clubRol.rol, equipo: clubRol.equipo, equiposSeguidos: clubRol.equiposSeguidos || [] } };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 export async function verificarCodigoRol(rol, codigo) {
@@ -292,6 +292,61 @@ export async function loadBancoJugadores(prefix) {
 export async function saveBancoJugadores(prefix, jugadores) {
   try {
     await setDoc(doc(db, prefix + "_config", "banco_jugadores"), { jugadores });
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+// ── Foro público ─────────────────────────────────────────────────────────────
+// IMPORTANTE: todo esto vive aparte de "prefix/main" (donde están los datos
+// sensibles del club — jugadores, teléfonos, DNI...). El Foro es de acceso
+// público sin contraseña, así que solo debe leer/escribir aquí: nunca debe
+// tocar ni depender del documento principal.
+//
+// Las noticias van cada una en su propio documento (no todas juntas en uno
+// solo) porque pueden llevar foto incrustada, y Firestore limita cada
+// documento a 1 MB — así cada noticia tiene su propio margen, en vez de
+// compartir un único límite entre todas. Las fotos NO usan Firebase Storage
+// (eso exige activar el plan de pago Blaze); se comprimen en el propio
+// móvil y se guardan como texto dentro del mismo documento, gratis.
+
+export async function loadNoticias(prefix) {
+  try {
+    const snap = await getDocs(collection(db, prefix + "_noticias"));
+    return snap.docs.map(d => d.data()).sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+  } catch(e) { return []; }
+}
+
+export async function guardarNoticia(prefix, noticia) {
+  try {
+    await setDoc(doc(db, prefix + "_noticias", noticia.id), noticia);
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+export async function borrarNoticia(prefix, noticiaId) {
+  try {
+    await deleteDoc(doc(db, prefix + "_noticias", noticiaId));
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+export async function loadResultadosPublicos(prefix) {
+  try {
+    const snap = await getDoc(doc(db, prefix + "_config", "foro_resultados"));
+    if (!snap.exists()) return {};
+    return snap.data().resultados || {};
+  } catch(e) { return {}; }
+}
+
+// Se llama automáticamente al guardar un partido desde Partidos, para que
+// el resultado aparezca también en el Foro público sin exponer nada más.
+export async function publicarResultado(prefix, equipo, { rival, fecha, resultado }) {
+  try {
+    const actual = await loadResultadosPublicos(prefix);
+    const resultados = { ...actual };
+    const lista = (resultados[equipo] || []).filter(r => !(r.rival === rival && r.fecha === fecha));
+    resultados[equipo] = [{ rival, fecha, resultado }, ...lista].slice(0, 30);
+    await setDoc(doc(db, prefix + "_config", "foro_resultados"), { resultados });
     return { ok: true };
   } catch(e) { return { ok: false, error: e.message }; }
 }

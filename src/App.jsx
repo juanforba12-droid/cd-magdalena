@@ -1,7 +1,7 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarResultado } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
-import { activarPush, enviarAviso, cargarAvisos } from "./push";
+import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
 import AmicsApp from "./AmicsApp";
 import { loginInternacional, registrarInternacional } from "./internacionalFirebase";
 import InternacionalApp from "./InternacionalApp";
@@ -118,9 +118,26 @@ const SISTEMAS_LINEAS = {
   "5-4-1":     [5, 4, 1],
 };
 
+// Fútbol 8 (7 jugadores de campo + portero) — para las categorías más
+// pequeñas del club, que no juegan Fútbol 11.
+const SISTEMAS_LINEAS_F8 = {
+  "3-3-1": [3, 3, 1],
+  "3-2-2": [3, 2, 2],
+  "3-1-3": [3, 1, 3],
+  "2-3-2": [2, 3, 2],
+  "2-4-1": [2, 4, 1],
+  "2-2-3": [2, 2, 3],
+  "3-1-2-1": [3, 1, 2, 1],
+};
+
+// Equipos que juegan Fútbol 8 en vez de Fútbol 11 — cambia aquí si algún
+// año se añade o se quita alguna categoría de esta lista.
+const EQUIPOS_FUTBOL_8 = ["Escoleta", "Prebenjamín", "Benjamín A", "Alevín C", "Alevín B", "Alevín A"];
+const esEquipoF8 = (team) => EQUIPOS_FUTBOL_8.includes(team);
+
 function etiquetasLinea(n, tipo) {
   const tablas = {
-    defensa:  { 3: ["DFI","DFC","DFD"], 4: ["LI","DFC","DFC","LD"], 5: ["LI","DFC","DFC","DFC","LD"] },
+    defensa:  { 2: ["DFI","DFD"], 3: ["DFI","DFC","DFD"], 4: ["LI","DFC","DFC","LD"], 5: ["LI","DFC","DFC","DFC","LD"] },
     ataque:   { 1: ["DC"], 2: ["DC","DC"], 3: ["EI","DC","ED"], 4: ["EI","DC","DC","ED"] },
     medioDef: { 1: ["MCD"], 2: ["MCD","MCD"], 3: ["MCD","MCD","MCD"] },
     medioOfe: { 1: ["MP"], 2: ["MP","MP"], 3: ["MI","MP","MD"] },
@@ -151,6 +168,9 @@ function construirFormacion(lineas) {
 
 const FORMACIONES = Object.fromEntries(
   Object.entries(SISTEMAS_LINEAS).map(([nombre, lineas]) => [nombre, construirFormacion(lineas)])
+);
+const FORMACIONES_F8 = Object.fromEntries(
+  Object.entries(SISTEMAS_LINEAS_F8).map(([nombre, lineas]) => [nombre, construirFormacion(lineas)])
 );
 
 function initState() {
@@ -2402,8 +2422,10 @@ function LineupChip({ jugador, size = "field", vacio, duplicado, seleccionado, t
   );
 }
 
-function CampoAlineacion({ sistema, posiciones, dorsalCounts, seleccionado, onSlotClick, onSlotDrop }) {
-  const slots = FORMACIONES[sistema] || FORMACIONES["4-3-3"];
+function CampoAlineacion({ sistema, posiciones, dorsalCounts, seleccionado, onSlotClick, onSlotDrop, team }) {
+  const formaciones = esEquipoF8(team) ? FORMACIONES_F8 : FORMACIONES;
+  const porDefecto = esEquipoF8(team) ? "3-3-1" : "4-3-3";
+  const slots = formaciones[sistema] || formaciones[porDefecto];
   return (
     // Proporción 2:3 con el truco del padding-bottom en % en vez de la propiedad
     // CSS aspect-ratio: en WebViews de Android desactualizados (típico en móviles
@@ -2652,7 +2674,7 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
 
 function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBack }) {
   const saved = data.alineacion || {};
-  const [sistema, setSistemaState] = useState(saved.sistema || "4-3-3");
+  const [sistema, setSistemaState] = useState(saved.sistema || (esEquipoF8(team) ? "3-3-1" : "4-3-3"));
   const [posiciones, setPosicionesState] = useState(saved.posiciones || {});
   const [suplentes, setSuplentesState] = useState(saved.suplentes || []);
   const [objetivosGenerales, setObjetivosGenerales] = useState(saved.objetivosGenerales || "");
@@ -2701,7 +2723,7 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
     if (j.dorsal) dorsalCounts[dorsalKey(j.dorsal)] = (dorsalCounts[dorsalKey(j.dorsal)] || 0) + 1;
   });
 
-  const slots = FORMACIONES[sistema] || FORMACIONES["4-3-3"];
+  const slots = (esEquipoF8(team) ? FORMACIONES_F8 : FORMACIONES)[sistema] || (esEquipoF8(team) ? FORMACIONES_F8["3-3-1"] : FORMACIONES["4-3-3"]);
   const titularesCount = Object.values(posiciones).filter(Boolean).length;
 
   // ── Selección / edición de jugadores ────────────────────────────────
@@ -3014,10 +3036,10 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
               value={sistema} onChange={e => cambiarSistema(e.target.value)}
               className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600"
             >
-              {Object.keys(FORMACIONES).map(s => <option key={s} value={s}>{s}</option>)}
+              {Object.keys(esEquipoF8(team) ? FORMACIONES_F8 : FORMACIONES).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <span className="text-zinc-400 text-sm">Titulares: <span className="text-white font-bold">{titularesCount}/11</span></span>
+          <span className="text-zinc-400 text-sm">Titulares: <span className="text-white font-bold">{titularesCount}/{esEquipoF8(team) ? 8 : 11}</span></span>
         </div>
       </Card>
 
@@ -3036,6 +3058,7 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
           seleccionado={intercambio?.tipo === "slot" ? { type: "slot", id: intercambio.slotId } : null}
           onSlotClick={tapSlot}
           onSlotDrop={onSlotDrop}
+          team={team}
         />
         <p className="text-zinc-500 text-xs mt-2">Toca un hueco para asignar jugador, o toca un jugador colocado para cambiarlo, moverlo al banquillo o intercambiarlo. También puedes arrastrar jugadores entre sí.</p>
       </Card>
@@ -3199,6 +3222,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
 
   // Match form state
   const [rival, setRival] = useState("");
+  const [hora, setHora] = useState("");
   const [rivalPickerOpen, setRivalPickerOpen] = useState(false);
   const [lugar, setLugar] = useState("");
   const [fecha, setFecha] = useState("");
@@ -3237,6 +3261,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     setRival(m ? m.rival : "");
     setLugar(m ? m.lugar : "");
     setFecha(m ? m.fecha : "");
+    setHora(m ? (m.hora || "") : "");
     if (m?.resultado) {
       const parts = m.resultado.split("-");
       setGolesLocal(parts[0]?.trim() || "");
@@ -3251,20 +3276,23 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   const saveMatch = () => {
     if (!rival) return;
     const resultado = golesLocal !== "" && golesVisitante !== "" ? `${golesLocal}-${golesVisitante}` : "";
+    const teniaResultado = !!editing?.resultado;
     const matches = [...(data.matches || [])];
     if (editing) {
       const idx = matches.findIndex(m => m.id === editing.id);
-      matches[idx] = { ...editing, rival, lugar, fecha, resultado, mejoresRivales: rivales };
+      matches[idx] = { ...editing, rival, lugar, fecha, hora, resultado, mejoresRivales: rivales };
     } else {
       const players = data.players || [];
       const convocatoria = players.map(p => ({
         playerId: p.id, playerName: p.name,
         status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
       }));
-      matches.push({ id: Date.now(), rival, lugar, fecha, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales });
+      matches.push({ id: Date.now(), rival, lugar, fecha, hora, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales, notificado1h: false });
     }
     onSave({ ...data, matches: matches.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
-    if (!editing) enviarAviso({ titulo: "⚽ Nuevo partido — " + team, mensaje: "vs " + rival + (fecha ? " el " + fecha : "") + (lugar ? " en " + lugar : ""), destino: team, clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
+    if (!editing) enviarAviso({ titulo: "⚽ Nuevo partido — " + team, mensaje: "vs " + rival + (fecha ? " el " + fecha : "") + (lugar ? " en " + lugar : ""), destino: team, tipo: "partidos", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
+    if (resultado) publicarResultado("cdmagdalena", team, { rival, fecha, resultado }).catch(() => {});
+    if (resultado && !teniaResultado) enviarAviso({ titulo: "📣 Resultado final — " + team, mensaje: "CD La Magdalena " + resultado + " vs " + rival, destino: team, tipo: "partidos", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setView("list");
   };
 
@@ -3331,6 +3359,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
           </div>
           <Input label="Lugar" value={lugar} onChange={e => setLugar(e.target.value)} />
           <Input label="Fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+          <Input label="Hora (para el aviso 1h antes)" type="time" value={hora} onChange={e => setHora(e.target.value)} />
           <div className="flex flex-col gap-1">
             <label className="text-xs text-zinc-400 uppercase tracking-wider">Resultado</label>
             <div className="flex items-center gap-2">
@@ -6852,6 +6881,151 @@ function SelectorClubes({ onSelect }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PANTALLA: Foro publico — sin login, resultados y noticias por equipo
+// ══════════════════════════════════════════════════════════════════════════════
+function ForoPublico({ club, onIrLogin, onIrRegistro }) {
+  const prefix = club?.firestorePrefix || "cdmagdalena";
+  const [equipos, setEquipos] = useState([]);
+  const [equipoSel, setEquipoSel] = useState(null);
+  const [noticias, setNoticias] = useState([]);
+  const [resultados, setResultados] = useState({});
+  const [vista, setVista] = useState("partidos"); // partidos | noticias
+  const [loading, setLoading] = useState(true);
+  const [noticiaAbierta, setNoticiaAbierta] = useState(null);
+
+  useEffect(() => {
+    Promise.all([loadEquipos(prefix), loadNoticias(prefix), loadResultadosPublicos(prefix)]).then(([eqs, nts, res]) => {
+      const nombres = (eqs && eqs.length > 0) ? eqs.map(e => e.nombre) : TEAMS;
+      setEquipos(nombres);
+      setEquipoSel(nombres[0]);
+      setNoticias(nts.filter(n => n.estado === "aprobada"));
+      setResultados(res);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [prefix]);
+
+  const resultadosEquipo = resultados[equipoSel] || [];
+
+  const SPONSORS = [
+    { nombre: "Fortuño Abogados", logo: "/sponsors/fortuno.png" },
+    { nombre: "Cubacas Desatascos", logo: "/sponsors/cubacas.png" },
+    { nombre: "Famosan Grupo", logo: "/sponsors/famosan.png" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="bg-black border-b border-zinc-800 shrink-0" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <img src="/escudo.png" alt="CD La Magdalena" className="w-9 h-9 object-contain shrink-0" />
+            <div>
+              <p className="text-white font-black text-sm leading-tight">CD La Magdalena</p>
+              <p className="text-zinc-500 text-[11px] leading-tight">Foro del club</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onIrLogin} className="text-zinc-300 text-xs font-semibold hover:text-white">Iniciar sesión</button>
+            <button onClick={onIrRegistro} className="text-red-400 text-xs font-semibold hover:text-red-300">Registrarse</button>
+          </div>
+        </div>
+        {/* Pestañas de equipo, deslizables horizontalmente — solo en Partidos */}
+        {vista === "partidos" && (
+          <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 -mt-1" style={{ WebkitOverflowScrolling: "touch" }}>
+            {equipos.map(eq => (
+              <button key={eq} onClick={() => setEquipoSel(eq)}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${equipoSel === eq ? "bg-red-700 border-red-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
+                {eq}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ WebkitOverflowScrolling: "touch" }}>
+        {loading && <p className="text-zinc-500 text-sm text-center py-10">Cargando...</p>}
+
+        {!loading && vista === "partidos" && (
+          <div className="space-y-2">
+            {resultadosEquipo.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay resultados publicados para {equipoSel}.</p>}
+            {resultadosEquipo.map((r, i) => (
+              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold text-sm">CD La Magdalena <span className="text-zinc-500">vs</span> {r.rival}</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">{r.fecha}</p>
+                </div>
+                <span className="text-white font-black text-xl">{r.resultado}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && vista === "noticias" && (
+          <div className="space-y-3">
+            {noticias.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay noticias.</p>}
+            {noticias.map(n => (
+              <div key={n.id} onClick={() => setNoticiaAbierta(n)} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden cursor-pointer active:bg-zinc-800/60 transition-colors">
+                {n.foto && <img src={n.foto} alt="" className="w-full h-40 object-cover" />}
+                <div className="p-4">
+                  <p className="text-white font-bold text-sm">{n.titulo}</p>
+                  <p className="text-zinc-500 text-xs mt-1">{n.equipo || "Club"} · {n.fecha} · {n.autor}</p>
+                  <p className="text-zinc-400 text-sm mt-2 line-clamp-2">{n.texto}</p>
+                  {n.texto.length > 90 && <p className="text-red-400 text-xs font-semibold mt-1.5">Leer más →</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Patrocinadores */}
+      <div className="border-t border-zinc-800 bg-black px-4 py-3 shrink-0">
+        <p className="text-zinc-600 text-[10px] uppercase tracking-wider text-center mb-2">Con la colaboración de</p>
+        <div className="flex items-center justify-center gap-5 flex-wrap">
+          {SPONSORS.map(s => (
+            <img key={s.nombre} src={s.logo} alt={s.nombre} title={s.nombre} className="h-9 w-auto object-contain" />
+          ))}
+        </div>
+      </div>
+
+      {/* Barra inferior: Partidos / Noticias */}
+      <div className="flex border-t border-zinc-800 bg-zinc-900 shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <button onClick={() => setVista("partidos")}
+          className={`flex-1 py-3 text-sm font-semibold text-center ${vista === "partidos" ? "text-white border-t-2 border-red-600 -mt-px" : "text-zinc-500"}`}>
+          ⚽ Partidos
+        </button>
+        <button onClick={() => setVista("noticias")}
+          className={`flex-1 py-3 text-sm font-semibold text-center ${vista === "noticias" ? "text-white border-t-2 border-red-600 -mt-px" : "text-zinc-500"}`}>
+          📰 Noticias
+        </button>
+      </div>
+
+      {/* Detalle de noticia */}
+      {noticiaAbierta && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center md:justify-center" onClick={() => setNoticiaAbierta(null)}>
+          <div className="bg-zinc-900 border-t md:border md:rounded-xl rounded-t-2xl w-full md:max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {noticiaAbierta.foto && <img src={noticiaAbierta.foto} alt="" className="w-full max-h-72 object-cover" />}
+            <div className="p-5">
+              <div className="flex justify-between items-start gap-3 mb-2">
+                <h3 className="text-white font-bold text-lg">{noticiaAbierta.titulo}</h3>
+                <button onClick={() => setNoticiaAbierta(null)} className="text-zinc-500 hover:text-white shrink-0">✕</button>
+              </div>
+              <p className="text-zinc-500 text-xs mb-3">{noticiaAbierta.equipo || "Club"} · {noticiaAbierta.fecha} · {noticiaAbierta.autor}</p>
+              <p className="text-zinc-300 text-sm whitespace-pre-wrap">{noticiaAbierta.texto}</p>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                📲 Compartir por WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Home publica
 // ══════════════════════════════════════════════════════════════════════════════
 function HomePublica({ onAcceder, club, onVolver, currentUser, onEntrarDirecto }) {
@@ -7053,6 +7227,7 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
   const [equipoSel, setEquipoSel] = useState(TEAMS[0]);
   const [equiposDisponibles, setEquiposDisponibles] = useState(TEAMS);
   const [equiposPasswords, setEquiposPasswords] = useState({});
+  const [equiposSeguidos, setEquiposSeguidos] = useState([]);
   const equipoTocadoPorUsuario = useRef(false);
 
   useEffect(() => {
@@ -7098,7 +7273,10 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
           : codigo.trim().toUpperCase() === codigoEsperado;
         if (!codigoOk) { setError("Codigo incorrecto para " + (esRolCoordinador ? rol : equipoSel) + "."); setLoading(false); return; }
       }
-      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, club: c?.id || "magdalena" });
+      const seguidos = rol === "entrenador"
+        ? [...new Set([equipoSel, ...equiposSeguidos])]
+        : (rol === "familiar" ? equiposSeguidos : []);
+      const res = await registrarUsuario({ nombre, email, password: pass1, rol, equipo: rol === "entrenador" ? equipoSel : null, equiposSeguidos: seguidos, club: c?.id || "magdalena" });
       if (!res.ok) { setError(res.error); setLoading(false); return; }
       setRolFinal(rol); setPaso(3);
       setTimeout(() => onRegistroOk(res.user), 1500);
@@ -7171,6 +7349,22 @@ function RegistroScreen({ onVolver, onRegistroOk, club }) {
                       <select value={equipoSel} onChange={e => { equipoTocadoPorUsuario.current = true; setEquipoSel(e.target.value); }} className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">{equiposDisponibles.map(t => <option key={t}>{t}</option>)}</select>
                     </div>
                   )}
+                </div>
+              )}
+              {(rol === "familiar" || rol === "entrenador") && (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 uppercase tracking-wider">
+                    {rol === "familiar" ? "¿De qué equipo(s) quieres recibir avisos?" : "Avisos de otros equipos (además del tuyo)"}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {equiposDisponibles.map(eq => (
+                      <button type="button" key={eq}
+                        onClick={() => setEquiposSeguidos(prev => prev.includes(eq) ? prev.filter(x => x !== eq) : [...prev, eq])}
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-all ${equiposSeguidos.includes(eq) ? "bg-red-700 border-red-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400"}`}>
+                        {eq}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               <Btn onClick={handleRegistro} disabled={loading} className="w-full justify-center">
@@ -8093,6 +8287,263 @@ function BottomNav({ sections, activeSection, setActiveSection, isCoord, teams, 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Avisos (notificaciones push)
 // ══════════════════════════════════════════════════════════════════════════════
+// Comprime una foto en el propio navegador antes de guardarla (sin subirla
+// a ningún servicio de pago) y la devuelve como texto listo para guardar
+// directamente en Firestore.
+function comprimirImagenParaNoticia(file, maxAncho = 800, calidad = 0.65) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("No se ha podido leer el archivo."));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("El archivo no parece una imagen válida."));
+      img.onload = () => {
+        const ratio = Math.min(1, maxAncho / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", calidad));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function MisNotificacionesSection({ isCoord, teamAccess, currentUser }) {
+  const misEquipos = [...new Set([
+    ...(currentUser?.equiposSeguidos || []),
+    ...(teamAccess ? [teamAccess] : []),
+  ])];
+
+  const [activado, setActivado] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [activando, setActivando] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [prefs, setPrefs] = useState({});
+  const [miToken, setMiToken] = useState(null);
+
+  const cargar = () => {
+    cargarMisPreferencias().then(res => {
+      if (res) {
+        setActivado(true);
+        setPrefs(res.prefs || {});
+        setMiToken(res.token);
+      } else {
+        setActivado(false);
+      }
+      setCargando(false);
+    }).catch(() => setCargando(false));
+  };
+  useEffect(() => { cargar(); }, []);
+
+  const activar = async () => {
+    setActivando(true);
+    setMsg("");
+    const res = await activarPush({
+      email: currentUser?.email,
+      nombre: currentUser?.nombre,
+      rol: isCoord ? "coordinador" : (teamAccess ? "entrenador" : "familiar"),
+      equipos: misEquipos,
+      clubId: "magdalena",
+    });
+    if (res.ok) { setMsg("✅ Notificaciones activadas en este dispositivo"); cargar(); }
+    else setMsg("❌ " + res.error);
+    setActivando(false);
+  };
+
+  const cambiarPref = async (equipo, tipo, valor) => {
+    setPrefs(prev => ({ ...prev, [equipo]: { ...(prev[equipo] || {}), [tipo]: valor } }));
+    if (miToken) await actualizarPreferencia(miToken, equipo, tipo, valor);
+  };
+
+  if (cargando) return <p className="text-zinc-500 text-sm">Cargando...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-white">🔔 Mis notificaciones</h2>
+
+      {!activado ? (
+        <Card>
+          <p className="text-zinc-400 text-sm mb-3">Activa los avisos en este dispositivo para enterarte de noticias y resultados de tus equipos.</p>
+          {msg && <p className="text-xs mb-2">{msg}</p>}
+          <Btn onClick={activar} disabled={activando}>{activando ? "Activando..." : "Activar en este dispositivo"}</Btn>
+        </Card>
+      ) : (
+        <>
+          <Card><p className="text-green-400 text-sm">✅ Notificaciones activadas en este dispositivo</p></Card>
+          {misEquipos.length === 0 && (
+            <p className="text-zinc-500 text-sm">No sigues ningún equipo todavía — pídele a un coordinador que te lo añada, o vuelve a registrarte eligiendo equipo.</p>
+          )}
+          {misEquipos.map(eq => (
+            <Card key={eq}>
+              <p className="text-white font-semibold text-sm mb-2">{eq}</p>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between">
+                  <span className="text-zinc-400 text-sm">📰 Noticias</span>
+                  <input type="checkbox" checked={prefs[eq]?.noticias !== false} onChange={e => cambiarPref(eq, "noticias", e.target.checked)} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-zinc-400 text-sm">⚽ Partidos y resultados</span>
+                  <input type="checkbox" checked={prefs[eq]?.partidos !== false} onChange={e => cambiarPref(eq, "partidos", e.target.checked)} className="w-4 h-4" />
+                </label>
+              </div>
+            </Card>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
+  const prefix = "cdmagdalena";
+  const [noticias, setNoticias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [titulo, setTitulo] = useState("");
+  const [texto, setTexto] = useState("");
+  const [equipo, setEquipo] = useState(isCoord ? "" : (teamAccess || ""));
+  const [foto, setFoto] = useState(null); // ya comprimida, lista para guardar
+  const [comprimiendo, setComprimiendo] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const cargar = () => loadNoticias(prefix).then(n => { setNoticias(n); setLoading(false); }).catch(() => setLoading(false));
+  useEffect(() => { cargar(); }, []);
+
+  const elegirFoto = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setMsg("");
+    setComprimiendo(true);
+    try {
+      let dataUrl = await comprimirImagenParaNoticia(f, 800, 0.65);
+      // Margen de seguridad frente al límite de 1 MB por documento de
+      // Firestore: si aun así pesa mucho, se comprime un poco más.
+      if (dataUrl.length > 700000) dataUrl = await comprimirImagenParaNoticia(f, 600, 0.5);
+      setFoto(dataUrl);
+    } catch(err) {
+      setMsg("No se ha podido procesar la foto: " + err.message);
+    }
+    setComprimiendo(false);
+  };
+
+  const publicar = async () => {
+    if (!titulo.trim() || !texto.trim()) { setMsg("Ponle título y texto a la noticia."); return; }
+    setSubiendo(true);
+    setMsg("");
+    const estado = isCoord ? "aprobada" : "pendiente";
+    const noticia = {
+      id: Date.now().toString(),
+      titulo: titulo.trim(),
+      texto: texto.trim(),
+      equipo: equipo || null,
+      foto: foto || null,
+      autor: currentUser?.nombre || "Club",
+      fecha: new Date().toISOString().split("T")[0],
+      estado,
+    };
+    const res = await guardarNoticia(prefix, noticia);
+    if (res.ok) {
+      setTitulo(""); setTexto(""); setFoto(null);
+      if (estado === "aprobada") {
+        setMsg("Noticia publicada en el Foro.");
+        enviarAviso({ titulo: "📰 Nueva noticia — " + (noticia.equipo || "Club"), mensaje: noticia.titulo, destino: noticia.equipo || "todos", tipo: "noticias", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
+      } else {
+        setMsg("Enviada a un coordinador para revisarla antes de publicarse.");
+        enviarAviso({ titulo: "📝 Noticia pendiente de aprobar", mensaje: `${noticia.autor}: "${noticia.titulo}"`, destino: "coordinadores", tipo: "noticias", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
+      }
+      cargar();
+    } else {
+      setMsg("Error: " + res.error);
+    }
+    setSubiendo(false);
+  };
+
+  const eliminar = async (id) => {
+    if (!window.confirm("¿Eliminar esta noticia?")) return;
+    await borrarNoticia(prefix, id);
+    cargar();
+  };
+
+  const aprobar = async (n) => {
+    await guardarNoticia(prefix, { ...n, estado: "aprobada" });
+    enviarAviso({ titulo: "📰 Nueva noticia — " + (n.equipo || "Club"), mensaje: n.titulo, destino: n.equipo || "todos", tipo: "noticias", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
+    cargar();
+  };
+
+  const pendientes = noticias.filter(n => n.estado === "pendiente");
+  const publicadas = noticias.filter(n => n.estado !== "pendiente");
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-white">Noticias — Foro público</h2>
+      <Card>
+        <h3 className="text-sm font-semibold text-white mb-3">Nueva noticia</h3>
+        <div className="space-y-3">
+          <Input label="Título" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ej: Crónica del partido vs Albense" />
+          <Textarea label="Texto" value={texto} onChange={e => setTexto(e.target.value)} rows={4} placeholder="Escribe aquí la noticia..." />
+          <div>
+            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Equipo (opcional — vacío = noticia general del club)</label>
+            <select value={equipo} onChange={e => setEquipo(e.target.value)}
+              className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:border-red-600 w-full">
+              <option value="">General (todo el club)</option>
+              {teams.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Foto (opcional)</label>
+            <input type="file" accept="image/*" onChange={elegirFoto} className="text-zinc-400 text-sm" />
+            {comprimiendo && <p className="text-zinc-500 text-xs mt-1">Preparando la foto...</p>}
+            {foto && <img src={foto} alt="" className="w-full h-40 object-cover rounded-lg mt-2" />}
+          </div>
+          {!isCoord && <p className="text-zinc-500 text-xs">Un coordinador tiene que aprobarla antes de que se vea en el Foro.</p>}
+          {msg && <p className="text-xs text-green-400">{msg}</p>}
+          <Btn onClick={publicar} disabled={subiendo || comprimiendo}>{subiendo ? "Enviando..." : (isCoord ? "📰 Publicar en el Foro" : "📝 Enviar para aprobar")}</Btn>
+        </div>
+      </Card>
+
+      {isCoord && pendientes.length > 0 && (
+        <div>
+          <p className="text-xs text-yellow-500 uppercase tracking-wider mb-2">Pendientes de aprobar ({pendientes.length})</p>
+          <div className="space-y-2">
+            {pendientes.map(n => (
+              <Card key={n.id} className="border-yellow-800">
+                <p className="text-white font-semibold text-sm">{n.titulo}</p>
+                <p className="text-zinc-500 text-xs mb-2">{n.equipo || "General"} · {n.fecha} · {n.autor}</p>
+                <p className="text-zinc-400 text-sm mb-3">{n.texto}</p>
+                <div className="flex gap-2">
+                  <Btn small onClick={() => aprobar(n)}>✓ Aprobar y publicar</Btn>
+                  <Btn small variant="danger" onClick={() => eliminar(n.id)}>✕ Rechazar</Btn>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Noticias publicadas</p>
+        {loading && <p className="text-zinc-500 text-sm">Cargando...</p>}
+        {!loading && publicadas.length === 0 && <p className="text-zinc-500 text-sm">Todavía no hay noticias.</p>}
+        <div className="space-y-2">
+          {publicadas.map(n => (
+            <Card key={n.id} className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-white font-semibold text-sm truncate">{n.titulo}</p>
+                <p className="text-zinc-500 text-xs">{n.equipo || "General"} · {n.fecha} · {n.autor}</p>
+              </div>
+              <Btn small variant="danger" onClick={() => eliminar(n.id)}>🗑️</Btn>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AvisosSection({ isCoord, teamAccess, teams, currentUser, clubId }) {
   const [titulo, setTitulo] = React.useState("");
   const [mensaje, setMensaje] = React.useState("");
@@ -8113,7 +8564,9 @@ function AvisosSection({ isCoord, teamAccess, teams, currentUser, clubId }) {
       email: currentUser?.email,
       nombre: currentUser?.nombre,
       rol: isCoord ? "coordinador" : (teamAccess ? "entrenador" : "familiar"),
-      equipo: teamAccess || "",
+      equipos: currentUser?.equiposSeguidos && currentUser.equiposSeguidos.length > 0
+        ? currentUser.equiposSeguidos
+        : (teamAccess ? [teamAccess] : []),
       clubId,
     });
     if (res.ok) { setPushOk(true); setPushMsg("✅ Notificaciones activadas en este dispositivo"); }
@@ -8246,7 +8699,7 @@ export default function App() {
       return s;
     } catch(e) { return null; }
   })();
-  const [authState, setAuthState] = useState(savedSession ? "app" : (SINGLE_CLUB_ID ? "login" : "selector"));
+  const [authState, setAuthState] = useState(savedSession ? "app" : (SINGLE_CLUB_ID ? "foro" : "selector"));
   const [clubActual, setClubActual] = useState(savedSession ? CLUBS.find(c => c.id === savedSession.clubId) || CLUBS[0] : (SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null));
   const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
   const savedRolRaw = savedSession?.user?.rolActual || savedSession?.user?.rol;
@@ -8330,6 +8783,8 @@ export default function App() {
     ...(isCoord ? [{ id: "resumen", label: "Resumen", icon: "📊" }] : []),
     ...(isCoord ? [{ id: "entrenadores", label: "Entrenadores", icon: "🧑‍🏫" }] : []),
     ...(isCoord ? [{ id: "gestion", label: "Ajustes", icon: "⚙️" }] : []),
+    ...(role !== "familiar" ? [{ id: "noticias", label: "Noticias", icon: "📰" }] : []),
+    { id: "mis_notificaciones", label: "Mis avisos", icon: "🔔" },
     { id: "plantilla", label: "Plantilla", icon: "👥" },
     { id: "parte", label: "Parte lesiones", icon: "🩹" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
@@ -8518,10 +8973,17 @@ export default function App() {
     setAuthState("app");
     return null;
   }
+  if (authState === "foro") return (
+    <ForoPublico
+      club={clubActual}
+      onIrLogin={() => setAuthState("login")}
+      onIrRegistro={() => setAuthState("register")}
+    />
+  );
   if (authState === "login") return (
     <LoginScreen
       club={clubActual}
-      onVolver={SINGLE_CLUB_ID ? null : () => setAuthState("selector")}
+      onVolver={() => setAuthState(SINGLE_CLUB_ID ? "foro" : "selector")}
       onLoginOk={handleLoginUsuario}
       onIrRegistro={() => setAuthState("register")}
     />
@@ -8529,7 +8991,7 @@ export default function App() {
   if (authState === "register") return (
     <RegistroScreen
       club={clubActual}
-      onVolver={() => setAuthState("login")}
+      onVolver={() => setAuthState("foro")}
       onRegistroOk={handleLoginUsuario}
     />
   );
@@ -8615,7 +9077,7 @@ export default function App() {
             className="text-zinc-400 hover:text-white text-xl w-8 h-8 hidden md:flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
           >☰</button>
           <button
-            onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "login" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
+            onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "foro" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
             className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all"
           >Salir</button>
           <span className="text-white font-semibold">
@@ -8632,6 +9094,12 @@ export default function App() {
             )}
             {activeSection === "entrenadores" && isCoord && (
               <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} teams={teamsToUse} />
+            )}
+            {activeSection === "noticias" && role !== "familiar" && (
+              <NoticiasSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} />
+            )}
+            {activeSection === "mis_notificaciones" && (
+              <MisNotificacionesSection isCoord={isCoord} teamAccess={teamAccess} currentUser={currentUser} />
             )}
       {activeSection === "gestion" && isCoord && (
               <div className="space-y-4">

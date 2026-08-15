@@ -9,17 +9,30 @@ if (!admin.apps.length) {
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Solo POST" });
   try {
-    const { titulo, mensaje, destino, clubId } = req.body || {};
+    const { titulo, mensaje, destino, tipo, clubId } = req.body || {};
     if (!titulo || !mensaje) return res.status(400).json({ error: "Faltan datos" });
 
     const db = admin.firestore();
     const snap = await db.collection("pushTokens").where("clubId", "==", clubId || "magdalena").get();
 
     let docs = snap.docs;
-    if (destino && destino !== "todos") {
+    if (destino === "coordinadores") {
+      docs = docs.filter(d => d.data().rol === "coordinador");
+    } else if (destino && destino !== "todos") {
       docs = docs.filter(d => {
         const t = d.data();
-        return t.equipo === destino || t.rol === "coordinador";
+        return (t.equipos || []).includes(destino) || t.rol === "coordinador";
+      });
+    }
+    // Respetar las preferencias de "Mis notificaciones" de cada dispositivo
+    // para este equipo en concreto (noticias / partidos). Si no hay
+    // preferencia guardada, se manda igualmente (activado por defecto).
+    if (tipo && tipo !== "general" && destino && destino !== "todos" && destino !== "coordinadores") {
+      docs = docs.filter(d => {
+        const t = d.data();
+        if (t.rol === "coordinador") return true; // coordinación siempre recibe todo
+        const pref = t.prefs?.[destino]?.[tipo];
+        return pref !== false;
       });
     }
     const tokens = [...new Set(docs.map(d => d.data().token).filter(Boolean))];
