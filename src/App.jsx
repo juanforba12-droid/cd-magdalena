@@ -6974,7 +6974,7 @@ function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }
             {noticias.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay noticias.</p>}
             {noticias.map(n => (
               <div key={n.id} onClick={() => setNoticiaAbierta(n)} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden cursor-pointer active:bg-zinc-800/60 transition-colors">
-                {n.foto && <img src={n.foto} alt="" className="w-full h-40 object-cover" />}
+                {n.foto && <img src={n.foto} alt="" className="w-full h-auto block" />}
                 <div className="p-4">
                   <p className="text-white font-bold text-sm">{n.titulo}</p>
                   <p className="text-zinc-500 text-xs mt-1">{n.equipo || "Club"} · {n.fecha} · {n.autor}</p>
@@ -7009,34 +7009,33 @@ function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }
         </button>
       </div>
 
-      {/* Detalle de noticia */}
+      {/* Detalle de noticia — pantalla completa, como un artículo */}
       {noticiaAbierta && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center md:justify-center" onClick={() => setNoticiaAbierta(null)}>
-          <div className="bg-zinc-900 border-t md:border md:rounded-xl rounded-t-2xl w-full md:max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            {noticiaAbierta.foto && <img src={noticiaAbierta.foto} alt="" className="w-full max-h-72 object-cover" />}
-            <div className="p-5">
-              <div className="flex justify-between items-start gap-3 mb-2">
-                <h3 className="text-white font-bold text-lg">{noticiaAbierta.titulo}</h3>
-                <button onClick={() => setNoticiaAbierta(null)} className="text-zinc-500 hover:text-white shrink-0">✕</button>
-              </div>
-              <p className="text-zinc-500 text-xs mb-3">{noticiaAbierta.equipo || "Club"} · {noticiaAbierta.fecha} · {noticiaAbierta.autor}</p>
-              <p className="text-zinc-300 text-sm whitespace-pre-wrap">{noticiaAbierta.texto}</p>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                  📲 WhatsApp
-                </a>
-                <button
-                  onClick={() => {
-                    const texto = `${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`;
-                    navigator.clipboard?.writeText(texto).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); });
-                  }}
-                  className="inline-flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                  {copiado ? "✅ Copiado" : "🔗 Copiar enlace"}
-                </button>
-              </div>
+        <div className="fixed inset-0 bg-zinc-950 z-50 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 flex items-center justify-between px-4 py-3"
+            style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}>
+            <button onClick={() => setNoticiaAbierta(null)} className="text-zinc-300 hover:text-white text-sm flex items-center gap-1">← Volver</button>
+          </div>
+          {noticiaAbierta.foto && <img src={noticiaAbierta.foto} alt="" className="w-full h-auto block" />}
+          <div className="max-w-2xl mx-auto p-5 pb-10">
+            <h1 className="text-white font-bold text-2xl leading-tight">{noticiaAbierta.titulo}</h1>
+            <p className="text-zinc-500 text-sm mt-2 mb-5">{noticiaAbierta.equipo || "Club"} · {noticiaAbierta.fecha} · {noticiaAbierta.autor}</p>
+            <p className="text-zinc-300 text-base leading-relaxed whitespace-pre-wrap">{noticiaAbierta.texto}</p>
+            <div className="flex flex-wrap gap-2 mt-6">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                📲 WhatsApp
+              </a>
+              <button
+                onClick={() => {
+                  const texto = `${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`;
+                  navigator.clipboard?.writeText(texto).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); });
+                }}
+                className="inline-flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                {copiado ? "✅ Copiado" : "🔗 Copiar enlace"}
+              </button>
             </div>
           </div>
         </div>
