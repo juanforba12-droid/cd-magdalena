@@ -1,0 +1,113 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index ca664bf..7f4c2c9 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -6883,7 +6883,7 @@ function SelectorClubes({ onSelect }) {
+ // ══════════════════════════════════════════════════════════════════════════════
+ // PANTALLA: Foro publico — sin login, resultados y noticias por equipo
+ // ══════════════════════════════════════════════════════════════════════════════
+-function ForoPublico({ club, onIrLogin, onIrRegistro }) {
++function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }) {
+   const prefix = club?.firestorePrefix || "cdmagdalena";
+   const [equipos, setEquipos] = useState([]);
+   const [equipoSel, setEquipoSel] = useState(null);
+@@ -6892,6 +6892,7 @@ function ForoPublico({ club, onIrLogin, onIrRegistro }) {
+   const [vista, setVista] = useState("partidos"); // partidos | noticias
+   const [loading, setLoading] = useState(true);
+   const [noticiaAbierta, setNoticiaAbierta] = useState(null);
++  const [copiado, setCopiado] = useState(false);
+ 
+   useEffect(() => {
+     Promise.all([loadEquipos(prefix), loadNoticias(prefix), loadResultadosPublicos(prefix)]).then(([eqs, nts, res]) => {
+@@ -6924,8 +6925,17 @@ function ForoPublico({ club, onIrLogin, onIrRegistro }) {
+             </div>
+           </div>
+           <div className="flex items-center gap-3">
+-            <button onClick={onIrLogin} className="text-zinc-300 text-xs font-semibold hover:text-white">Iniciar sesión</button>
+-            <button onClick={onIrRegistro} className="text-red-400 text-xs font-semibold hover:text-red-300">Registrarse</button>
++            {currentUser ? (
++              <>
++                <span className="text-zinc-400 text-xs hidden sm:inline">{currentUser.nombre}</span>
++                <button onClick={onVolverApp} className="text-red-400 text-xs font-semibold hover:text-red-300">Área personal</button>
++              </>
++            ) : (
++              <>
++                <button onClick={onIrLogin} className="text-zinc-300 text-xs font-semibold hover:text-white">Iniciar sesión</button>
++                <button onClick={onIrRegistro} className="text-red-400 text-xs font-semibold hover:text-red-300">Registrarse</button>
++              </>
++            )}
+           </div>
+         </div>
+         {/* Pestañas de equipo, deslizables horizontalmente — solo en Partidos */}
+@@ -7011,12 +7021,22 @@ function ForoPublico({ club, onIrLogin, onIrRegistro }) {
+               </div>
+               <p className="text-zinc-500 text-xs mb-3">{noticiaAbierta.equipo || "Club"} · {noticiaAbierta.fecha} · {noticiaAbierta.autor}</p>
+               <p className="text-zinc-300 text-sm whitespace-pre-wrap">{noticiaAbierta.texto}</p>
+-              <a
+-                href={`https://wa.me/?text=${encodeURIComponent(`${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`)}`}
+-                target="_blank" rel="noopener noreferrer"
+-                className="mt-4 inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+-                📲 Compartir por WhatsApp
+-              </a>
++              <div className="flex flex-wrap gap-2 mt-4">
++                <a
++                  href={`https://wa.me/?text=${encodeURIComponent(`${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`)}`}
++                  target="_blank" rel="noopener noreferrer"
++                  className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
++                  📲 WhatsApp
++                </a>
++                <button
++                  onClick={() => {
++                    const texto = `${noticiaAbierta.titulo}\n\n${noticiaAbierta.texto}\n\n${window.location.origin}`;
++                    navigator.clipboard?.writeText(texto).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); });
++                  }}
++                  className="inline-flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
++                  {copiado ? "✅ Copiado" : "🔗 Copiar enlace"}
++                </button>
++              </div>
+             </div>
+           </div>
+         </div>
+@@ -8495,7 +8515,7 @@ function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
+           </div>
+           <div>
+             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Foto (opcional)</label>
+-            <input type="file" accept="image/*" onChange={elegirFoto} className="text-zinc-400 text-sm" />
++            <input type="file" accept="image/*" onChange={elegirFoto} className="block w-full text-zinc-300 text-sm bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-red-700 file:text-white file:text-xs file:font-semibold hover:file:bg-red-600 file:cursor-pointer cursor-pointer" />
+             {comprimiendo && <p className="text-zinc-500 text-xs mt-1">Preparando la foto...</p>}
+             {foto && <img src={foto} alt="" className="w-full h-40 object-cover rounded-lg mt-2" />}
+           </div>
+@@ -8978,6 +8998,8 @@ export default function App() {
+       club={clubActual}
+       onIrLogin={() => setAuthState("login")}
+       onIrRegistro={() => setAuthState("register")}
++      currentUser={currentUser}
++      onVolverApp={() => setAuthState("app")}
+     />
+   );
+   if (authState === "login") return (
+@@ -9060,8 +9082,11 @@ export default function App() {
+         </nav>
+ 
+         {/* Logout */}
+-        <div className="p-3 border-t border-zinc-800">
+-          <Btn variant="ghost" small className="w-full justify-center" onClick={() => setAuthState("login")}>
++        <div className="p-3 border-t border-zinc-800 flex gap-2">
++          <Btn variant="ghost" small className="flex-1 justify-center" onClick={() => setAuthState("foro")}>
++            📰 Foro
++          </Btn>
++          <Btn variant="ghost" small className="flex-1 justify-center" onClick={() => { try { localStorage.removeItem("mgd_session"); } catch { /* ignorar */ } setAuthState(SINGLE_CLUB_ID ? "foro" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}>
+             Cerrar sesión
+           </Btn>
+         </div>
+@@ -9076,6 +9101,10 @@ export default function App() {
+             onClick={() => setSidebarOpen(!sidebarOpen)}
+             className="text-zinc-400 hover:text-white text-xl w-8 h-8 hidden md:flex items-center justify-center rounded hover:bg-zinc-800 transition-all"
+           >☰</button>
++          <button
++            onClick={() => setAuthState("foro")}
++            className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all"
++          >📰 Foro</button>
+           <button
+             onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "foro" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
+             className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all"
