@@ -8805,7 +8805,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState([]);
 
-  const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || TEAMS[0]);
+  const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || savedSession?.user?.equiposSeguidos?.[0] || TEAMS[0]);
   const [activeSection, setActiveSection] = useState("plantilla");
   const [ajustesVista, setAjustesVista] = useState("club");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -8983,8 +8983,9 @@ export default function App() {
       setActiveSection("plantilla");
       setAuthState("app");
     } else {
+      const equipoFamiliar = (user.equiposSeguidos && user.equiposSeguidos[0]) || TEAMS[0];
       setRole("familiar");
-      setActiveTeam(TEAMS[0]);
+      setActiveTeam(equipoFamiliar);
       setActiveSection("plantilla");
       setAuthState("app");
     }
