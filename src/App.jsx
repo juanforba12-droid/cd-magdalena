@@ -8418,7 +8418,7 @@ function MisNotificacionesSection({ isCoord, teamAccess, currentUser }) {
   );
 }
 
-function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
+function NoticiasSection({ isCoord, teamAccess, teams, currentUser, db }) {
   const prefix = "cdmagdalena";
   const [noticias, setNoticias] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8428,6 +8428,8 @@ function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
   const [foto, setFoto] = useState(null); // ya comprimida, lista para guardar
   const [comprimiendo, setComprimiendo] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [msgSync, setMsgSync] = useState("");
   const [msg, setMsg] = useState("");
 
   const cargar = () => loadNoticias(prefix).then(n => { setNoticias(n); setLoading(false); }).catch(() => setLoading(false));
@@ -8488,6 +8490,26 @@ function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
     cargar();
   };
 
+  const sincronizarResultados = async () => {
+    if (!db) return;
+    setSincronizando(true);
+    setMsgSync("");
+    let n = 0;
+    for (const [equipoNombre, datosEquipo] of Object.entries(db)) {
+      if (equipoNombre.startsWith("__")) continue; // saltar campos internos tipo __globalTasks
+      const matches = datosEquipo?.matches;
+      if (!Array.isArray(matches)) continue;
+      for (const m of matches) {
+        if (m.resultado) {
+          await publicarResultado("cdmagdalena", equipoNombre, { rival: m.rival, fecha: m.fecha, resultado: m.resultado });
+          n++;
+        }
+      }
+    }
+    setMsgSync(`✅ ${n} resultado(s) sincronizado(s) con el Foro.`);
+    setSincronizando(false);
+  };
+
   const aprobar = async (n) => {
     await guardarNoticia(prefix, { ...n, estado: "aprobada" });
     enviarAviso({ titulo: "📰 Nueva noticia — " + (n.equipo || "Club"), mensaje: n.titulo, destino: n.equipo || "todos", tipo: "noticias", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
@@ -8500,6 +8522,15 @@ function NoticiasSection({ isCoord, teamAccess, teams, currentUser }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Noticias — Foro público</h2>
+
+      {isCoord && (
+        <Card>
+          <p className="text-sm font-semibold text-white mb-1">🔄 Sincronizar resultados con el Foro</p>
+          <p className="text-zinc-500 text-xs mb-3">Vuelve a publicar todos los resultados guardados en Partidos, por si alguno se quedó sin aparecer en el Foro público.</p>
+          {msgSync && <p className="text-xs text-green-400 mb-2">{msgSync}</p>}
+          <Btn small variant="secondary" onClick={sincronizarResultados} disabled={sincronizando}>{sincronizando ? "Sincronizando..." : "Sincronizar ahora"}</Btn>
+        </Card>
+      )}
       <Card>
         <h3 className="text-sm font-semibold text-white mb-3">Nueva noticia</h3>
         <div className="space-y-3">
@@ -9125,7 +9156,7 @@ export default function App() {
               <EntrenadoresSection db={db} onSaveTeam={(team, data) => updateTeamData(team, data)} coordProfile={coordProfile} teams={teamsToUse} />
             )}
             {activeSection === "noticias" && role !== "familiar" && (
-              <NoticiasSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} />
+              <NoticiasSection isCoord={isCoord} teamAccess={teamAccess} teams={teamsToUse} currentUser={currentUser} db={db} />
             )}
             {activeSection === "mis_notificaciones" && (
               <MisNotificacionesSection isCoord={isCoord} teamAccess={teamAccess} currentUser={currentUser} />
