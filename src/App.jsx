@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarResultado } from "./firebase";
+import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
@@ -3289,16 +3289,19 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       }));
       matches.push({ id: Date.now(), rival, lugar, fecha, hora, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales, notificado1h: false });
     }
-    onSave({ ...data, matches: matches.sort((a, b) => b.fecha.localeCompare(a.fecha)) });
+    const matchesOrdenados = matches.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    onSave({ ...data, matches: matchesOrdenados });
     if (!editing) enviarAviso({ titulo: "⚽ Nuevo partido — " + team, mensaje: "vs " + rival + (fecha ? " el " + fecha : "") + (lugar ? " en " + lugar : ""), destino: team, tipo: "partidos", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
-    if (resultado) publicarResultado("cdmagdalena", team, { rival, fecha, resultado }).catch(() => {});
+    if (team) publicarPartidosEquipo("cdmagdalena", team, matchesOrdenados).catch(() => {});
     if (resultado && !teniaResultado) enviarAviso({ titulo: "📣 Resultado final — " + team, mensaje: "CD La Magdalena " + resultado + " vs " + rival, destino: team, tipo: "partidos", clubId: "magdalena", creadoPor: "auto" }).catch(() => {});
     setView("list");
   };
 
   const delMatch = (id) => {
     if (!window.confirm("¿Eliminar partido?")) return;
-    onSave({ ...data, matches: data.matches.filter(m => m.id !== id) });
+    const restantes = data.matches.filter(m => m.id !== id);
+    onSave({ ...data, matches: restantes });
+    if (team) publicarPartidosEquipo("cdmagdalena", team, restantes).catch(() => {});
   };
 
   const openDetail = (m) => { setActiveMatch(m); setView("detail"); };
@@ -6956,14 +6959,16 @@ function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }
 
         {!loading && vista === "partidos" && (
           <div className="space-y-2">
-            {resultadosEquipo.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay resultados publicados para {equipoSel}.</p>}
+            {resultadosEquipo.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay partidos publicados para {equipoSel}.</p>}
             {resultadosEquipo.map((r, i) => (
               <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
                 <div>
                   <p className="text-white font-semibold text-sm">CD La Magdalena <span className="text-zinc-500">vs</span> {r.rival}</p>
-                  <p className="text-zinc-500 text-xs mt-0.5">{r.fecha}</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">{r.fecha}{r.hora ? " · " + r.hora : ""}</p>
                 </div>
-                <span className="text-white font-black text-xl">{r.resultado}</span>
+                {r.resultado
+                  ? <span className="text-white font-black text-xl">{r.resultado}</span>
+                  : <span className="text-yellow-500 text-xs font-semibold uppercase tracking-wider bg-yellow-900/30 border border-yellow-800 rounded-full px-3 py-1">Próximo</span>}
               </div>
             ))}
           </div>
@@ -8493,19 +8498,15 @@ function NoticiasSection({ isCoord, teamAccess, teams, currentUser, db }) {
     if (!db) return;
     setSincronizando(true);
     setMsgSync("");
-    let n = 0;
+    let equiposSincronizados = 0;
     for (const [equipoNombre, datosEquipo] of Object.entries(db)) {
       if (equipoNombre.startsWith("__")) continue; // saltar campos internos tipo __globalTasks
       const matches = datosEquipo?.matches;
-      if (!Array.isArray(matches)) continue;
-      for (const m of matches) {
-        if (m.resultado) {
-          await publicarResultado("cdmagdalena", equipoNombre, { rival: m.rival, fecha: m.fecha, resultado: m.resultado });
-          n++;
-        }
-      }
+      if (!Array.isArray(matches) || matches.length === 0) continue;
+      await publicarPartidosEquipo("cdmagdalena", equipoNombre, matches);
+      equiposSincronizados++;
     }
-    setMsgSync(`✅ ${n} resultado(s) sincronizado(s) con el Foro.`);
+    setMsgSync(`✅ ${equiposSincronizados} equipo(s) puestos al día con el Foro (partidos jugados y por jugar).`);
     setSincronizando(false);
   };
 
@@ -8779,7 +8780,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState([]);
 
-  const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || null);
+  const [activeTeam, setActiveTeam] = useState(savedSession?.user?.equipo || TEAMS[0]);
   const [activeSection, setActiveSection] = useState("plantilla");
   const [ajustesVista, setAjustesVista] = useState("club");
   const [sidebarOpen, setSidebarOpen] = useState(true);

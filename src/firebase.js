@@ -340,12 +340,23 @@ export async function loadResultadosPublicos(prefix) {
 
 // Se llama automáticamente al guardar un partido desde Partidos, para que
 // el resultado aparezca también en el Foro público sin exponer nada más.
-export async function publicarResultado(prefix, equipo, { rival, fecha, resultado }) {
+// Sustituye por completo los partidos publicados de un equipo por su lista
+// real y actual (tanto jugados con resultado como los que aún están por
+// jugar). Se llama cada vez que se guarda O se borra un partido en
+// Partidos, así el Foro nunca puede quedarse con datos huérfanos ni
+// desaparecidos — siempre es un espejo exacto de lo real, no un histórico
+// que solo crece.
+export async function publicarPartidosEquipo(prefix, equipo, matches) {
   try {
+    if (!equipo) return { ok: false, error: "Sin equipo" };
     const actual = await loadResultadosPublicos(prefix);
     const resultados = { ...actual };
-    const lista = (resultados[equipo] || []).filter(r => !(r.rival === rival && r.fecha === fecha));
-    resultados[equipo] = [{ rival, fecha, resultado }, ...lista].slice(0, 30);
+    resultados[equipo] = (matches || [])
+      .map(m => ({ rival: m.rival, fecha: m.fecha, hora: m.hora || "", resultado: m.resultado || "" }))
+      .filter(m => m.rival && m.fecha)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 30);
+    delete resultados["null"]; // limpia cualquier resto del fallo anterior, si queda
     await setDoc(doc(db, prefix + "_config", "foro_resultados"), { resultados });
     return { ok: true };
   } catch(e) { return { ok: false, error: e.message }; }
