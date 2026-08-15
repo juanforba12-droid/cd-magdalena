@@ -6886,6 +6886,14 @@ function SelectorClubes({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PANTALLA: Foro publico — sin login, resultados y noticias por equipo
 // ══════════════════════════════════════════════════════════════════════════════
+function formatearFechaPartido(fecha) {
+  if (!fecha) return "";
+  const [y, m, d] = fecha.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const dia = dt.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", "");
+  return `${dia} ${d} ${dt.toLocaleDateString("es-ES", { month: "short" }).replace(".", "")}`;
+}
+
 function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }) {
   const prefix = club?.firestorePrefix || "cdmagdalena";
   const [equipos, setEquipos] = useState([]);
@@ -6960,17 +6968,34 @@ function ForoPublico({ club, onIrLogin, onIrRegistro, currentUser, onVolverApp }
         {!loading && vista === "partidos" && (
           <div className="space-y-2">
             {resultadosEquipo.length === 0 && <p className="text-zinc-500 text-sm text-center py-10">Todavía no hay partidos publicados para {equipoSel}.</p>}
-            {resultadosEquipo.map((r, i) => (
-              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-white font-semibold text-sm">CD La Magdalena <span className="text-zinc-500">vs</span> {r.rival}</p>
-                  <p className="text-zinc-500 text-xs mt-0.5">{r.fecha}{r.hora ? " · " + r.hora : ""}</p>
+            {resultadosEquipo.map((r, i) => {
+              const escudoRival = ESCUDOS_RIVALES[r.rival] || null;
+              return (
+                <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                  <p className="text-zinc-500 text-[11px] text-center uppercase tracking-wider mb-2">{formatearFechaPartido(r.fecha)}</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+                      <img src="/escudo.png" alt="" className="w-9 h-9 object-contain" />
+                      <p className="text-white text-xs font-semibold text-center leading-tight">CD La Magdalena</p>
+                    </div>
+
+                    <div className="shrink-0 flex flex-col items-center justify-center px-2 min-w-[64px]">
+                      {r.resultado
+                        ? <span className="text-white font-black text-xl">{r.resultado}</span>
+                        : <span className="text-zinc-300 font-bold text-sm">{r.hora || "—"}</span>}
+                      {!r.resultado && <span className="text-yellow-500 text-[10px] font-semibold uppercase tracking-wider mt-0.5">Próximo</span>}
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+                      {escudoRival
+                        ? <img src={escudoRival} alt="" className="w-9 h-9 object-contain rounded bg-white" />
+                        : <div className="w-9 h-9 rounded bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-bold">?</div>}
+                      <p className="text-white text-xs font-semibold text-center leading-tight">{r.rival}</p>
+                    </div>
+                  </div>
                 </div>
-                {r.resultado
-                  ? <span className="text-white font-black text-xl">{r.resultado}</span>
-                  : <span className="text-yellow-500 text-xs font-semibold uppercase tracking-wider bg-yellow-900/30 border border-yellow-800 rounded-full px-3 py-1">Próximo</span>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
