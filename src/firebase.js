@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, getDocs, collection } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, getDocs, collection, runTransaction } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -53,6 +53,42 @@ export async function saveData(data) {
     await setDoc(doc(db, "cdmagdalena", "main"), { json });
     console.log("Saved OK, size:", json.length);
   } catch(e) { console.error("Save error", e); }
+}
+
+// Guarda solo el trozo de un equipo dentro del documento compartido, de forma
+// atómica: lee, fusiona y escribe en una única transacción de Firestore.
+// Esto evita que dos guardados casi simultáneos (de cualquier equipo, desde
+// cualquier dispositivo) se pisen entre sí y una tarea/entrenamiento recién
+// guardado desaparezca silenciosamente. Si Firestore detecta que el
+// documento cambió entre la lectura y la escritura, reintenta la transacción
+// automáticamente con datos frescos.
+export async function saveTeamAtomic(team, newTeamData, cleanFn) {
+  const ref = doc(db, "cdmagdalena", "main");
+  let mergedDb;
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    const raw = snap.exists() ? snap.data().json : null;
+    const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
+    const cleanedTeam = cleanFn ? cleanFn(newTeamData) : newTeamData;
+    mergedDb = { ...current, [team]: cleanedTeam };
+    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+  });
+  return mergedDb;
+}
+
+// Igual que saveTeamAtomic pero para la biblioteca global de tareas
+// (__globalTasks), que vive en el mismo documento compartido.
+export async function saveGlobalTasksAtomic(tasks) {
+  const ref = doc(db, "cdmagdalena", "main");
+  let mergedDb;
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    const raw = snap.exists() ? snap.data().json : null;
+    const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
+    mergedDb = { ...current, __globalTasks: tasks };
+    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+  });
+  return mergedDb;
 }
 
 export async function loadSeasons() {

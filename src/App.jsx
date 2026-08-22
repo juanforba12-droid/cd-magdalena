@@ -1,4 +1,4 @@
-import { loadData, saveData, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
+import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
@@ -8900,13 +8900,6 @@ export default function App() {
 
   const updateTeamData = async (team, newData) => {
     if (window._setSaving) window._setSaving(true);
-    let freshDb;
-    try {
-      freshDb = await loadData();
-      if (freshDb) setDb(freshDb);
-    } catch(e) {
-      freshDb = db;
-    }
     const cleanTeam = (d) => ({
       ...d,
       trainings: (d.trainings || []).map(t => ({
@@ -8929,17 +8922,24 @@ export default function App() {
         ))
       }))
     });
-    const newDb = { ...(freshDb || db), [team]: cleanTeam(newData) };
-    setDb(newDb);
-    await saveData(newDb);
-    setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
+    try {
+      const mergedDb = await saveTeamAtomic(team, newData, cleanTeam);
+      if (mergedDb) setDb(mergedDb);
+    } catch(e) {
+      console.error('updateTeamData failed:', e);
+    } finally {
+      setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
+    }
   };
 
   const saveGlobalTasks = async (tasks) => {
     setGlobalTasks(tasks);
-    const newDb = { ...db, __globalTasks: tasks };
-    setDb(newDb);
-    await saveData(newDb);
+    try {
+      const mergedDb = await saveGlobalTasksAtomic(tasks);
+      if (mergedDb) setDb(mergedDb);
+    } catch(e) {
+      console.error('saveGlobalTasks failed:', e);
+    }
   };
 
   const savePasswords = async (newPwds) => {
