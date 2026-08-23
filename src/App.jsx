@@ -3416,6 +3416,16 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
         <td><span class="nota-chip">${c.nota !== "" && c.nota != null ? c.nota : "—"}</span></td>
       </tr>`).join("");
 
+    const golesRows = convocatoriaOficial(match)
+      .filter(c => (c.goles || 0) > 0)
+      .map(c => `<div class="goleador-linea">${esc(c.playerName)} <span class="goles-icons">${"⚽".repeat(c.goles)}</span></div>`)
+      .join("");
+
+    const destacadosRivalRows = (match.mejoresRivales || [])
+      .filter(r => r.nombre && r.nombre.trim())
+      .map(r => `<div class="rival-linea"><span class="rival-num">${esc(r.num || "-")}</span> ${esc(r.nombre)}</div>`)
+      .join("");
+
     const html = `<html><head><title>Crónica${match.rival ? " vs " + match.rival : ""}</title><style>
       @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap');
       :root{ --pitch:#1B4332; --pitch-dark:#163a2a; --red:#C8102E; --red-dark:#9c0c23; --paper:#F6F4EF; --ink:#1A1A1A; --ink-soft:#5B5952; --line:#E4E0D6; }
@@ -3444,6 +3454,9 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       .team .badge{ width:50px; height:50px; border-radius:8px; overflow:hidden; background:#000; }
       .team .badge.rival{ background:#fff; border:1px solid var(--line); }
       .team .tname{ font-weight:700; font-size:12.5px; text-align:center; line-height:1.25; }
+      .goleadores{ margin-top:5px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+      .goleador-linea{ font-size:10px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
+      .goles-icons{ letter-spacing:1px; }
       .vs{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:19px; color:var(--red); background:var(--paper);
         width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid var(--red); flex-shrink:0; }
       .resultado{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:26px; color:var(--ink); }
@@ -3469,6 +3482,12 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       .nota-chip{ display:inline-flex; align-items:center; justify-content:center; min-width:26px; padding:2px 6px; border-radius:6px;
         background:var(--ink); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:12px; }
 
+      .rival-destacados{ background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 18px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+      .rival-linea{ display:flex; align-items:center; gap:10px; font-size:13px; padding:8px 0; border-bottom:1px solid var(--line); }
+      .rival-linea:last-child{ border-bottom:none; }
+      .rival-num{ display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
+        background:var(--pitch); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:12px; flex-shrink:0; }
+
       .footer{ max-width:820px; margin:8px auto 0; padding:14px 32px; display:flex; justify-content:space-between;
         border-top:1px solid var(--line); font-size:11px; color:var(--ink-soft); }
       .footer b{ color:var(--ink); }
@@ -3489,7 +3508,11 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       </div>
 
       <div class="matchup">
-        <div class="team"><div class="badge"><img src="${ESCUDO_MAGDALENA}" style="width:100%;height:100%;object-fit:contain;" /></div><div class="tname">CD La Magdalena</div></div>
+        <div class="team">
+          <div class="badge"><img src="${ESCUDO_MAGDALENA}" style="width:100%;height:100%;object-fit:contain;" /></div>
+          <div class="tname">CD La Magdalena</div>
+          ${golesRows ? `<div class="goleadores">${golesRows}</div>` : ""}
+        </div>
         <div class="vs">${match.resultado ? "" : "VS"}</div>
         ${match.resultado ? `<div class="resultado">${esc(match.resultado)}</div>` : ""}
         <div class="team"><div class="badge rival">${rivalVisual}</div><div class="tname">${esc(match.rival)}</div></div>
@@ -3506,6 +3529,9 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
 
         ${jugaronRows ? `<div class="section-title">Jugadores</div>
         <table class="roster"><thead><tr><th>Nombre</th><th>Rol</th><th>Min.</th><th>Goles</th><th>Asist.</th><th>Nota</th></tr></thead><tbody>${jugaronRows}</tbody></table>` : ""}
+
+        ${destacadosRivalRows ? `<div class="section-title">Destacados de ${esc(match.rival)}</div>
+        <div class="rival-destacados">${destacadosRivalRows}</div>` : ""}
       </div>
       <div class="footer"><span><b>CD La Magdalena</b> · Fútbol 11</span><span>Generado con MiClubFUT</span></div>
     </body></html>`;
