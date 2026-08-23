@@ -308,9 +308,9 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
   // ── Historial de partidos ─────────────────────────────────────────────────
   const getPlayerMatchHistory = (playerId) => {
     return (data.matches || [])
-      .filter(m => m.convocatoria?.find(c => c.playerId === playerId && c.nota !== "" && c.nota !== undefined && c.nota !== null))
+      .filter(m => convocatoriaOficial(m).find(c => c.playerId === playerId && c.nota !== "" && c.nota !== undefined && c.nota !== null))
       .map(m => {
-        const c = m.convocatoria.find(c => c.playerId === playerId);
+        const c = convocatoriaOficial(m).find(c => c.playerId === playerId);
         return { rival: m.rival, fecha: m.fecha, nota: parseFloat(c.nota), minutos: c.minutos, goles: c.goles, asistencias: c.asistencias, status: c.status };
       })
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -946,8 +946,8 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
           const player = (teamD.players || []).find(p => p.name === statsPlayer.name);
           if (!player) return null;
           const hist = (teamD.matches || [])
-            .filter(m => m.convocatoria?.find(c => c.playerId === player.id && c.nota !== "" && c.nota !== undefined && c.nota !== null))
-            .map(m => { const c = m.convocatoria.find(c => c.playerId === player.id); return { nota: parseFloat(c.nota), goles: c.goles||0, asistencias: c.asistencias||0, minutos: c.minutos||0, status: c.status }; });
+            .filter(m => convocatoriaOficial(m).find(c => c.playerId === player.id && c.nota !== "" && c.nota !== undefined && c.nota !== null))
+            .map(m => { const c = convocatoriaOficial(m).find(c => c.playerId === player.id); return { nota: parseFloat(c.nota), goles: c.goles||0, asistencias: c.asistencias||0, minutos: c.minutos||0, status: c.status }; });
           if (!hist.length) return null;
           return {
             name: s.name,
@@ -3185,6 +3185,30 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Partidos
 // ══════════════════════════════════════════════════════════════════════════════
+// Un partido puede tener dos valoraciones independientes por jugador: la del
+// entrenador (en match.convocatoria, como siempre) y la del coordinador (en
+// match.valoracionesCoordinador). Para Clasificaciones y para cualquier sitio
+// que necesite "los datos que cuentan" de un partido, se usa esta regla: si el
+// entrenador ha valorado, esa es la oficial; si no, se usa la del coordinador.
+const tieneValoracionReal = (conv) => (conv || []).some(c =>
+  (c.status && c.status !== "no_conv") || (c.minutos || 0) > 0 || (c.goles || 0) > 0 || (c.asistencias || 0) > 0 || (c.nota !== "" && c.nota != null)
+);
+
+const convocatoriaOficial = (match) => {
+  const delEntrenador = match?.convocatoria || [];
+  if (tieneValoracionReal(delEntrenador)) return delEntrenador;
+  const delCoordinador = match?.valoracionesCoordinador || [];
+  if (tieneValoracionReal(delCoordinador)) {
+    // La lista de coordinador solo guarda stats por playerId; el nombre/equipo
+    // se toman del roster compartido (match.convocatoria) para no duplicarlos.
+    return delEntrenador.map(c => {
+      const v = delCoordinador.find(x => x.playerId === c.playerId);
+      return v ? { ...c, status: v.status, minutos: v.minutos, goles: v.goles, asistencias: v.asistencias, nota: v.nota } : c;
+    });
+  }
+  return delEntrenador;
+};
+
 function PartidosSection({ team, data, onSave, isCoord, db }) {
   const [view, setView] = useState("list"); // list | form | detail | alineacion
   const [editing, setEditing] = useState(null);
@@ -3229,6 +3253,8 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   const [golesLocal, setGolesLocal] = useState("");
   const [golesVisitante, setGolesVisitante] = useState("");
   const [rivales, setRivales] = useState([{num:"",nombre:""},{num:"",nombre:""}]);
+  const [cronicaText, setCronicaText] = useState("");
+  const [valoradoPor, setValoradoPor] = useState("");
 
   const setAttRecord = (sessionId, playerId, playerName, status, sessionFecha) => {
     const att = [...(data.attendance || [])].filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
@@ -3284,7 +3310,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     } else {
       const players = data.players || [];
       const convocatoria = players.map(p => ({
-        playerId: p.id, playerName: p.name,
+        playerId: p.id, playerName: p.name, equipo: team,
         status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
       }));
       matches.push({ id: Date.now(), rival, lugar, fecha, hora, resultado, convocatoria, capitan: null, formacion: [], mejoresRivales: rivales, notificado1h: false });
@@ -3304,7 +3330,38 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     if (team) publicarPartidosEquipo("cdmagdalena", team, restantes).catch(() => {});
   };
 
-  const openDetail = (m) => { setActiveMatch(m); setView("detail"); };
+  const openDetail = (m) => { setActiveMatch(m); setCronicaText(m.cronica || ""); setValoradoPor(m.valoradoPor || ""); setView("detail"); };
+
+  const updateMatchField = (matchId, field, value) => {
+    const matches = (data.matches || []).map(m => m.id === matchId ? { ...m, [field]: value } : m);
+    const updated = matches.find(m => m.id === matchId);
+    setActiveMatch(updated);
+    onSave({ ...data, matches });
+  };
+
+  const [pickerConvocatoria, setPickerConvocatoria] = useState(false);
+
+  const agregarInvitadoAConvocatoria = (matchId, jugador) => {
+    const nuevo = {
+      playerId: jugador.playerId, playerName: jugador.playerName, equipo: jugador.equipo,
+      status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
+    };
+    const matches = (data.matches || []).map(m => m.id !== matchId ? m : { ...m, convocatoria: [...(m.convocatoria || []), nuevo] });
+    const updated = matches.find(m => m.id === matchId);
+    setActiveMatch(updated);
+    onSave({ ...data, matches });
+    setPickerConvocatoria(false);
+  };
+
+  const quitarDeConvocatoria = (matchId, playerId, equipo) => {
+    const matches = (data.matches || []).map(m => m.id !== matchId ? m : {
+      ...m,
+      convocatoria: (m.convocatoria || []).filter(c => !(c.playerId === playerId && (c.equipo || team) === equipo))
+    });
+    const updated = matches.find(m => m.id === matchId);
+    setActiveMatch(updated);
+    onSave({ ...data, matches });
+  };
 
   const updateConv = (matchId, playerId, field, value) => {
     const matches = (data.matches || []).map(m => {
@@ -3321,6 +3378,144 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     onSave({ ...data, matches });
   };
 
+  // Igual que updateConv pero guarda en la valoración independiente del
+  // coordinador (match.valoracionesCoordinador), sin tocar la del entrenador.
+  const updateConvCoord = (matchId, playerId, field, value) => {
+    const matches = (data.matches || []).map(m => {
+      if (m.id !== matchId) return m;
+      const existentes = m.valoracionesCoordinador || [];
+      const yaEsta = existentes.some(v => v.playerId === playerId);
+      const blank = { playerId, status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: "" };
+      const actualizadas = yaEsta
+        ? existentes.map(v => v.playerId === playerId ? { ...v, [field]: value } : v)
+        : [...existentes, { ...blank, [field]: value }];
+      return { ...m, valoracionesCoordinador: actualizadas };
+    });
+    const updated = matches.find(m => m.id === matchId);
+    setActiveMatch(updated);
+    onSave({ ...data, matches });
+  };
+
+  // ── Exportar crónica en PDF ─────────────────────────────────────────
+  const generarCronicaPDF = (match) => {
+    const esc = (s) => (s || "—").replace(/</g, "&lt;");
+    const escudoRival = ESCUDOS_RIVALES[(match.rival || "").trim()] || null;
+    const escudoHTML = (src) => `<img src="${src}" style="width:100%;height:100%;object-fit:contain;" />`;
+    const rivalVisual = escudoRival
+      ? escudoHTML(escudoRival)
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;">🛡️</div>`;
+
+    const jugaronRows = convocatoriaOficial(match)
+      .filter(c => c.status === "titular" || c.status === "suplente")
+      .map(c => `<tr>
+        <td>${esc(c.playerName)}</td>
+        <td><span class="role-chip">${c.status === "titular" ? "Titular" : "Suplente"}</span></td>
+        <td>${c.minutos || 0}'</td>
+        <td>${c.goles || 0}</td>
+        <td>${c.asistencias || 0}</td>
+        <td><span class="nota-chip">${c.nota !== "" && c.nota != null ? c.nota : "—"}</span></td>
+      </tr>`).join("");
+
+    const html = `<html><head><title>Crónica${match.rival ? " vs " + match.rival : ""}</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap');
+      :root{ --pitch:#1B4332; --pitch-dark:#163a2a; --red:#C8102E; --red-dark:#9c0c23; --paper:#F6F4EF; --ink:#1A1A1A; --ink-soft:#5B5952; --line:#E4E0D6; }
+      * { box-sizing:border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      body { font-family:'Work Sans',Arial,sans-serif; padding: 0; margin:0; color: var(--ink); background:var(--paper); }
+      .toolbar { position: sticky; top: 0; z-index: 10; background: #18181b; padding: 12px 20px;
+        display: flex; gap: 10px; justify-content: flex-end; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+      .toolbar button { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 10px 18px;
+        border-radius: 8px; border: none; cursor: pointer; }
+      .btn-exportar { background: #b91c1c; color: #fff; }
+      .btn-cerrar { background: #52525b; color: #fff; }
+
+      .header{ background:var(--ink); color:#fff; padding:24px 32px 18px; position:relative; overflow:hidden; }
+      .header::after{ content:""; position:absolute; right:-60px; top:-60px; width:220px; height:220px; border-radius:50%; background:var(--red); opacity:.15; }
+      .crest-row{ display:flex; align-items:center; gap:12px; position:relative; }
+      .crest{ width:42px; height:42px; border-radius:6px; background:#000; border:2px solid rgba(255,255,255,.3); overflow:hidden; flex-shrink:0; }
+      .crest img{ width:100%; height:100%; object-fit:contain; }
+      .club-meta{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.6); font-weight:600; }
+      .club-meta b{ color:#fff; }
+      h1.title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:34px; line-height:1; margin:6px 0 0; text-transform:uppercase; position:relative; }
+      .title .accent{ color:var(--red); }
+
+      .matchup{ display:flex; align-items:center; justify-content:center; gap:30px; background:#fff; margin:-16px 32px 0;
+        padding:18px 26px; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.1); position:relative; z-index:2; }
+      .team{ display:flex; flex-direction:column; align-items:center; gap:7px; width:130px; }
+      .team .badge{ width:50px; height:50px; border-radius:8px; overflow:hidden; background:#000; }
+      .team .badge.rival{ background:#fff; border:1px solid var(--line); }
+      .team .tname{ font-weight:700; font-size:12.5px; text-align:center; line-height:1.25; }
+      .vs{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:19px; color:var(--red); background:var(--paper);
+        width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid var(--red); flex-shrink:0; }
+      .resultado{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:26px; color:var(--ink); }
+
+      .meta-row{ display:flex; justify-content:center; gap:22px; margin:14px 32px 0; font-size:12px; color:var(--ink-soft); font-weight:600; }
+
+      .contenido { padding: 24px 32px 36px; max-width:820px; margin:0 auto; }
+      .section-title{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
+        letter-spacing:.14em; color:var(--ink-soft); display:flex; align-items:center; gap:10px; margin:26px 0 12px; }
+      .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+      .cronica-card{ background:#fff; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:6px;
+        padding:20px 22px; font-size:13.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+      .autor{ margin-top:10px; font-size:11.5px; color:var(--ink-soft); text-align:right; font-style:italic; }
+      .autor b{ color:var(--ink); font-style:normal; }
+
+      table.roster{ width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+      table.roster thead th{ background:var(--pitch); color:#fff; text-align:left; font-size:10.5px; text-transform:uppercase;
+        letter-spacing:.06em; font-weight:700; padding:9px 14px; }
+      table.roster tbody td{ padding:9px 14px; font-size:12.5px; border-top:1px solid var(--line); }
+      table.roster tbody tr:nth-child(even){ background:#FBFAF7; }
+      .role-chip{ font-size:10px; font-weight:700; color:var(--red); background:rgba(200,16,46,.08); padding:2px 8px; border-radius:9px; }
+      .nota-chip{ display:inline-flex; align-items:center; justify-content:center; min-width:26px; padding:2px 6px; border-radius:6px;
+        background:var(--ink); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:12px; }
+
+      .footer{ max-width:820px; margin:8px auto 0; padding:14px 32px; display:flex; justify-content:space-between;
+        border-top:1px solid var(--line); font-size:11px; color:var(--ink-soft); }
+      .footer b{ color:var(--ink); }
+
+      @media print { .toolbar { display: none; } .header{ padding:16px 22px 12px; } .contenido{ padding:16px 22px 24px; } }
+    </style></head><body>
+      <div class="toolbar">
+        <button class="btn-exportar" onclick="window.print()">🖨️ Exportar / Guardar PDF</button>
+        <button class="btn-cerrar" onclick="window.close()">✕ Cerrar y volver</button>
+      </div>
+
+      <div class="header">
+        <div class="crest-row">
+          <div class="crest"><img src="${ESCUDO_MAGDALENA}" /></div>
+          <div class="club-meta"><b>CD La Magdalena</b>${team ? ` · ${esc(team)}` : ""}</div>
+        </div>
+        <h1 class="title">Cró<span class="accent">nica</span></h1>
+      </div>
+
+      <div class="matchup">
+        <div class="team"><div class="badge"><img src="${ESCUDO_MAGDALENA}" style="width:100%;height:100%;object-fit:contain;" /></div><div class="tname">CD La Magdalena</div></div>
+        <div class="vs">${match.resultado ? "" : "VS"}</div>
+        ${match.resultado ? `<div class="resultado">${esc(match.resultado)}</div>` : ""}
+        <div class="team"><div class="badge rival">${rivalVisual}</div><div class="tname">${esc(match.rival)}</div></div>
+      </div>
+      <div class="meta-row">
+        <span>📅 ${esc(match.fecha)}</span>
+        <span>📍 ${esc(match.lugar)}</span>
+      </div>
+
+      <div class="contenido">
+        <div class="section-title">Crónica del partido</div>
+        <div class="cronica-card">${esc(match.cronica || "Sin crónica todavía.")}</div>
+        ${match.valoradoPor ? `<div class="autor">Valoración de <b>${esc(match.valoradoPor)}</b></div>` : ""}
+
+        ${jugaronRows ? `<div class="section-title">Jugadores</div>
+        <table class="roster"><thead><tr><th>Nombre</th><th>Rol</th><th>Min.</th><th>Goles</th><th>Asist.</th><th>Nota</th></tr></thead><tbody>${jugaronRows}</tbody></table>` : ""}
+      </div>
+      <div class="footer"><span><b>CD La Magdalena</b> · Fútbol 11</span><span>Generado con MiClubFUT</span></div>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (!w) { window.alert("El navegador ha bloqueado la ventana del PDF. Permite las ventanas emergentes para este sitio e inténtalo de nuevo."); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   // Sync new players into existing matches
   useEffect(() => {
     const matches = data.matches || [];
@@ -3330,7 +3525,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       const conv = m.convocatoria || [];
       const newEntries = players
         .filter(p => !conv.find(c => c.playerId === p.id))
-        .map(p => ({ playerId: p.id, playerName: p.name, status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: "" }));
+        .map(p => ({ playerId: p.id, playerName: p.name, equipo: team, status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: "" }));
       if (newEntries.length) { changed = true; return { ...m, convocatoria: [...conv, ...newEntries] }; }
       return m;
     });
@@ -3423,18 +3618,40 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
           </div>
         </Card>
 
-        <div className="space-y-2">
+        {isCoord && tieneValoracionReal(match.convocatoria) && (
+          <div className="bg-blue-900/30 border border-blue-800 rounded-lg px-4 py-2 text-blue-200 text-sm">
+            ℹ️ Este partido ya tiene valoración del entrenador — esa es la que cuenta para Clasificaciones. Tu valoración de coordinador se guarda aparte y solo se usará si no hay ninguna del entrenador.
+          </div>
+        )}
+        {!isCoord && !tieneValoracionReal(match.convocatoria) && tieneValoracionReal(match.valoracionesCoordinador) && (
+          <div className="bg-blue-900/30 border border-blue-800 rounded-lg px-4 py-2 text-blue-200 text-sm">
+            ℹ️ El coordinador ya valoró este partido y esa es la que cuenta ahora mismo. En cuanto guardes tu valoración (entrenador), la tuya pasará a ser la oficial.
+          </div>
+        )}
 
-          {(match.convocatoria || []).map(c => (
-            <Card key={c.playerId} className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <Btn small variant="secondary" onClick={() => setPickerConvocatoria(true)}>+ Añadir jugador de otro equipo</Btn>
+          </div>
+
+          {(match.convocatoria || []).map(c => {
+            const activo = isCoord
+              ? ((match.valoracionesCoordinador || []).find(v => v.playerId === c.playerId) || { status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: "" })
+              : c;
+            const guardarCampo = (field, value) => isCoord
+              ? updateConvCoord(match.id, c.playerId, field, value)
+              : updateConv(match.id, c.playerId, field, value);
+            return (
+            <Card key={(c.equipo || team) + "::" + c.playerId} className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-white font-semibold flex-1">{c.playerName}</span>
+                {c.equipo && c.equipo !== team && <Badge color="blue">{c.equipo}</Badge>}
                 {["titular", "suplente", "no_conv"].map(s => (
                   <button
                     key={s}
-                    onClick={() => updateConv(match.id, c.playerId, "status", s)}
+                    onClick={() => guardarCampo("status", s)}
                     className={`text-xs px-2 py-1 rounded border transition-all ${
-                      c.status === s
+                      activo.status === s
                         ? s === "titular" ? "bg-green-800 border-green-600 text-green-200"
                         : s === "suplente" ? "bg-blue-800 border-blue-600 text-blue-200"
                         : "bg-zinc-700 border-zinc-500 text-zinc-300"
@@ -3442,6 +3659,13 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
                     }`}
                   >{statusLabel[s]}</button>
                 ))}
+                {c.equipo && c.equipo !== team && (
+                  <button
+                    onClick={() => quitarDeConvocatoria(match.id, c.playerId, c.equipo)}
+                    className="text-xs px-2 py-1 rounded border border-red-800 text-red-400 hover:bg-red-900/30 transition-all"
+                    title="Quitar de este partido"
+                  >🗑️ Quitar</button>
+                )}
                 <button
                   onClick={() => {
                     const matches2 = (data.matches||[]).map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
@@ -3454,14 +3678,47 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
                 >⭐ Capitán</button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <Input label="Minutos" type="number" value={c.minutos} onChange={e => updateConv(match.id, c.playerId, "minutos", Number(e.target.value))} />
-                <Input label="Goles" type="number" value={c.goles} onChange={e => updateConv(match.id, c.playerId, "goles", Number(e.target.value))} />
-                <Input label="Asistencias" type="number" value={c.asistencias} onChange={e => updateConv(match.id, c.playerId, "asistencias", Number(e.target.value))} />
-                <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={c.nota} onChange={e => updateConv(match.id, c.playerId, "nota", e.target.value)} />
+                <Input label="Minutos" type="number" value={activo.minutos} onChange={e => guardarCampo("minutos", Number(e.target.value))} />
+                <Input label="Goles" type="number" value={activo.goles} onChange={e => guardarCampo("goles", Number(e.target.value))} />
+                <Input label="Asistencias" type="number" value={activo.asistencias} onChange={e => guardarCampo("asistencias", Number(e.target.value))} />
+                <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={activo.nota} onChange={e => guardarCampo("nota", e.target.value)} />
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
+
+        <Card className="space-y-3">
+          <p className="text-white font-bold">📝 Crónica del partido</p>
+          <Input
+            label="Valoración realizada por"
+            value={valoradoPor}
+            onChange={e => setValoradoPor(e.target.value)}
+            onBlur={() => updateMatchField(match.id, "valoradoPor", valoradoPor)}
+            placeholder="Nombre del entrenador/a"
+          />
+          <Textarea
+            label="Crónica"
+            rows={8}
+            value={cronicaText}
+            onChange={e => setCronicaText(e.target.value)}
+            onBlur={() => updateMatchField(match.id, "cronica", cronicaText)}
+            placeholder="Cómo fue el partido, momentos clave, sensaciones del equipo..."
+          />
+          <Btn variant="secondary" className="w-full justify-center" onClick={() => generarCronicaPDF(match)}>📄 Exportar crónica en PDF</Btn>
+        </Card>
+
+        {pickerConvocatoria && (
+          <JugadorPickerModal
+            team={team}
+            ownPlayers={data.players || []}
+            db={db}
+            excluidos={new Set((match.convocatoria || []).map(c => `${c.equipo || team}::${c.playerId}`))}
+            posicionObjetivo={null}
+            onPick={(jugador) => agregarInvitadoAConvocatoria(match.id, jugador)}
+            onClose={() => setPickerConvocatoria(false)}
+          />
+        )}
       </div>
     );
   }
@@ -3584,29 +3841,35 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       })()}
 
       {/* Attendance modal */}
-      {attMatch && (
+      {attMatch && (() => {
+        const match = (data.matches || []).find(m => m.id === attMatch.id) || attMatch;
+        const asistentes = (match.convocatoria && match.convocatoria.length > 0)
+          ? match.convocatoria.map(c => ({ id: c.playerId, name: c.playerName, equipo: c.equipo || team }))
+          : (data.players || []).map(p => ({ id: p.id, name: p.name, equipo: team }));
+        return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setAttMatch(null)}>
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
                 <h3 className="text-white font-bold text-lg">Asistencia</h3>
-                <p className="text-zinc-400 text-sm">{attMatch.fecha} — vs {attMatch.rival}</p>
+                <p className="text-zinc-400 text-sm">{match.fecha} — vs {match.rival}</p>
               </div>
               <Btn small variant="secondary" onClick={() => setAttMatch(null)}>✕</Btn>
             </div>
             <div className="p-5 space-y-2">
-              {(data.players || []).length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
-              {(data.players || []).map(p => {
-                const sessionId = `m_${attMatch.id}`;
+              {asistentes.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores convocados.</p>}
+              {asistentes.map(p => {
+                const sessionId = `m_${match.id}`;
                 const rec = (data.attendance || []).find(a => a.sessionId === sessionId && a.playerId === p.id);
                 return (
                   <div key={p.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-4 py-3">
                     <span className="text-white text-sm font-semibold flex-1">{p.name}</span>
+                    {p.equipo !== team && <Badge color="blue">{p.equipo}</Badge>}
                     <div className="flex gap-1">
                       {attStatusOpts.map(opt => (
                         <button
                           key={opt.val}
-                          onClick={() => setAttRecord(sessionId, p.id, p.name, opt.val, attMatch.fecha)}
+                          onClick={() => setAttRecord(sessionId, p.id, p.name, opt.val, match.fecha)}
                           className={`text-xs px-2 py-1 rounded border transition-all ${attStatusBtnClass(rec?.status, opt.val, opt.color)}`}
                         >{opt.label}</button>
                       ))}
@@ -3618,7 +3881,8 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
       {/* Coach attendance modal */}
       {coachAttMatch && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setCoachAttMatch(null)}>
@@ -5007,23 +5271,26 @@ function ClasificacionSection({ team, data, db, isCoord }) {
     { id: "ga", label: "⚡ G+A" },
     { id: "minutos", label: "⏱ Minutos" },
     { id: "partidos", label: "📋 Partidos" },
+    { id: "nota", label: "⭐ Nota" },
   ];
 
   const statsFromTeam = (teamData, teamName) => {
     const players = teamData?.players || [];
     const matches = teamData?.matches || [];
     return players.map(p => {
-      let goles = 0, asistencias = 0, minutos = 0, titular = 0, suplente = 0;
+      let goles = 0, asistencias = 0, minutos = 0, titular = 0, suplente = 0, notaSuma = 0, notaCount = 0;
       matches.forEach(m => {
-        const c = (m.convocatoria || []).find(c => c.playerId === p.id);
+        const c = convocatoriaOficial(m).find(c => c.playerId === p.id);
         if (!c) return;
         goles += c.goles || 0;
         asistencias += c.asistencias || 0;
         minutos += c.minutos || 0;
         if (c.status === "titular") titular++;
         else if (c.status === "suplente") suplente++;
+        if (c.nota !== "" && c.nota != null && !isNaN(Number(c.nota))) { notaSuma += Number(c.nota); notaCount++; }
       });
-      return { key: teamName + "_" + p.id, name: p.name, equipo: teamName, goles, asistencias, ga: goles + asistencias, minutos, titular, suplente, partidos: titular + suplente };
+      const nota = notaCount > 0 ? Math.round((notaSuma / notaCount) * 100) / 100 : 0;
+      return { key: teamName + "_" + p.id, name: p.name, equipo: teamName, goles, asistencias, ga: goles + asistencias, minutos, titular, suplente, partidos: titular + suplente, nota, notaCount };
     });
   };
 
@@ -5033,8 +5300,8 @@ function ClasificacionSection({ team, data, db, isCoord }) {
         .filter(([k, v]) => !k.startsWith("__") && v && typeof v === "object" && Array.isArray(v.players))
         .flatMap(([k, v]) => statsFromTeam(v, k));
 
-  const FIELD = { goles: "goles", asistencias: "asistencias", ga: "ga", minutos: "minutos", partidos: "partidos" };
-  const UNIT = { goles: "⚽", asistencias: "🎯", ga: "⚡", minutos: "min", partidos: "PJ" };
+  const FIELD = { goles: "goles", asistencias: "asistencias", ga: "ga", minutos: "minutos", partidos: "partidos", nota: "nota" };
+  const UNIT = { goles: "⚽", asistencias: "🎯", ga: "⚡", minutos: "min", partidos: "PJ", nota: "⭐" };
   const field = FIELD[tab];
   const sorted = [...ranked].sort((a, b) => b[field] - a[field]).filter(p => p[field] > 0);
   const maxVal = Math.max(1, ...(sorted.length ? sorted.map(p => p[field]) : [1]));
@@ -5083,6 +5350,7 @@ function ClasificacionSection({ team, data, db, isCoord }) {
                   {scope === "global" && <span className="text-zinc-500 text-xs">{p.equipo}</span>}
                   {tab === "ga" && <span className="text-zinc-500 text-xs">{p.goles} ⚽ + {p.asistencias} 🎯</span>}
                   {tab === "partidos" && <span className="text-zinc-500 text-xs">{p.titular} tit. · {p.suplente} sup.</span>}
+                  {tab === "nota" && <span className="text-zinc-500 text-xs">{p.notaCount} partido{p.notaCount === 1 ? "" : "s"} valorado{p.notaCount === 1 ? "" : "s"}</span>}
                 </div>
                 <span className={`font-black text-lg shrink-0 ${pod ? pod.num : "text-zinc-300"}`}>{p[field]}<span className="text-xs font-normal text-zinc-500 ml-1">{UNIT[tab]}</span></span>
               </div>
