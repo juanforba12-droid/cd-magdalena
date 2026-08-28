@@ -593,7 +593,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
                     const fm = PLAYER_FORMAS.find(f => f.val === p.forma);
                     return (
                       <div key={p.id} onClick={() => setMenuPlayer(p)}
-                        className={`flex items-center gap-2 sm:gap-3 bg-zinc-900 border border-zinc-800 border-l-4 ${c.edgeBorder} rounded-xl pl-2.5 sm:pl-3 pr-3 sm:pr-4 py-2 sm:py-2.5 cursor-pointer active:bg-zinc-800 transition-colors`}>
+                        className={`flex items-center gap-3 bg-zinc-900 border border-zinc-800 border-l-4 ${c.edgeBorder} rounded-xl pl-3 pr-4 py-2 sm:py-2.5 cursor-pointer active:bg-zinc-800 transition-colors`}>
                         <span className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-xs sm:text-sm shrink-0 ${c.badgeBg} ${c.badgeText}`}>
                           {p.dorsal || "—"}
                         </span>
@@ -9522,7 +9522,7 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-3 pb-24 md:p-8 md:pb-8">
+        <div className="flex-1 overflow-auto px-4 py-3 pb-24 md:p-8 md:pb-8">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
               <ResumenSection db={db} teams={teamsToUse} />
