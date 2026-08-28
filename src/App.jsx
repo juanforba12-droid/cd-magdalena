@@ -1783,7 +1783,13 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
 
   const del = (id) => {
     if (!window.confirm("¿Eliminar entrenamiento?")) return;
-    onSave({ ...data, trainings: data.trainings.filter(t => t.id !== id) });
+    const sessionId = `t_${id}`;
+    onSave({
+      ...data,
+      trainings: data.trainings.filter(t => t.id !== id),
+      attendance: (data.attendance || []).filter(a => a.sessionId !== sessionId),
+      coachAttendance: (data.coachAttendance || []).filter(a => a.sessionId !== sessionId),
+    });
   };
 
   const setAttRecord = (sessionId, playerId, playerName, status, sessionFecha) => {
@@ -3299,6 +3305,24 @@ function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarC
 // dibuja "arriba = mejor", tanto si el test es de tiempo (menos es mejor) como
 // si es de distancia/repeticiones (más es mejor), para que se lea igual de
 // intuitivo sea cual sea el test.
+// Celda de la tabla estilo Excel: se escribe libre y solo se guarda al salir
+// de la casilla, igual que hicimos con los goles de los partidos, para que
+// teclear no vaya lento.
+function CeldaEditable({ valor, onGuardar }) {
+  const [local, setLocal] = useState(valor === null || valor === undefined ? "" : String(valor));
+  useEffect(() => { setLocal(valor === null || valor === undefined ? "" : String(valor)); }, [valor]);
+  return (
+    <input
+      type="text" inputMode="decimal"
+      value={local}
+      onChange={e => setLocal(e.target.value.replace(/[^0-9.]/g, ""))}
+      onBlur={() => { if (local !== (valor === null || valor === undefined ? "" : String(valor))) onGuardar(local); }}
+      placeholder="—"
+      className="w-16 bg-transparent text-center text-white text-sm py-2 rounded focus:outline-none focus:bg-zinc-800 placeholder:text-zinc-700"
+    />
+  );
+}
+
 function EvolucionChart({ puntos, mejorEsMenor }) {
   if (!puntos || puntos.length === 0) return null;
   const ordenados = [...puntos].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -3351,8 +3375,56 @@ function PruebasFisicasSection({ team, data, onSave }) {
 
   const [playerDetail, setPlayerDetail] = useState(null);
 
+  const [showTabla, setShowTabla] = useState(false);
+  const [fechasExtra, setFechasExtra] = useState([]);
+  const [nuevaFechaCol, setNuevaFechaCol] = useState("");
+
   const test = tests.find(t => t.id === testActivo) || tests[0] || null;
   const resultadosDelTest = test ? resultados.filter(r => r.testId === test.id) : [];
+
+  const fechasVisibles = [...new Set([...resultadosDelTest.map(r => r.fecha), ...fechasExtra])].sort();
+
+  const mediaDeFecha = (f) => {
+    const vals = resultadosDelTest.filter(r => r.fecha === f).map(r => r.valor);
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+  const mediaGeneral = resultadosDelTest.length
+    ? resultadosDelTest.reduce((a, r) => a + r.valor, 0) / resultadosDelTest.length
+    : null;
+
+  const guardarCelda = (playerId, fecha, valorStr) => {
+    if (!test) return;
+    const existente = resultados.find(r => r.testId === test.id && r.playerId === playerId && r.fecha === fecha);
+    if (valorStr === "") {
+      if (existente) onSave({ ...data, resultadosFisicos: resultados.filter(r => r.id !== existente.id) });
+      return;
+    }
+    const valor = Number(valorStr);
+    if (existente) {
+      onSave({ ...data, resultadosFisicos: resultados.map(r => r.id === existente.id ? { ...r, valor } : r) });
+    } else {
+      const p = players.find(pl => pl.id === playerId);
+      onSave({ ...data, resultadosFisicos: [...resultados, { id: Date.now(), testId: test.id, playerId, playerName: p?.name || "", valor, fecha }] });
+    }
+  };
+
+  const agregarColumnaFecha = () => {
+    if (!nuevaFechaCol) return;
+    setFechasExtra(prev => [...new Set([...prev, nuevaFechaCol])]);
+    setNuevaFechaCol("");
+  };
+
+  const eliminarColumnaFecha = (f) => {
+    if (!window.confirm(`¿Eliminar la columna del ${f}? Se borrarán todos los resultados de esa fecha para este test.`)) return;
+    if (test) onSave({ ...data, resultadosFisicos: resultados.filter(r => !(r.testId === test.id && r.fecha === f)) });
+    setFechasExtra(prev => prev.filter(x => x !== f));
+  };
+
+  const abrirDetalleJugador = (p) => {
+    const historial = resultadosDelTest.filter(r => r.playerId === p.id).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    setPlayerDetail({ player: p, historial });
+  };
 
   const abrirNuevoTest = () => {
     setEditingTest(null); setTNombre(""); setTUnidad(""); setTMejorEsMenor(true);
@@ -3446,8 +3518,9 @@ function PruebasFisicasSection({ team, data, onSave }) {
                 </div>
               </Card>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Btn onClick={abrirNuevoResultado} className="flex-1 justify-center">+ Registrar resultado</Btn>
+                <Btn variant="secondary" onClick={() => setShowTabla(true)}>📋 Tabla</Btn>
                 <Btn variant="secondary" onClick={exportarExcel} disabled={resultadosDelTest.length === 0}>📊 Excel</Btn>
               </div>
 
@@ -3519,7 +3592,7 @@ function PruebasFisicasSection({ team, data, onSave }) {
       )}
 
       {playerDetail && test && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setPlayerDetail(null)}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setPlayerDetail(null)}>
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
@@ -3539,6 +3612,95 @@ function PruebasFisicasSection({ team, data, onSave }) {
                   <button onClick={() => borrarResultado(r.id)} className="text-red-400 text-xs hover:text-red-300">🗑️</button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTabla && test && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col p-2 sm:p-6" onClick={() => setShowTabla(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl flex-1 overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-zinc-800 flex justify-between items-center shrink-0 gap-3">
+              <div className="min-w-0">
+                <h3 className="text-white font-bold text-lg truncate">{test.nombre}</h3>
+                <p className="text-zinc-500 text-xs">{test.unidad || "sin unidad"} · {test.mejorEsMenor ? "menos es mejor" : "más es mejor"} · toca un nombre para ver su gráfico</p>
+              </div>
+              <Btn small variant="secondary" onClick={() => setShowTabla(false)} className="shrink-0">✕ Cerrar</Btn>
+            </div>
+
+            <div className="p-3 border-b border-zinc-800 shrink-0 flex gap-2 overflow-x-auto">
+              <div className="bg-zinc-800 rounded-lg px-3 py-2 text-center shrink-0 min-w-[80px]">
+                <div className="text-white font-black text-lg">{mediaGeneral !== null ? mediaGeneral.toFixed(2) : "—"}</div>
+                <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Media general</div>
+              </div>
+              <div className="bg-zinc-800 rounded-lg px-3 py-2 text-center shrink-0 min-w-[80px]">
+                <div className="text-white font-black text-lg">{resultadosDelTest.length}</div>
+                <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Resultados</div>
+              </div>
+              <div className="bg-zinc-800 rounded-lg px-3 py-2 text-center shrink-0 min-w-[80px]">
+                <div className="text-white font-black text-lg">{fechasVisibles.length}</div>
+                <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Fechas</div>
+              </div>
+            </div>
+
+            <div className="overflow-auto flex-1">
+              <table className="border-collapse w-full">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 top-0 bg-zinc-900 text-left text-xs text-zinc-400 uppercase tracking-wider px-3 py-2 z-20 border-b border-r border-zinc-800">Jugador</th>
+                    {fechasVisibles.map(f => (
+                      <th key={f} className="sticky top-0 bg-zinc-900 text-center text-xs text-zinc-400 px-2 py-2 whitespace-nowrap border-b border-zinc-800 z-10">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>{f}</span>
+                          <button onClick={() => eliminarColumnaFecha(f)} className="text-zinc-600 hover:text-red-400" title="Eliminar columna">✕</button>
+                        </div>
+                      </th>
+                    ))}
+                    <th className="sticky top-0 bg-zinc-900 px-2 py-2 border-b border-zinc-800 z-10">
+                      <div className="flex items-center gap-1">
+                        <input type="date" value={nuevaFechaCol} onChange={e => setNuevaFechaCol(e.target.value)}
+                          className="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-1 text-xs text-white" />
+                        <button onClick={agregarColumnaFecha} className="text-red-400 hover:text-red-300 text-base font-bold px-1" title="Añadir fecha">+</button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map(p => (
+                    <tr key={p.id} className="border-t border-zinc-800">
+                      <td
+                        onClick={() => abrirDetalleJugador(p)}
+                        className="sticky left-0 bg-zinc-900 text-white text-sm font-semibold px-3 py-1.5 whitespace-nowrap border-r border-zinc-800 z-10 cursor-pointer hover:text-red-400 hover:underline"
+                        title="Ver gráfico de evolución"
+                      >{p.name}</td>
+                      {fechasVisibles.map(f => {
+                        const r = resultadosDelTest.find(x => x.playerId === p.id && x.fecha === f);
+                        return (
+                          <td key={f} className="text-center px-1 py-1">
+                            <CeldaEditable valor={r ? r.valor : ""} onGuardar={(v) => guardarCelda(p.id, f, v)} />
+                          </td>
+                        );
+                      })}
+                      <td></td>
+                    </tr>
+                  ))}
+                  {fechasVisibles.length > 0 && (
+                    <tr className="border-t-2 border-zinc-700 bg-zinc-800/40">
+                      <td className="sticky left-0 bg-zinc-800/40 text-zinc-400 text-xs font-bold uppercase tracking-wide px-3 py-2 border-r border-zinc-800 z-10">Media</td>
+                      {fechasVisibles.map(f => {
+                        const m = mediaDeFecha(f);
+                        return (
+                          <td key={f} className="text-center px-1 py-2 text-zinc-300 text-sm font-semibold">
+                            {m !== null ? m.toFixed(2) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td></td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              {fechasVisibles.length === 0 && <p className="text-zinc-500 text-sm p-4">Añade una fecha con el "+" de la esquina para empezar a rellenar la tabla.</p>}
             </div>
           </div>
         </div>
@@ -3662,8 +3824,14 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
 
   const delMatch = (id) => {
     if (!window.confirm("¿Eliminar partido?")) return;
+    const sessionId = `m_${id}`;
     const restantes = data.matches.filter(m => m.id !== id);
-    onSave({ ...data, matches: restantes });
+    onSave({
+      ...data,
+      matches: restantes,
+      attendance: (data.attendance || []).filter(a => a.sessionId !== sessionId),
+      coachAttendance: (data.coachAttendance || []).filter(a => a.sessionId !== sessionId),
+    });
     if (team) publicarPartidosEquipo("cdmagdalena", team, restantes).catch(() => {});
   };
 
