@@ -1634,10 +1634,10 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
       </div>
 
       {/* Filtro por categoría */}
-      <div className="flex flex-wrap gap-1.5">
-        <button onClick={()=>setFilterCat("all")} className={`px-2 py-1 rounded text-xs border transition-all ${filterCat==="all"?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Todas</button>
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        <button onClick={()=>setFilterCat("all")} className={`px-2 py-1 rounded text-xs border transition-all shrink-0 whitespace-nowrap ${filterCat==="all"?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>Todas</button>
         {TASK_CATEGORIES.map(c=>(
-          <button key={c.id} onClick={()=>setFilterCat(c.id)} className={`px-2 py-1 rounded text-xs border transition-all ${filterCat===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
+          <button key={c.id} onClick={()=>setFilterCat(c.id)} className={`px-2 py-1 rounded text-xs border transition-all shrink-0 whitespace-nowrap ${filterCat===c.id?"bg-zinc-600 border-zinc-400 text-white":"bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>{c.label}</button>
         ))}
       </div>
 
@@ -1645,9 +1645,9 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
         {filteredTasks.map(t => (
           <Card key={t.id} className="hover:border-zinc-600 transition-colors">
             <div className="flex justify-between items-start">
-              <div className="flex-1 cursor-pointer" onClick={() => setPreview({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) })}>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-white font-semibold">{t.nombre}</span>
+              <div className="flex-1 cursor-pointer min-w-0" onClick={() => setPreview({ ...t, pizarra: (t.pizarra || []).filter(el => el != null) })}>
+                <p className="text-white font-semibold mb-1.5">{t.nombre}</p>
+                <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                   <Badge color="blue">⏱ {t.minutos} min</Badge>
                   {t.categoria && <Badge color={catColor(t.categoria)}>{catLabel(t.categoria)}</Badge>}
                   {libTab==="global" && t.equipo && <Badge color="zinc">👤 {t.equipo}</Badge>}
