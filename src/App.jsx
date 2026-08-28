@@ -587,7 +587,7 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
                   <span className="text-zinc-600 text-[11px] sm:text-xs font-semibold">{players.length}</span>
                   <div className={`flex-1 h-px ${c.dot} opacity-25`}></div>
                 </div>
-                <div className="space-y-1.5 sm:space-y-2 mb-2">
+                <div className="space-y-2.5 sm:space-y-2 mb-2">
                   {players.map(p => {
                     const st = PLAYER_STATUSES.find(s => s.val === (p.status || "disponible")) || PLAYER_STATUSES[0];
                     const fm = PLAYER_FORMAS.find(f => f.val === p.forma);
@@ -9522,7 +9522,7 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto px-6 py-4 pb-24 md:pb-6">
+        <div className="flex-1 overflow-auto px-8 py-5 pb-24 md:pb-7">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
               <ResumenSection db={db} teams={teamsToUse} />
