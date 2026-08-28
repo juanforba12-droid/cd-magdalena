@@ -3072,7 +3072,7 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
             <p className="text-white font-bold">🪑 Banquillo / Suplentes ({suplentes.length})</p>
             <Btn small onClick={abrirPickerParaBanquillo}>+ Añadir</Btn>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             {suplentes.map((j, i) => (
               <LineupChip
                 key={keyOf(j) + "_" + i}
@@ -4149,7 +4149,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
       </div>
 
       {tab === "ranking" && (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {ranked.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
           {ranked.map((p, i) => (
             <div key={p.id} onClick={() => setActivePlayer(p)}
@@ -4180,7 +4180,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
       )}
 
       {tab === "sesiones" && (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {sessions.length === 0 && <p className="text-zinc-500 text-sm">No hay entrenamientos ni partidos registrados.</p>}
           {sessions.map(s => {
             const recs = (data.attendance || []).filter(a => a.sessionId === s.id);
@@ -4282,7 +4282,7 @@ function AsistenciaSection({ team, data, onSave, isCoord }) {
               </div>
               <Btn small variant="danger" onClick={() => deleteSession(sesionEdit)}>🗑️ Eliminar sesión</Btn>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
               {players.map(p => {
                 const rec = (data.attendance || []).find(a => a.sessionId === sesionEdit.id && a.playerId === p.id);
