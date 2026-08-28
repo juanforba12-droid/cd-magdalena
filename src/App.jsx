@@ -471,32 +471,32 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
   return (
     <div className="space-y-4">
       {/* Header + Tabs */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-white">Plantilla — {team}</h2>
+      <div className="flex justify-between items-center gap-3">
+        <h2 className="text-lg sm:text-xl font-bold text-white truncate">Plantilla — {team}</h2>
         {tab === "oficial"
-          ? <Btn onClick={() => open()}>+ Añadir jugador</Btn>
+          ? <Btn onClick={() => open()} className="shrink-0">+ Añadir jugador</Btn>
           : tab === "probando"
-          ? <Btn onClick={() => { setTab("oficial"); setTimeout(() => { window.dispatchEvent(new CustomEvent("openProbandoForm")); }, 50); }}>+ Añadir jugador en prueba</Btn>
+          ? <Btn onClick={() => { setTab("oficial"); setTimeout(() => { window.dispatchEvent(new CustomEvent("openProbandoForm")); }, 50); }} className="shrink-0">+ Añadir jugador en prueba</Btn>
           : null
         }
       </div>
       {/* Pestañas */}
-      <div className="flex gap-0 border-b border-zinc-800">
+      <div className="flex gap-0 border-b border-zinc-800 overflow-x-auto">
         <button
           onClick={() => { setTab("oficial"); setShowForm(false); }}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "oficial" ? "border-red-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          className={`px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${tab === "oficial" ? "border-red-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >👥 Plantilla oficial</button>
         <button
           onClick={() => { setTab("probando"); setShowForm(false); }}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${tab === "probando" ? "border-blue-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          className={`px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${tab === "probando" ? "border-blue-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >🔍 Probando {(data.probando||[]).length > 0 && <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/50 px-1.5 py-0.5 rounded-full">{(data.probando||[]).length}</span>}</button>
         <button
           onClick={() => { setTab("convocatoria"); setShowForm(false); }}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "convocatoria" ? "border-orange-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          className={`px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${tab === "convocatoria" ? "border-orange-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >📋 Convocatoria</button>
         {isCoord && <button
           onClick={() => { setTab("banco"); setShowForm(false); }}
-          className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${tab === "banco" ? "border-green-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          className={`px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${tab === "banco" ? "border-green-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
         >🗂️ Banco</button>}
       </div>
       {tab === "probando" && <ProbandoContent team={team} data={data} onSave={onSave} isCoord={isCoord} />}
@@ -580,26 +580,26 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
             const c = posColorMap[pos] || posColorMap["Sin posición"];
             return (
               <div key={pos}>
-                <div className="flex items-center gap-2.5 mb-3 px-1">
-                  <span className={`text-xs font-bold uppercase tracking-widest ${c.text}`}>
+                <div className="flex items-center gap-2 sm:gap-2.5 mb-2 sm:mb-3 px-1">
+                  <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-widest ${c.text}`}>
                     {posLabel[pos] || pos}
                   </span>
-                  <span className="text-zinc-600 text-xs font-semibold">{players.length}</span>
+                  <span className="text-zinc-600 text-[11px] sm:text-xs font-semibold">{players.length}</span>
                   <div className={`flex-1 h-px ${c.dot} opacity-25`}></div>
                 </div>
-                <div className="space-y-2 mb-2">
+                <div className="space-y-1.5 sm:space-y-2 mb-2">
                   {players.map(p => {
                     const st = PLAYER_STATUSES.find(s => s.val === (p.status || "disponible")) || PLAYER_STATUSES[0];
                     const fm = PLAYER_FORMAS.find(f => f.val === p.forma);
                     return (
                       <div key={p.id} onClick={() => setMenuPlayer(p)}
-                        className={`flex items-center gap-3 bg-zinc-900 border border-zinc-800 border-l-4 ${c.edgeBorder} rounded-xl pl-3 pr-4 py-2.5 cursor-pointer active:bg-zinc-800 transition-colors`}>
-                        <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${c.badgeBg} ${c.badgeText}`}>
+                        className={`flex items-center gap-2 sm:gap-3 bg-zinc-900 border border-zinc-800 border-l-4 ${c.edgeBorder} rounded-xl pl-2.5 sm:pl-3 pr-3 sm:pr-4 py-2 sm:py-2.5 cursor-pointer active:bg-zinc-800 transition-colors`}>
+                        <span className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-xs sm:text-sm shrink-0 ${c.badgeBg} ${c.badgeText}`}>
                           {p.dorsal || "—"}
                         </span>
-                        <span className="text-white font-semibold flex-1 truncate">{p.name}</span>
+                        <span className="text-white font-semibold text-sm sm:text-base flex-1 truncate">{p.name}</span>
                         {fm && <span title={`Forma: ${fm.label}`}><FormaArrowIcon deg={fm.deg} className={fm.color} /></span>}
-                        <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${st.color}`}>{st.label}</span>
+                        <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full border shrink-0 ${st.color}`}>{st.label}</span>
                         <span className="text-zinc-600 text-lg shrink-0">›</span>
                       </div>
                     );
@@ -9501,7 +9501,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <div className="min-h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0"
+        <div className="min-h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-2.5 sm:px-4 gap-1.5 sm:gap-3 shrink-0"
           style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -9509,20 +9509,20 @@ export default function App() {
           >☰</button>
           <button
             onClick={() => setAuthState("foro")}
-            className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all"
+            className="text-zinc-500 hover:text-white text-[11px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded border border-zinc-800 hover:border-zinc-600 transition-all shrink-0"
           >📰 Foro</button>
           <button
             onClick={() => { try { localStorage.removeItem("mgd_session"); } catch(e) {} setAuthState(SINGLE_CLUB_ID ? "foro" : "selector"); setCurrentUser(null); setClubActual(SINGLE_CLUB_ID ? (CLUBS.find(c => c.id === SINGLE_CLUB_ID) || CLUBS[0]) : null); setRole(null); }}
-            className="text-zinc-500 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all"
+            className="text-zinc-500 hover:text-red-400 text-[11px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded border border-zinc-800 hover:border-red-800 transition-all shrink-0"
           >Salir</button>
-          <span className="text-white font-semibold">
+          <span className="text-white font-semibold text-sm sm:text-base truncate min-w-0 flex-1">
             {sections.find(s => s.id === activeSection)?.icon} {sections.find(s => s.id === activeSection)?.label}
-            <span className="text-zinc-500 font-normal ml-2">— {activeTeam}</span>
+            <span className="text-zinc-500 font-normal ml-2 hidden sm:inline">— {activeTeam}</span>
           </span>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-5 pb-24 md:p-8 md:pb-8">
+        <div className="flex-1 overflow-auto p-3 pb-24 md:p-8 md:pb-8">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
               <ResumenSection db={db} teams={teamsToUse} />
