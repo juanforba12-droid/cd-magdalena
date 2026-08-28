@@ -13,10 +13,22 @@ html { color-scheme: dark; }
    meta viewport de index.html, que algunos navegadores ignoran. */
 html, body { touch-action: pan-x pan-y; }
 
+/* Escritorio y móvil comparten los mismos valores de Tailwind (p-4, text-sm,
+   w-9, etc.), que están en rem y por tanto son relativos al tamaño de letra
+   raíz. En vez de ir ajustando padding/tamaños pantalla por pantalla, aquí
+   reducimos ese tamaño raíz solo en móvil: todo (texto, iconos, espacios)
+   se hace un poco más pequeño de una vez y de forma proporcional, dejando
+   más aire relativo alrededor de cada cosa sin tener que tocar cada
+   componente por separado. */
+@media (max-width: 767px) {
+  html { font-size: 87.5%; }
+}
+
 /* Safari en iPhone hace zoom automático de toda la página al enfocar un
    campo de texto/select con letra menor de 16px (nuestros inputs usan
-   14px). Esto pasa incluso con user-scalable=no. Forzamos 16px solo en
-   móvil para no tocar el tamaño en escritorio. */
+   14px). Esto pasa incluso con user-scalable=no. Forzamos 16px absolutos
+   (no relativos) solo en móvil para no tocar el tamaño en escritorio, y
+   para que no le afecte la reducción del tamaño raíz de arriba. */
 @media (max-width: 767px) {
   input, select, textarea { font-size: 16px !important; }
 }
