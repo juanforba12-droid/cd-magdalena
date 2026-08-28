@@ -9522,7 +9522,7 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto px-4 py-3 pb-24 md:p-8 md:pb-8">
+        <div className="flex-1 overflow-auto px-6 py-4 pb-24 md:p-8 md:pb-8">
           <div className="max-w-4xl mx-auto">
             {activeSection === "resumen" && isCoord && (
               <ResumenSection db={db} teams={teamsToUse} />
