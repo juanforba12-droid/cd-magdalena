@@ -353,11 +353,11 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
   ];
 
   const posColorMap = {
-    Portero:      { bg: "bg-yellow-900/30", text: "text-yellow-300", border: "border-yellow-700/50", dot: "bg-yellow-400" },
-    Defensa:      { bg: "bg-blue-900/30",   text: "text-blue-300",   border: "border-blue-700/50",   dot: "bg-blue-400" },
-    Mediocentro:  { bg: "bg-green-900/30",  text: "text-green-300",  border: "border-green-700/50",  dot: "bg-green-400" },
-    Delantero:    { bg: "bg-red-900/30",    text: "text-red-300",    border: "border-red-700/50",    dot: "bg-red-400" },
-    "Sin posición": { bg: "bg-zinc-800/50", text: "text-zinc-400",   border: "border-zinc-700/50",   dot: "bg-zinc-500" },
+    Portero:      { bg: "bg-yellow-900/30", text: "text-yellow-300", border: "border-yellow-700/50", dot: "bg-yellow-400", badgeBg: "bg-yellow-400", badgeText: "text-zinc-900", edgeBorder: "border-yellow-400" },
+    Defensa:      { bg: "bg-blue-900/30",   text: "text-blue-300",   border: "border-blue-700/50",   dot: "bg-blue-400",   badgeBg: "bg-blue-500",   badgeText: "text-white",     edgeBorder: "border-blue-500" },
+    Mediocentro:  { bg: "bg-green-900/30",  text: "text-green-300",  border: "border-green-700/50",  dot: "bg-green-400",  badgeBg: "bg-green-500",  badgeText: "text-white",     edgeBorder: "border-green-500" },
+    Delantero:    { bg: "bg-red-900/30",    text: "text-red-300",    border: "border-red-700/50",    dot: "bg-red-400",    badgeBg: "bg-red-500",    badgeText: "text-white",     edgeBorder: "border-red-500" },
+    "Sin posición": { bg: "bg-zinc-800/50", text: "text-zinc-400",   border: "border-zinc-700/50",   dot: "bg-zinc-500",   badgeBg: "bg-zinc-600",   badgeText: "text-zinc-200",  edgeBorder: "border-zinc-600" },
   };
 
   const getPosGroup = (p) => {
@@ -580,24 +580,27 @@ function PlantillaSection({ team, data, onSave, isCoord, seasons, db, clubActual
             const c = posColorMap[pos] || posColorMap["Sin posición"];
             return (
               <div key={pos}>
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <div className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></div>
+                <div className="flex items-center gap-2.5 mb-3 px-1">
                   <span className={`text-xs font-bold uppercase tracking-widest ${c.text}`}>
-                    {posLabel[pos] || pos} ({players.length})
+                    {posLabel[pos] || pos}
                   </span>
+                  <span className="text-zinc-600 text-xs font-semibold">{players.length}</span>
+                  <div className={`flex-1 h-px ${c.dot} opacity-25`}></div>
                 </div>
-                <div className="space-y-1.5 mb-2">
+                <div className="space-y-2 mb-2">
                   {players.map(p => {
                     const st = PLAYER_STATUSES.find(s => s.val === (p.status || "disponible")) || PLAYER_STATUSES[0];
                     const fm = PLAYER_FORMAS.find(f => f.val === p.forma);
                     return (
                       <div key={p.id} onClick={() => setMenuPlayer(p)}
-                        className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 cursor-pointer active:bg-zinc-800 transition-colors">
-                        <span className={`font-black text-base w-9 shrink-0 ${c.text}`}>{p.dorsal ? `#${p.dorsal}` : "—"}</span>
+                        className={`flex items-center gap-3 bg-zinc-900 border border-zinc-800 border-l-4 ${c.edgeBorder} rounded-xl pl-3 pr-4 py-2.5 cursor-pointer active:bg-zinc-800 transition-colors`}>
+                        <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${c.badgeBg} ${c.badgeText}`}>
+                          {p.dorsal || "—"}
+                        </span>
                         <span className="text-white font-semibold flex-1 truncate">{p.name}</span>
                         {fm && <span title={`Forma: ${fm.label}`}><FormaArrowIcon deg={fm.deg} className={fm.color} /></span>}
                         <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${st.color}`}>{st.label}</span>
-                        <span className="text-zinc-500 text-lg shrink-0">›</span>
+                        <span className="text-zinc-600 text-lg shrink-0">›</span>
                       </div>
                     );
                   })}
@@ -3209,6 +3212,84 @@ const convocatoriaOficial = (match) => {
   return delEntrenador;
 };
 
+// Tarjeta de un jugador dentro de la convocatoria de un partido. Los campos
+// numéricos (minutos/goles/asistencias/nota) se editan en estado local y solo
+// se guardan al salir del campo (onBlur) — escribir cada dígito ya no dispara
+// un guardado en Firestore, que es lo que hacía que ir metiendo goles fuera
+// lento. Además son inputs de texto con teclado numérico (inputMode), no
+// inputs "number" nativos, así que no tienen las flechitas de subir/bajar.
+function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarCampo, quitarDeConvocatoria, onSetCapitan }) {
+  const [minutos, setMinutos] = useState(String(activo.minutos ?? 0));
+  const [goles, setGoles] = useState(String(activo.goles ?? 0));
+  const [asistencias, setAsistencias] = useState(String(activo.asistencias ?? 0));
+  const [nota, setNota] = useState(activo.nota === "" || activo.nota == null ? "" : String(activo.nota));
+
+  useEffect(() => { setMinutos(String(activo.minutos ?? 0)); }, [activo.minutos]);
+  useEffect(() => { setGoles(String(activo.goles ?? 0)); }, [activo.goles]);
+  useEffect(() => { setAsistencias(String(activo.asistencias ?? 0)); }, [activo.asistencias]);
+  useEffect(() => { setNota(activo.nota === "" || activo.nota == null ? "" : String(activo.nota)); }, [activo.nota]);
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-white font-semibold flex-1">{c.playerName}</span>
+        {c.equipo && c.equipo !== team && <Badge color="blue">{c.equipo}</Badge>}
+        {["titular", "suplente", "no_conv"].map(s => (
+          <button
+            key={s}
+            onClick={() => guardarCampo("status", s)}
+            className={`text-xs px-2 py-1 rounded border transition-all ${
+              activo.status === s
+                ? s === "titular" ? "bg-green-800 border-green-600 text-green-200"
+                : s === "suplente" ? "bg-blue-800 border-blue-600 text-blue-200"
+                : "bg-zinc-700 border-zinc-500 text-zinc-300"
+                : "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500"
+            }`}
+          >{statusLabel[s]}</button>
+        ))}
+        {c.equipo && c.equipo !== team && (
+          <button
+            onClick={() => quitarDeConvocatoria(match.id, c.playerId, c.equipo)}
+            className="text-xs px-2 py-1 rounded border border-red-800 text-red-400 hover:bg-red-900/30 transition-all"
+            title="Quitar de este partido"
+          >🗑️ Quitar</button>
+        )}
+        <button
+          onClick={onSetCapitan}
+          className={`text-xs px-2 py-1 rounded border transition-all ${match.capitan===c.playerId ? "bg-yellow-700 border-yellow-500 text-yellow-200" : "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500"}`}
+          title="Capitán"
+        >⭐ Capitán</button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Input
+          label="Minutos" type="text" inputMode="numeric"
+          value={minutos}
+          onChange={e => setMinutos(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={() => guardarCampo("minutos", Number(minutos) || 0)}
+        />
+        <Input
+          label="Goles" type="text" inputMode="numeric"
+          value={goles}
+          onChange={e => setGoles(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={() => guardarCampo("goles", Number(goles) || 0)}
+        />
+        <Input
+          label="Asistencias" type="text" inputMode="numeric"
+          value={asistencias}
+          onChange={e => setAsistencias(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={() => guardarCampo("asistencias", Number(asistencias) || 0)}
+        />
+        <Input
+          label="Nota (0-10)" type="text" inputMode="decimal"
+          value={nota}
+          onChange={e => setNota(e.target.value.replace(/[^0-9.]/g, ""))}
+          onBlur={() => guardarCampo("nota", nota)}
+        />
+      </div>
+    </Card>
+  );
+}
+
 function PartidosSection({ team, data, onSave, isCoord, db }) {
   const [view, setView] = useState("list"); // list | form | detail | alineacion
   const [editing, setEditing] = useState(null);
@@ -3668,48 +3749,22 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
               ? updateConvCoord(match.id, c.playerId, field, value)
               : updateConv(match.id, c.playerId, field, value);
             return (
-            <Card key={(c.equipo || team) + "::" + c.playerId} className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-white font-semibold flex-1">{c.playerName}</span>
-                {c.equipo && c.equipo !== team && <Badge color="blue">{c.equipo}</Badge>}
-                {["titular", "suplente", "no_conv"].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => guardarCampo("status", s)}
-                    className={`text-xs px-2 py-1 rounded border transition-all ${
-                      activo.status === s
-                        ? s === "titular" ? "bg-green-800 border-green-600 text-green-200"
-                        : s === "suplente" ? "bg-blue-800 border-blue-600 text-blue-200"
-                        : "bg-zinc-700 border-zinc-500 text-zinc-300"
-                        : "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500"
-                    }`}
-                  >{statusLabel[s]}</button>
-                ))}
-                {c.equipo && c.equipo !== team && (
-                  <button
-                    onClick={() => quitarDeConvocatoria(match.id, c.playerId, c.equipo)}
-                    className="text-xs px-2 py-1 rounded border border-red-800 text-red-400 hover:bg-red-900/30 transition-all"
-                    title="Quitar de este partido"
-                  >🗑️ Quitar</button>
-                )}
-                <button
-                  onClick={() => {
-                    const matches2 = (data.matches||[]).map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
-                    const upd = matches2.find(m2=>m2.id===match.id);
-                    setActiveMatch(upd);
-                    onSave({...data, matches: matches2});
-                  }}
-                  className={`text-xs px-2 py-1 rounded border transition-all ${match.capitan===c.playerId ? "bg-yellow-700 border-yellow-500 text-yellow-200" : "bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500"}`}
-                  title="Capitán"
-                >⭐ Capitán</button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <Input label="Minutos" type="number" value={activo.minutos} onChange={e => guardarCampo("minutos", Number(e.target.value))} />
-                <Input label="Goles" type="number" value={activo.goles} onChange={e => guardarCampo("goles", Number(e.target.value))} />
-                <Input label="Asistencias" type="number" value={activo.asistencias} onChange={e => guardarCampo("asistencias", Number(e.target.value))} />
-                <Input label="Nota (0-10)" type="number" step="0.01" min="0" max="10" value={activo.nota} onChange={e => guardarCampo("nota", e.target.value)} />
-              </div>
-            </Card>
+              <ConvocatoriaJugadorCard
+                key={(c.equipo || team) + "::" + c.playerId}
+                c={c}
+                team={team}
+                match={match}
+                activo={activo}
+                statusLabel={statusLabel}
+                guardarCampo={guardarCampo}
+                quitarDeConvocatoria={quitarDeConvocatoria}
+                onSetCapitan={() => {
+                  const matches2 = (data.matches||[]).map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
+                  const upd = matches2.find(m2=>m2.id===match.id);
+                  setActiveMatch(upd);
+                  onSave({...data, matches: matches2});
+                }}
+              />
             );
           })}
         </div>
