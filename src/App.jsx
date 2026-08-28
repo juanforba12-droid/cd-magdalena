@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import * as React from "react";
 import GIF from "gif.js";
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
+import * as XLSX from "xlsx";
 
 // ── Initial state ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -3290,6 +3291,261 @@ function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarC
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Pruebas físicas
+// ══════════════════════════════════════════════════════════════════════════════
+// Gráfico de evolución hecho a mano en SVG (sin librería de gráficos). Siempre
+// dibuja "arriba = mejor", tanto si el test es de tiempo (menos es mejor) como
+// si es de distancia/repeticiones (más es mejor), para que se lea igual de
+// intuitivo sea cual sea el test.
+function EvolucionChart({ puntos, mejorEsMenor }) {
+  if (!puntos || puntos.length === 0) return null;
+  const ordenados = [...puntos].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const W = 100, H = 60, PAD = 6;
+  const valores = ordenados.map(p => p.valor);
+  let min = Math.min(...valores), max = Math.max(...valores);
+  if (min === max) { min -= 1; max += 1; }
+  const normY = (v) => {
+    const t = (v - min) / (max - min);
+    const visual = mejorEsMenor ? (1 - t) : t;
+    return H - PAD - visual * (H - 2 * PAD);
+  };
+  const stepX = ordenados.length > 1 ? (W - 2 * PAD) / (ordenados.length - 1) : 0;
+  const coords = ordenados.map((p, i) => [PAD + i * stepX, normY(p.valor)]);
+  const puntos2str = coords.map(([x, y]) => `${x},${y}`).join(" ");
+  const mejorIdx = ordenados.reduce((bi, p, i) => bi === -1 || (mejorEsMenor ? p.valor < ordenados[bi].valor : p.valor > ordenados[bi].valor) ? i : bi, -1);
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28" preserveAspectRatio="none">
+        {ordenados.length > 1 && <polyline points={puntos2str} fill="none" stroke="#ef4444" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
+        {coords.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={i === mejorIdx ? 2.2 : 1.4} fill={i === mejorIdx ? "#22c55e" : "#ef4444"} />
+        ))}
+      </svg>
+      <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+        <span>{ordenados[0].fecha}</span>
+        {ordenados.length > 1 && <span>{ordenados[ordenados.length - 1].fecha}</span>}
+      </div>
+    </div>
+  );
+}
+
+function PruebasFisicasSection({ team, data, onSave }) {
+  const tests = (data.testsFisicos || []).filter(t => t != null);
+  const resultados = (data.resultadosFisicos || []).filter(r => r != null);
+  const players = data.players || [];
+
+  const [testActivo, setTestActivo] = useState(tests[0]?.id ?? null);
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [editingTest, setEditingTest] = useState(null);
+  const [tNombre, setTNombre] = useState("");
+  const [tUnidad, setTUnidad] = useState("");
+  const [tMejorEsMenor, setTMejorEsMenor] = useState(true);
+
+  const [showResultForm, setShowResultForm] = useState(false);
+  const [rPlayerId, setRPlayerId] = useState("");
+  const [rValor, setRValor] = useState("");
+  const [rFecha, setRFecha] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const [playerDetail, setPlayerDetail] = useState(null);
+
+  const test = tests.find(t => t.id === testActivo) || tests[0] || null;
+  const resultadosDelTest = test ? resultados.filter(r => r.testId === test.id) : [];
+
+  const abrirNuevoTest = () => {
+    setEditingTest(null); setTNombre(""); setTUnidad(""); setTMejorEsMenor(true);
+    setShowTestForm(true);
+  };
+  const abrirEditarTest = (t) => {
+    setEditingTest(t); setTNombre(t.nombre); setTUnidad(t.unidad || ""); setTMejorEsMenor(t.mejorEsMenor !== false);
+    setShowTestForm(true);
+  };
+  const guardarTest = () => {
+    if (!tNombre.trim()) return;
+    const t = { id: editingTest?.id ?? Date.now(), nombre: tNombre.trim(), unidad: tUnidad.trim(), mejorEsMenor: tMejorEsMenor };
+    const nuevos = editingTest ? tests.map(x => x.id === t.id ? t : x) : [...tests, t];
+    onSave({ ...data, testsFisicos: nuevos });
+    if (!editingTest) setTestActivo(t.id);
+    setShowTestForm(false); setEditingTest(null);
+  };
+  const borrarTest = (id) => {
+    if (!window.confirm("¿Eliminar este test? También se borrarán todos sus resultados guardados.")) return;
+    onSave({ ...data, testsFisicos: tests.filter(t => t.id !== id), resultadosFisicos: resultados.filter(r => r.testId !== id) });
+    if (testActivo === id) setTestActivo(null);
+  };
+
+  const abrirNuevoResultado = () => {
+    setRPlayerId(""); setRValor(""); setRFecha(new Date().toISOString().slice(0, 10));
+    setShowResultForm(true);
+  };
+  const guardarResultado = () => {
+    if (!rPlayerId || rValor === "" || !test) return;
+    const p = players.find(pl => pl.id === Number(rPlayerId));
+    const nuevo = { id: Date.now(), testId: test.id, playerId: Number(rPlayerId), playerName: p?.name || "", valor: Number(rValor), fecha: rFecha };
+    onSave({ ...data, resultadosFisicos: [...resultados, nuevo] });
+    setShowResultForm(false);
+  };
+  const borrarResultado = (id) => {
+    onSave({ ...data, resultadosFisicos: resultados.filter(r => r.id !== id) });
+    setPlayerDetail(pd => pd ? { ...pd, historial: pd.historial.filter(x => x.id !== id) } : pd);
+  };
+
+  const exportarExcel = () => {
+    if (!test || resultadosDelTest.length === 0) return;
+    const filas = resultadosDelTest
+      .slice()
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .map(r => ({ Jugador: r.playerName, Fecha: r.fecha, [`${test.nombre}${test.unidad ? ` (${test.unidad})` : ""}`]: r.valor }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, (test.nombre || "Test").slice(0, 31));
+    XLSX.writeFile(wb, `${test.nombre} - ${team}.xlsx`);
+  };
+
+  const filasJugadores = test ? players.map(p => {
+    const suyos = resultadosDelTest.filter(r => r.playerId === p.id).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    if (suyos.length === 0) return null;
+    const mejor = suyos.reduce((best, r) => !best || (test.mejorEsMenor ? r.valor < best.valor : r.valor > best.valor) ? r : best, null);
+    return { player: p, historial: suyos, ultimo: suyos[suyos.length - 1], mejor };
+  }).filter(Boolean).sort((a, b) => test.mejorEsMenor ? a.mejor.valor - b.mejor.valor : b.mejor.valor - a.mejor.valor) : [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center gap-3">
+        <h2 className="text-lg sm:text-xl font-bold text-white truncate">⏱️ Pruebas físicas — {team}</h2>
+        <Btn onClick={abrirNuevoTest} className="shrink-0">+ Nuevo test</Btn>
+      </div>
+
+      {tests.length === 0 ? (
+        <Card><p className="text-zinc-400 text-sm">Todavía no has creado ningún test. Crea uno (por ejemplo "30 pasos", en segundos) para empezar a registrar resultados.</p></Card>
+      ) : (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {tests.map(t => (
+              <button key={t.id} onClick={() => setTestActivo(t.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all shrink-0 whitespace-nowrap ${testActivo === t.id ? "bg-red-700 border-red-500 text-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
+                {t.nombre}
+              </button>
+            ))}
+          </div>
+
+          {test && (
+            <>
+              <Card className="space-y-2">
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <p className="text-white font-bold">{test.nombre}</p>
+                    <p className="text-zinc-500 text-xs">{test.unidad || "sin unidad"} · {test.mejorEsMenor ? "menos es mejor" : "más es mejor"}</p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Btn small variant="secondary" onClick={() => abrirEditarTest(test)}>✏️</Btn>
+                    <Btn small variant="danger" onClick={() => borrarTest(test.id)}>🗑️</Btn>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex gap-2">
+                <Btn onClick={abrirNuevoResultado} className="flex-1 justify-center">+ Registrar resultado</Btn>
+                <Btn variant="secondary" onClick={exportarExcel} disabled={resultadosDelTest.length === 0}>📊 Excel</Btn>
+              </div>
+
+              <div className="space-y-2.5">
+                {filasJugadores.length === 0 && <p className="text-zinc-500 text-sm">Todavía no hay resultados para este test.</p>}
+                {filasJugadores.map(({ player, historial, ultimo, mejor }, i) => (
+                  <Card key={player.id} className="cursor-pointer hover:border-zinc-600 transition-colors" onClick={() => setPlayerDetail({ player, historial })}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-full bg-zinc-700 text-zinc-300 flex items-center justify-center font-black text-xs shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold truncate">{player.name}</p>
+                        <p className="text-zinc-500 text-xs">{historial.length} resultado{historial.length === 1 ? "" : "s"} · último: {ultimo.fecha}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-green-400 font-black">{mejor.valor} {test.unidad}</p>
+                        <p className="text-zinc-500 text-xs">mejor</p>
+                      </div>
+                      <span className="text-zinc-600 text-lg shrink-0">›</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {showTestForm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowTestForm(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg">{editingTest ? "Editar test" : "Nuevo test"}</h3>
+            <Input label="Nombre del test" value={tNombre} onChange={e => setTNombre(e.target.value)} placeholder="Ej: 30 pasos" />
+            <Input label="Unidad" value={tUnidad} onChange={e => setTUnidad(e.target.value)} placeholder="Ej: segundos, metros, repeticiones" />
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">¿Qué significa mejorar?</label>
+              <div className="flex gap-2">
+                <button onClick={() => setTMejorEsMenor(true)} className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm border transition-all ${tMejorEsMenor ? "bg-green-800 border-green-600 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>⬇️ Menos es mejor<br /><span className="text-[10px] opacity-70">(tiempos)</span></button>
+                <button onClick={() => setTMejorEsMenor(false)} className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm border transition-all ${!tMejorEsMenor ? "bg-green-800 border-green-600 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>⬆️ Más es mejor<br /><span className="text-[10px] opacity-70">(distancia, reps)</span></button>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Btn onClick={guardarTest} className="flex-1 justify-center">Guardar</Btn>
+              <Btn variant="secondary" onClick={() => setShowTestForm(false)} className="flex-1 justify-center">Cancelar</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResultForm && test && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowResultForm(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg">Registrar resultado — {test.nombre}</h3>
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Jugador</label>
+              <select value={rPlayerId} onChange={e => setRPlayerId(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm w-full">
+                <option value="">Selecciona un jugador</option>
+                {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <Input label={`Resultado${test.unidad ? ` (${test.unidad})` : ""}`} type="text" inputMode="decimal" value={rValor} onChange={e => setRValor(e.target.value.replace(/[^0-9.]/g, ""))} />
+            <Input label="Fecha" type="date" value={rFecha} onChange={e => setRFecha(e.target.value)} />
+            <div className="flex gap-2 pt-2">
+              <Btn onClick={guardarResultado} className="flex-1 justify-center">Guardar</Btn>
+              <Btn variant="secondary" onClick={() => setShowResultForm(false)} className="flex-1 justify-center">Cancelar</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {playerDetail && test && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setPlayerDetail(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-white font-bold text-lg">{playerDetail.player.name}</h3>
+                <p className="text-zinc-400 text-sm">{test.nombre} — evolución</p>
+              </div>
+              <Btn small variant="secondary" onClick={() => setPlayerDetail(null)}>✕</Btn>
+            </div>
+            <div className="p-5 border-b border-zinc-800">
+              <EvolucionChart puntos={playerDetail.historial} mejorEsMenor={test.mejorEsMenor} />
+            </div>
+            <div className="p-5 space-y-2">
+              {playerDetail.historial.slice().reverse().map(r => (
+                <div key={r.id} className="flex items-center justify-between bg-zinc-800 rounded-lg px-4 py-2.5">
+                  <span className="text-zinc-400 text-sm">📅 {r.fecha}</span>
+                  <span className="text-white font-bold">{r.valor} {test.unidad}</span>
+                  <button onClick={() => borrarResultado(r.id)} className="text-red-400 text-xs hover:text-red-300">🗑️</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function PartidosSection({ team, data, onSave, isCoord, db }) {
   const [view, setView] = useState("list"); // list | form | detail | alineacion
   const [editing, setEditing] = useState(null);
@@ -9217,6 +9473,7 @@ export default function App() {
     { id: "partidos", label: "Partidos", icon: "⚽" },
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
+    { id: "pruebas_fisicas", label: "Pruebas físicas", icon: "⏱️" },
   ];
 
   useEffect(() => {
@@ -9585,6 +9842,9 @@ export default function App() {
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
+            )}
+            {activeSection === "pruebas_fisicas" && (
+              <PruebasFisicasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
             )}
           </div>
         </div>
