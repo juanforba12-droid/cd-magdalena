@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, getDocs, collection, runTransaction } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -12,6 +13,36 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Sube un vídeo a Firebase Storage con progreso. onProgress recibe un
+// número 0-100. Devuelve { url, path } al terminar.
+export function subirVideo(path, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const r = storageRef(storage, path);
+    const task = uploadBytesResumable(r, file);
+    task.on(
+      "state_changed",
+      (snap) => { if (onProgress) onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)); },
+      (err) => reject(err),
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref);
+          resolve({ url, path });
+        } catch (e) { reject(e); }
+      }
+    );
+  });
+}
+
+export async function borrarVideo(path) {
+  try {
+    await deleteObject(storageRef(storage, path));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
 
 function cleanLoaded(obj) {
   if (!obj || typeof obj !== 'object') return obj;

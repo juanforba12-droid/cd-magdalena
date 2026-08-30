@@ -1,4 +1,4 @@
-import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
+import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo, subirVideo, borrarVideo } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
@@ -1508,15 +1508,24 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
     return { id: el.id || (Date.now() + idx), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, x2: el.x2, y2: el.y2, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' };
   }));
 
+  const [dobleCampo, setDobleCampo] = useState(!!task?.dobleCampo);
+  const [fieldType2, setFieldType2] = useState(task?.fieldType2 || "full");
+  const [etiqueta1, setEtiqueta1] = useState(task?.etiqueta1 || "");
+  const [etiqueta2, setEtiqueta2] = useState(task?.etiqueta2 || "");
+  const [pizarra2, setPizarra2] = useState((task?.pizarra2 || []).filter(el => el != null).map((el, idx) => {
+    if (el.type === 'drawing') return { id: el.id || (Date.now() + idx + 100000), type: 'drawing', path: el.path || [], color: el.color, size: el.size };
+    return { id: el.id || (Date.now() + idx + 100000), type: el.type || 'player_red', x: el.x || 0, y: el.y || 0, x2: el.x2, y2: el.y2, color: el.color || (el.type ? el.type.replace('player_','') : 'red') || 'red', num: el.num ?? el.number ?? 1, material: el.material || '' };
+  }));
+
   const handleSave = (toLib = false) => {
     if (!nombre.trim()) return;
-    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra, categoria, fieldType };
+    const t = { id: task?.id || Date.now(), nombre, minutos, descripcion, pizarra, categoria, fieldType, dobleCampo, pizarra2, fieldType2, etiqueta1, etiqueta2 };
     onSave(t, toLib);
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl my-4 flex flex-col"
+      <div className={`bg-zinc-900 border border-zinc-700 rounded-xl w-full ${dobleCampo ? "max-w-6xl" : "max-w-3xl"} my-4 flex flex-col transition-all`}
         style={{ maxHeight: "calc(100% - 2rem)" }}
         onClick={e => e.stopPropagation()}>
         <div className="p-5 border-b border-zinc-800 flex justify-between items-center shrink-0"
@@ -1540,8 +1549,29 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
             </div>
           </div>
           <div>
-            <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra táctica</label>
-            <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-zinc-400 uppercase tracking-wider">Pizarra táctica</label>
+              <button type="button" onClick={() => setDobleCampo(d => !d)}
+                className={`text-xs px-2.5 py-1 rounded border transition-all ${dobleCampo ? "bg-red-700 border-red-500 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"}`}>
+                🔲 Dos campos
+              </button>
+            </div>
+            {dobleCampo ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <input type="text" value={etiqueta1} onChange={e => setEtiqueta1(e.target.value)} placeholder="Ej: Jugadores"
+                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-zinc-100 text-sm w-full mb-2 focus:outline-none focus:border-red-600" />
+                  <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
+                </div>
+                <div>
+                  <input type="text" value={etiqueta2} onChange={e => setEtiqueta2(e.target.value)} placeholder="Ej: Porteros"
+                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-zinc-100 text-sm w-full mb-2 focus:outline-none focus:border-red-600" />
+                  <Pizarra value={pizarra2} onChange={setPizarra2} fieldType={fieldType2} onFieldTypeChange={setFieldType2} />
+                </div>
+              </div>
+            ) : (
+              <Pizarra value={pizarra} onChange={setPizarra} fieldType={fieldType} onFieldTypeChange={setFieldType} />
+            )}
           </div>
         </div>
         <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap shrink-0"
@@ -1690,7 +1720,7 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
       {/* Preview modal */}
       {preview && (
         <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 p-4 overflow-auto" onClick={() => setPreview(null)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl my-4" onClick={e => e.stopPropagation()}>
+          <div className={`bg-zinc-900 border border-zinc-700 rounded-xl w-full ${preview.dobleCampo ? "max-w-6xl" : "max-w-3xl"} my-4`} onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
                 <h3 className="text-white font-bold text-lg">{preview.nombre}</h3>
@@ -1700,10 +1730,25 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
             </div>
             <div className="p-5 space-y-5">
               {preview.descripcion && <p className="text-zinc-300 text-sm whitespace-pre-wrap">{preview.descripcion}</p>}
-              {preview.pizarra?.length > 0 && (
+              {preview.dobleCampo ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {preview.pizarra?.length > 0 && (
+                    <div>
+                      <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">{preview.etiqueta1 || "Campo 1"}</label>
+                      <Pizarra value={preview.pizarra} onChange={() => {}} fieldType={preview.fieldType} />
+                    </div>
+                  )}
+                  {preview.pizarra2?.length > 0 && (
+                    <div>
+                      <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">{preview.etiqueta2 || "Campo 2"}</label>
+                      <Pizarra value={preview.pizarra2} onChange={() => {}} fieldType={preview.fieldType2} />
+                    </div>
+                  )}
+                </div>
+              ) : preview.pizarra?.length > 0 && (
                 <div>
                   <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra</label>
-                  <Pizarra value={preview.pizarra} onChange={() => {}} />
+                  <Pizarra value={preview.pizarra} onChange={() => {}} fieldType={preview.fieldType} />
                 </div>
               )}
             </div>
@@ -1717,6 +1762,109 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenamientos
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Vídeos (dentro de Entrenamientos)
+// ══════════════════════════════════════════════════════════════════════════════
+// Biblioteca de vídeos por equipo. El vídeo en sí se sube a Firebase Storage
+// (no cabe en Firestore); aquí solo se guarda su nombre, la URL y el tamaño.
+function VideosSection({ team, data, onSave }) {
+  const videos = (data.videos || []).filter(v => v != null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState(0);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
+
+  const onFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    setSubiendo(true);
+    setProgreso(0);
+    const path = `videos/cdmagdalena/${team}/${Date.now()}_${file.name}`;
+    try {
+      const { url } = await subirVideo(path, file, setProgreso);
+      const nuevo = { id: Date.now(), nombre: file.name, url, path, tamano: file.size, fecha: new Date().toISOString().slice(0, 10) };
+      onSave({ ...data, videos: [...videos, nuevo] });
+    } catch (err) {
+      setError("No se ha podido subir el vídeo. Comprueba que Firebase Storage esté activado para este proyecto. " + (err?.message || ""));
+    }
+    setSubiendo(false);
+  };
+
+  const eliminar = async (v) => {
+    if (!window.confirm(`¿Eliminar "${v.nombre}"? No se puede deshacer.`)) return;
+    if (v.path) await borrarVideo(v.path);
+    onSave({ ...data, videos: videos.filter(x => x.id !== v.id) });
+  };
+
+  const compartir = async (v) => {
+    if (navigator.share) {
+      try { await navigator.share({ title: v.nombre, url: v.url }); return; } catch (e) { return; }
+    }
+    try {
+      await navigator.clipboard.writeText(v.url);
+      window.alert("Enlace copiado. Pégalo donde quieras (WhatsApp, etc.)");
+    } catch (e) {
+      window.open(v.url, "_blank");
+    }
+  };
+
+  const formatoTamano = (bytes) => {
+    if (!bytes) return "";
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-white font-bold text-lg">🎥 Vídeos — {team}</h3>
+          <p className="text-zinc-500 text-xs">Súbelos aquí para que cualquier entrenador del equipo los pueda ver, o compartir por WhatsApp.</p>
+        </div>
+        <div className="shrink-0">
+          <Btn onClick={() => fileInputRef.current?.click()} disabled={subiendo}>
+            {subiendo ? `Subiendo… ${progreso}%` : "+ Subir vídeo"}
+          </Btn>
+          <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={onFileSelected} />
+        </div>
+      </div>
+
+      {error && <Card className="border-red-800"><p className="text-red-400 text-sm">{error}</p></Card>}
+
+      {subiendo && (
+        <div className="bg-zinc-800 rounded-full h-2 overflow-hidden">
+          <div className="bg-red-600 h-full transition-all" style={{ width: `${progreso}%` }} />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {videos.length === 0 && !subiendo && <p className="text-zinc-500 text-sm">Todavía no hay vídeos subidos.</p>}
+        {videos.map(v => (
+          <Card key={v.id} className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl shrink-0">🎬</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold truncate">{v.nombre}</p>
+                <p className="text-zinc-500 text-xs">{v.fecha}{v.tamano ? ` · ${formatoTamano(v.tamano)}` : ""}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <a href={v.url} download={v.nombre} target="_blank" rel="noopener noreferrer"
+                className="flex-1 text-center font-semibold rounded-lg transition-all duration-150 border-0 px-5 py-2 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-100 cursor-pointer">
+                ▶️ Ver / guardar
+              </a>
+              <Btn variant="secondary" onClick={() => compartir(v)} className="flex-1 justify-center">📤 Compartir</Btn>
+              <Btn variant="danger" small onClick={() => eliminar(v)}>🗑️</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -2107,18 +2255,22 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
         {vista === "sesiones" && <Btn onClick={() => open()}>+ Nuevo entrenamiento</Btn>}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         <button onClick={() => setVista("sesiones")}
-          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "sesiones" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🏃 Sesiones</button>
+          className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "sesiones" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🏃 Sesiones</button>
         <button onClick={() => setVista("microciclo")}
-          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "microciclo" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📅 Microciclo</button>
+          className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "microciclo" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📅 Microciclo</button>
         <button onClick={() => setVista("tacticas")}
-          className={`px-4 py-2 rounded-lg text-sm border transition-all ${vista === "tacticas" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎬 Tácticas</button>
+          className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "tacticas" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎬 Tácticas</button>
+        <button onClick={() => setVista("videos")}
+          className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "videos" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎥 Vídeos</button>
       </div>
 
       {vista === "microciclo" && <MicrocicloSection team={team} data={data} onSave={onSave} />}
 
       {vista === "tacticas" && <TacticasSection team={team} data={data} onSave={onSave} />}
+
+      {vista === "videos" && <VideosSection team={team} data={data} onSave={onSave} />}
 
       {vista === "sesiones" && <>
 
@@ -3289,8 +3441,8 @@ function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarC
         <Input
           label="Nota (0-10)" type="text" inputMode="decimal"
           value={nota}
-          onChange={e => setNota(e.target.value.replace(/[^0-9.]/g, ""))}
-          onBlur={() => guardarCampo("nota", nota)}
+          onChange={e => setNota(e.target.value.replace(/[^0-9.,]/g, ""))}
+          onBlur={() => guardarCampo("nota", nota.replace(",", "."))}
         />
       </div>
     </Card>
@@ -3315,8 +3467,8 @@ function CeldaEditable({ valor, onGuardar }) {
     <input
       type="text" inputMode="decimal"
       value={local}
-      onChange={e => setLocal(e.target.value.replace(/[^0-9.]/g, ""))}
-      onBlur={() => { if (local !== (valor === null || valor === undefined ? "" : String(valor))) onGuardar(local); }}
+      onChange={e => setLocal(e.target.value.replace(/[^0-9.,]/g, ""))}
+      onBlur={() => { if (local !== (valor === null || valor === undefined ? "" : String(valor))) onGuardar(local.replace(",", ".")); }}
       placeholder="—"
       className="w-16 bg-transparent text-center text-white text-sm py-2 rounded focus:outline-none focus:bg-zinc-800 placeholder:text-zinc-700"
     />
@@ -3326,7 +3478,16 @@ function CeldaEditable({ valor, onGuardar }) {
 function EvolucionChart({ puntos, mejorEsMenor }) {
   if (!puntos || puntos.length === 0) return null;
   const ordenados = [...puntos].sort((a, b) => a.fecha.localeCompare(b.fecha));
-  const W = 100, H = 60, PAD = 6;
+
+  if (ordenados.length < 2) {
+    return (
+      <div className="bg-zinc-800/50 rounded-lg p-4 text-center">
+        <p className="text-zinc-500 text-sm">Con un único resultado todavía no hay evolución que mostrar. En cuanto registres uno más para este jugador, aquí aparecerá el gráfico.</p>
+      </div>
+    );
+  }
+
+  const W = 300, H = 90, PAD = 12;
   const valores = ordenados.map(p => p.valor);
   let min = Math.min(...valores), max = Math.max(...valores);
   if (min === max) { min -= 1; max += 1; }
@@ -3335,22 +3496,22 @@ function EvolucionChart({ puntos, mejorEsMenor }) {
     const visual = mejorEsMenor ? (1 - t) : t;
     return H - PAD - visual * (H - 2 * PAD);
   };
-  const stepX = ordenados.length > 1 ? (W - 2 * PAD) / (ordenados.length - 1) : 0;
+  const stepX = (W - 2 * PAD) / (ordenados.length - 1);
   const coords = ordenados.map((p, i) => [PAD + i * stepX, normY(p.valor)]);
   const puntos2str = coords.map(([x, y]) => `${x},${y}`).join(" ");
   const mejorIdx = ordenados.reduce((bi, p, i) => bi === -1 || (mejorEsMenor ? p.valor < ordenados[bi].valor : p.valor > ordenados[bi].valor) ? i : bi, -1);
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28" preserveAspectRatio="none">
-        {ordenados.length > 1 && <polyline points={puntos2str} fill="none" stroke="#ef4444" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28">
+        <polyline points={puntos2str} fill="none" stroke="#ef4444" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
         {coords.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={i === mejorIdx ? 2.2 : 1.4} fill={i === mejorIdx ? "#22c55e" : "#ef4444"} />
+          <circle key={i} cx={x} cy={y} r={i === mejorIdx ? 5 : 3} fill={i === mejorIdx ? "#22c55e" : "#ef4444"} vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
       <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
         <span>{ordenados[0].fecha}</span>
-        {ordenados.length > 1 && <span>{ordenados[ordenados.length - 1].fecha}</span>}
+        <span>{ordenados[ordenados.length - 1].fecha}</span>
       </div>
     </div>
   );
@@ -3455,7 +3616,7 @@ function PruebasFisicasSection({ team, data, onSave }) {
   const guardarResultado = () => {
     if (!rPlayerId || rValor === "" || !test) return;
     const p = players.find(pl => pl.id === Number(rPlayerId));
-    const nuevo = { id: Date.now(), testId: test.id, playerId: Number(rPlayerId), playerName: p?.name || "", valor: Number(rValor), fecha: rFecha };
+    const nuevo = { id: Date.now(), testId: test.id, playerId: Number(rPlayerId), playerName: p?.name || "", valor: Number(rValor.replace(",", ".")), fecha: rFecha };
     onSave({ ...data, resultadosFisicos: [...resultados, nuevo] });
     setShowResultForm(false);
   };
@@ -3581,7 +3742,7 @@ function PruebasFisicasSection({ team, data, onSave }) {
                 {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <Input label={`Resultado${test.unidad ? ` (${test.unidad})` : ""}`} type="text" inputMode="decimal" value={rValor} onChange={e => setRValor(e.target.value.replace(/[^0-9.]/g, ""))} />
+            <Input label={`Resultado${test.unidad ? ` (${test.unidad})` : ""}`} type="text" inputMode="decimal" value={rValor} onChange={e => setRValor(e.target.value.replace(/[^0-9.,]/g, ""))} />
             <Input label="Fecha" type="date" value={rFecha} onChange={e => setRFecha(e.target.value)} />
             <div className="flex gap-2 pt-2">
               <Btn onClick={guardarResultado} className="flex-1 justify-center">Guardar</Btn>
@@ -3625,7 +3786,7 @@ function PruebasFisicasSection({ team, data, onSave }) {
                 <h3 className="text-white font-bold text-lg truncate">{test.nombre}</h3>
                 <p className="text-zinc-500 text-xs">{test.unidad || "sin unidad"} · {test.mejorEsMenor ? "menos es mejor" : "más es mejor"} · toca un nombre para ver su gráfico</p>
               </div>
-              <Btn small variant="secondary" onClick={() => setShowTabla(false)} className="shrink-0">✕ Cerrar</Btn>
+              <Btn variant="secondary" onClick={() => setShowTabla(false)} className="shrink-0">✕ Cerrar</Btn>
             </div>
 
             <div className="p-3 border-b border-zinc-800 shrink-0 flex gap-2 overflow-x-auto">
