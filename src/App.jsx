@@ -1,4 +1,4 @@
-import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo, subirVideo, borrarVideo } from "./firebase";
+import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
@@ -1762,109 +1762,6 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenamientos
 // ══════════════════════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════════════════════
-// SECTION: Vídeos (dentro de Entrenamientos)
-// ══════════════════════════════════════════════════════════════════════════════
-// Biblioteca de vídeos por equipo. El vídeo en sí se sube a Firebase Storage
-// (no cabe en Firestore); aquí solo se guarda su nombre, la URL y el tamaño.
-function VideosSection({ team, data, onSave }) {
-  const videos = (data.videos || []).filter(v => v != null);
-  const [subiendo, setSubiendo] = useState(false);
-  const [progreso, setProgreso] = useState(0);
-  const [error, setError] = useState("");
-  const fileInputRef = useRef(null);
-
-  const onFileSelected = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setError("");
-    setSubiendo(true);
-    setProgreso(0);
-    const path = `videos/cdmagdalena/${team}/${Date.now()}_${file.name}`;
-    try {
-      const { url } = await subirVideo(path, file, setProgreso);
-      const nuevo = { id: Date.now(), nombre: file.name, url, path, tamano: file.size, fecha: new Date().toISOString().slice(0, 10) };
-      onSave({ ...data, videos: [...videos, nuevo] });
-    } catch (err) {
-      setError("No se ha podido subir el vídeo. Comprueba que Firebase Storage esté activado para este proyecto. " + (err?.message || ""));
-    }
-    setSubiendo(false);
-  };
-
-  const eliminar = async (v) => {
-    if (!window.confirm(`¿Eliminar "${v.nombre}"? No se puede deshacer.`)) return;
-    if (v.path) await borrarVideo(v.path);
-    onSave({ ...data, videos: videos.filter(x => x.id !== v.id) });
-  };
-
-  const compartir = async (v) => {
-    if (navigator.share) {
-      try { await navigator.share({ title: v.nombre, url: v.url }); return; } catch (e) { return; }
-    }
-    try {
-      await navigator.clipboard.writeText(v.url);
-      window.alert("Enlace copiado. Pégalo donde quieras (WhatsApp, etc.)");
-    } catch (e) {
-      window.open(v.url, "_blank");
-    }
-  };
-
-  const formatoTamano = (bytes) => {
-    if (!bytes) return "";
-    const mb = bytes / (1024 * 1024);
-    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-white font-bold text-lg">🎥 Vídeos — {team}</h3>
-          <p className="text-zinc-500 text-xs">Súbelos aquí para que cualquier entrenador del equipo los pueda ver, o compartir por WhatsApp.</p>
-        </div>
-        <div className="shrink-0">
-          <Btn onClick={() => fileInputRef.current?.click()} disabled={subiendo}>
-            {subiendo ? `Subiendo… ${progreso}%` : "+ Subir vídeo"}
-          </Btn>
-          <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={onFileSelected} />
-        </div>
-      </div>
-
-      {error && <Card className="border-red-800"><p className="text-red-400 text-sm">{error}</p></Card>}
-
-      {subiendo && (
-        <div className="bg-zinc-800 rounded-full h-2 overflow-hidden">
-          <div className="bg-red-600 h-full transition-all" style={{ width: `${progreso}%` }} />
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {videos.length === 0 && !subiendo && <p className="text-zinc-500 text-sm">Todavía no hay vídeos subidos.</p>}
-        {videos.map(v => (
-          <Card key={v.id} className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl shrink-0">🎬</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold truncate">{v.nombre}</p>
-                <p className="text-zinc-500 text-xs">{v.fecha}{v.tamano ? ` · ${formatoTamano(v.tamano)}` : ""}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <a href={v.url} download={v.nombre} target="_blank" rel="noopener noreferrer"
-                className="flex-1 text-center font-semibold rounded-lg transition-all duration-150 border-0 px-5 py-2 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-100 cursor-pointer">
-                ▶️ Ver / guardar
-              </a>
-              <Btn variant="secondary" onClick={() => compartir(v)} className="flex-1 justify-center">📤 Compartir</Btn>
-              <Btn variant="danger" small onClick={() => eliminar(v)}>🗑️</Btn>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -2152,16 +2049,24 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
 
     const totalMin = (t.tasks || []).reduce((s, x) => s + (x.minutos || 0), 0);
 
-    const tasksHTML = (t.tasks || []).map((task, i) => `
+    const tasksHTML = (t.tasks || []).map((task, i) => {
+      const camposHTML = task.dobleCampo
+        ? `<div class="task-fields-doble">
+            ${task.pizarra?.length > 0 ? `<div class="task-field-mini"><div class="field-label">${esc(task.etiqueta1 || "Campo 1")}</div>${renderFieldSVG(task.pizarra, task.fieldType || "full")}</div>` : ""}
+            ${task.pizarra2?.length > 0 ? `<div class="task-field-mini"><div class="field-label">${esc(task.etiqueta2 || "Campo 2")}</div>${renderFieldSVG(task.pizarra2, task.fieldType2 || "full")}</div>` : ""}
+          </div>`
+        : (task.pizarra?.length > 0) ? `<div class="task-field">${renderFieldSVG(task.pizarra, task.fieldType || "full")}</div>` : `<div class="task-nofield">Sin pizarra</div>`;
+      return `
       <div class="task-card">
         <div class="task-head">
           <div><span class="num">#${i+1}</span><span class="name">${esc(task.nombre)}</span></div>
           <span class="dur">⏱ ${task.minutos} min</span>
         </div>
         ${task.descripcion ? `<div class="task-desc">${esc(task.descripcion)}</div>` : ""}
-        ${(task.pizarra?.length > 0) ? `<div class="task-field">${renderFieldSVG(task.pizarra, task.fieldType || "full")}</div>` : `<div class="task-nofield">Sin pizarra</div>`}
+        ${camposHTML}
       </div>
-    `).join("");
+    `;
+    }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
     <title>Entrenamiento ${t.fecha} — ${team}</title>
@@ -2208,6 +2113,11 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
       .task-desc{ padding:11px 18px; font-size:13px; color:#333; white-space:pre-wrap; border-bottom:1px solid var(--line); }
       .task-field{ padding:16px; background:var(--paper); }
       .task-nofield{ padding:10px 18px; font-size:12px; color:#999; font-style:italic; }
+      .task-fields-doble{ display:flex; gap:12px; padding:16px; background:var(--paper); flex-wrap:wrap; }
+      .task-field-mini{ flex:1; min-width:220px; }
+      .task-field-mini .field-label{ font-family:'Barlow Condensed',Arial,sans-serif; font-weight:700; font-size:11px; text-transform:uppercase;
+        letter-spacing:.08em; color:var(--ink-soft); margin-bottom:6px; text-align:center; }
+      .task-field-mini svg{ width:100%; height:auto; display:block; }
 
       .footer{ max-width:820px; margin:8px auto 0; padding:14px 32px; display:flex; justify-content:space-between;
         border-top:1px solid var(--line); font-size:11px; color:var(--ink-soft); }
@@ -2262,15 +2172,11 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
           className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "microciclo" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>📅 Microciclo</button>
         <button onClick={() => setVista("tacticas")}
           className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "tacticas" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎬 Tácticas</button>
-        <button onClick={() => setVista("videos")}
-          className={`px-4 py-2 rounded-lg text-sm border transition-all shrink-0 whitespace-nowrap ${vista === "videos" ? "bg-red-700 border-red-500 text-white font-semibold" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>🎥 Vídeos</button>
       </div>
 
       {vista === "microciclo" && <MicrocicloSection team={team} data={data} onSave={onSave} />}
 
       {vista === "tacticas" && <TacticasSection team={team} data={data} onSave={onSave} />}
-
-      {vista === "videos" && <VideosSection team={team} data={data} onSave={onSave} />}
 
       {vista === "sesiones" && <>
 
@@ -9835,26 +9741,25 @@ export default function App() {
 
   const updateTeamData = async (team, newData) => {
     if (window._setSaving) window._setSaving(true);
+    const limpiarPizarra = (arr) => (arr || []).filter(el => el != null && el.type).map(el => (
+      el.type === "drawing"
+        ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
+        : { id: el.id, type: el.type, x: el.x, y: el.y, x2: el.x2, y2: el.y2, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
+    ));
     const cleanTeam = (d) => ({
       ...d,
       trainings: (d.trainings || []).map(t => ({
         ...t,
         tasks: (t.tasks || []).map(task => ({
           ...task,
-          pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
-            el.type === "drawing"
-              ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
-              : { id: el.id, type: el.type, x: el.x, y: el.y, x2: el.x2, y2: el.y2, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
-          ))
+          pizarra: limpiarPizarra(task.pizarra),
+          pizarra2: limpiarPizarra(task.pizarra2)
         }))
       })),
       tasks: (d.tasks || []).map(task => ({
         ...task,
-        pizarra: (task.pizarra || []).filter(el => el != null && el.type).map(el => (
-          el.type === "drawing"
-            ? { id: el.id, type: el.type, path: el.path, color: el.color, size: el.size }
-            : { id: el.id, type: el.type, x: el.x, y: el.y, x2: el.x2, y2: el.y2, color: el.color || (el.type||"").replace("player_","") || "red", num: el.num ?? el.number, material: el.material }
-        ))
+        pizarra: limpiarPizarra(task.pizarra),
+        pizarra2: limpiarPizarra(task.pizarra2)
       }))
     });
     try {
