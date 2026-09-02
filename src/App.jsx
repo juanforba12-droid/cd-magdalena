@@ -1782,20 +1782,43 @@ function grupoDeEquipo(nombre) {
 function CalentamientoSection({ team, calentamientos, onSaveCalentamiento, isCoord }) {
   const grupo = grupoDeEquipo(team);
   const etiquetaGrupo = grupo === "f8" ? "Fútbol 8" : "Fútbol 11";
-  const cal = (calentamientos || {})[grupo] || null;
-  const [editando, setEditando] = useState(false);
 
-  const guardar = (t) => {
-    onSaveCalentamiento({ ...(calentamientos || {}), [grupo]: t });
-    setEditando(false);
+  // Compatibilidad: la primera versión guardaba UNA sola tarea por grupo.
+  // Si encontramos ese formato antiguo, lo tratamos como una lista de una.
+  const bruto = (calentamientos || {})[grupo];
+  const tareas = Array.isArray(bruto?.tareas)
+    ? bruto.tareas
+    : (bruto && bruto.nombre ? [bruto] : []);
+
+  const [editando, setEditando] = useState(null); // null | { tarea, idx }
+
+  const guardarLista = (nuevas) => {
+    onSaveCalentamiento({ ...(calentamientos || {}), [grupo]: { tareas: nuevas } });
   };
 
-  const borrar = () => {
-    if (!window.confirm(`¿Eliminar el calentamiento de ${etiquetaGrupo}? Lo perderán todos los entrenadores del grupo.`)) return;
-    const copia = { ...(calentamientos || {}) };
-    delete copia[grupo];
-    onSaveCalentamiento(copia);
+  const guardarTarea = (t) => {
+    const idx = editando?.idx;
+    const nuevas = (idx === null || idx === undefined)
+      ? [...tareas, t]
+      : tareas.map((x, i) => i === idx ? t : x);
+    guardarLista(nuevas);
+    setEditando(null);
   };
+
+  const borrarTarea = (idx) => {
+    if (!window.confirm(`¿Eliminar "${tareas[idx].nombre}" del calentamiento de ${etiquetaGrupo}?`)) return;
+    guardarLista(tareas.filter((_, i) => i !== idx));
+  };
+
+  const mover = (idx, dir) => {
+    const destino = idx + dir;
+    if (destino < 0 || destino >= tareas.length) return;
+    const nuevas = [...tareas];
+    [nuevas[idx], nuevas[destino]] = [nuevas[destino], nuevas[idx]];
+    guardarLista(nuevas);
+  };
+
+  const totalMin = tareas.reduce((a, t) => a + (Number(t.minutos) || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -1806,36 +1829,44 @@ function CalentamientoSection({ team, calentamientos, onSaveCalentamiento, isCoo
             {isCoord
               ? `Común para todos los equipos de ${etiquetaGrupo}. Lo que guardes aquí lo verán sus entrenadores.`
               : `Calentamiento común de ${etiquetaGrupo}, definido por el coordinador.`}
+            {tareas.length > 0 && ` · ${tareas.length} tarea${tareas.length === 1 ? "" : "s"} · ${totalMin} min`}
           </p>
         </div>
         {isCoord && (
-          <Btn onClick={() => setEditando(true)} className="shrink-0">
-            {cal ? "✏️ Editar" : "+ Crear"}
-          </Btn>
+          <Btn onClick={() => setEditando({ tarea: null, idx: null })} className="shrink-0">+ Añadir tarea</Btn>
         )}
       </div>
 
-      {!cal && (
+      {tareas.length === 0 && (
         <Card>
           <p className="text-zinc-400 text-sm">
             {isCoord
-              ? `Todavía no hay calentamiento de ${etiquetaGrupo}. Pulsa "Crear" para definirlo.`
+              ? `Todavía no hay ninguna tarea en el calentamiento de ${etiquetaGrupo}. Pulsa "Añadir tarea" para empezar.`
               : `El coordinador todavía no ha definido el calentamiento de ${etiquetaGrupo}.`}
           </p>
         </Card>
       )}
 
-      {cal && (
-        <Card className="space-y-4">
+      {tareas.map((cal, idx) => (
+        <Card key={idx} className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-white font-bold text-lg">{cal.nombre}</p>
+              <p className="text-white font-bold">
+                <span className="text-zinc-500 mr-1.5">#{idx + 1}</span>{cal.nombre}
+              </p>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <Badge color="blue">⏱ {cal.minutos} min</Badge>
                 {cal.categoria && <Badge color={catColor(cal.categoria)}>{catLabel(cal.categoria)}</Badge>}
               </div>
             </div>
-            {isCoord && <Btn small variant="danger" onClick={borrar} className="shrink-0">🗑️</Btn>}
+            {isCoord && (
+              <div className="flex gap-1 shrink-0">
+                <Btn small variant="secondary" disabled={idx === 0} onClick={() => mover(idx, -1)} title="Subir">↑</Btn>
+                <Btn small variant="secondary" disabled={idx === tareas.length - 1} onClick={() => mover(idx, 1)} title="Bajar">↓</Btn>
+                <Btn small variant="secondary" onClick={() => setEditando({ tarea: cal, idx })}>✏️</Btn>
+                <Btn small variant="danger" onClick={() => borrarTarea(idx)}>🗑️</Btn>
+              </div>
+            )}
           </div>
 
           {cal.descripcion && <p className="text-zinc-300 text-sm whitespace-pre-wrap">{cal.descripcion}</p>}
@@ -1862,15 +1893,15 @@ function CalentamientoSection({ team, calentamientos, onSaveCalentamiento, isCoo
             </div>
           )}
         </Card>
-      )}
+      ))}
 
       {editando && (
         <TaskEditorModal
-          task={cal}
-          onSave={(t) => guardar(t)}
-          onClose={() => setEditando(false)}
+          task={editando.tarea}
+          onSave={(t) => guardarTarea(t)}
+          onClose={() => setEditando(null)}
           saveToLibrary={false}
-          labelGuardar="Guardar calentamiento"
+          labelGuardar="Guardar en el calentamiento"
         />
       )}
     </div>
@@ -5320,15 +5351,30 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
       if (cono) { e.preventDefault(); setDragging({ id: cono.id, tipo: "cono" }); return; }
     }
 
-    // Modo eliminar: también borra conos y flechas al tocarlos
-    if (modoEliminar === "decorado") {
+    // Modo borrar: quita lo que toques, sea lo que sea (cono, flecha o
+    // jugador). Un único botón para todo, en vez de uno por tipo.
+    if (modoEliminar === "todo") {
       e.preventDefault();
       const cono = [...conos].reverse().find(c => {
         const dx = c.x - pos.x, dy = c.y - pos.y;
         return Math.sqrt(dx*dx + dy*dy) < 6;
       });
       if (cono) { setConos(prev => prev.filter(c => c.id !== cono.id)); return; }
-      // Distancia punto-segmento para acertar al tocar sobre una flecha
+
+      const jugL = [...posLocales].reverse().find(j => {
+        const dx = j.x - pos.x, dy = j.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < 5;
+      });
+      if (jugL) { eliminarJugador(jugL.id, "local"); return; }
+
+      const jugR = [...posRivales].reverse().find(j => {
+        const dx = j.x - pos.x, dy = j.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < 5;
+      });
+      if (jugR) { eliminarJugador(jugR.id, "rival"); return; }
+
+      // Las flechas al final: son finas, así que solo se borran si no
+      // había nada más encima. Distancia punto-segmento para acertar.
       const flecha = [...flechas].reverse().find(f => {
         const A = pos.x - f.x1, B = pos.y - f.y1, C = f.x2 - f.x1, D = f.y2 - f.y1;
         const len = C*C + D*D;
@@ -5338,17 +5384,6 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
         return Math.sqrt(dx*dx + dy*dy) < 4;
       });
       if (flecha) setFlechas(prev => prev.filter(f => f.id !== flecha.id));
-      return;
-    }
-
-    // Modo eliminar: toca un jugador y lo elimina
-    if (modoEliminar) {
-      const lista = modoEliminar === "local" ? posLocales : posRivales;
-      const jug = [...lista].reverse().find(j => {
-        const dx = j.x - pos.x, dy = j.y - pos.y;
-        return Math.sqrt(dx*dx + dy*dy) < 5;
-      });
-      if (jug) { e.preventDefault(); eliminarJugador(jug.id, modoEliminar); }
       return;
     }
 
@@ -5891,18 +5926,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
               ))}
             </div>
             {frameActivo === null && (
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => añadirJugador("local")}
-                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
-                  + Añadir
-                </button>
-                <button
-                  onClick={() => setModoEliminar(prev => prev === "local" ? null : "local")}
-                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "local" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
-                  {modoEliminar === "local" ? "✕ Toca un jugador" : "− Eliminar"}
-                </button>
-                <span className="text-zinc-600 text-xs self-center">{jugadores.length} jugadores</span>
-              </div>
+              <span className="text-zinc-600 text-xs">{jugadores.length} jugadores · usa los botones de debajo del campo</span>
             )}
           </Card>}
 
@@ -5916,18 +5940,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
               ))}
             </div>
             {frameActivo === null && (
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => añadirJugador("rival")}
-                  className="px-2 py-1 rounded text-xs bg-zinc-700 hover:bg-zinc-600 text-white transition-all">
-                  + Añadir
-                </button>
-                <button
-                  onClick={() => setModoEliminar(prev => prev === "rival" ? null : "rival")}
-                  className={`px-2 py-1 rounded text-xs transition-all ${modoEliminar === "rival" ? "bg-red-700 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"}`}>
-                  {modoEliminar === "rival" ? "✕ Toca un jugador" : "− Eliminar"}
-                </button>
-                <span className="text-zinc-600 text-xs self-center">{rivales.length} jugadores</span>
-              </div>
+              <span className="text-zinc-600 text-xs">{rivales.length} jugadores · usa los botones de debajo del campo</span>
             )}
           </Card>}
 
@@ -6061,16 +6074,16 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
                     </button>
                   </>
                 )}
-                <button onClick={() => { setModoEliminar(prev => prev === "decorado" ? null : "decorado"); setModoAñadir(null); }}
-                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoEliminar === "decorado" ? "bg-red-700 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
+                <button onClick={() => { setModoEliminar(prev => prev === "todo" ? null : "todo"); setModoAñadir(null); }}
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoEliminar === "todo" ? "bg-red-700 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
                   🗑️ Borrar
                 </button>
               </div>
-              {(modoAñadir || modoEliminar === "decorado") && (
+              {(modoAñadir || modoEliminar === "todo") && (
                 <p className="text-center text-xs mt-1.5 text-zinc-400">
                   {modoAñadir === "cono" && "Toca el campo para colocar un cono. Vuelve a pulsar 🔶 para salir."}
                   {modoAñadir === "flecha" && "Arrastra sobre el campo para dibujar la flecha. Vuelve a pulsar ➤ para salir."}
-                  {modoEliminar === "decorado" && "Toca un cono o una flecha para borrarlo. Vuelve a pulsar 🗑️ para salir."}
+                  {modoEliminar === "todo" && "Toca lo que quieras borrar: jugador, cono o flecha. Vuelve a pulsar 🗑️ para salir."}
                 </p>
               )}
               {(conos.length > 0 || flechas.length > 0) && (
