@@ -1,6 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, getDocs, collection, runTransaction } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnzUJZe1NQYbjWHeq1jqV2O118CDR0dBQ",
@@ -13,36 +12,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-// Sube un vídeo a Firebase Storage con progreso. onProgress recibe un
-// número 0-100. Devuelve { url, path } al terminar.
-export function subirVideo(path, file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const r = storageRef(storage, path);
-    const task = uploadBytesResumable(r, file);
-    task.on(
-      "state_changed",
-      (snap) => { if (onProgress) onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)); },
-      (err) => reject(err),
-      async () => {
-        try {
-          const url = await getDownloadURL(task.snapshot.ref);
-          resolve({ url, path });
-        } catch (e) { reject(e); }
-      }
-    );
-  });
-}
-
-export async function borrarVideo(path) {
-  try {
-    await deleteObject(storageRef(storage, path));
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
 
 function cleanLoaded(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -117,6 +86,22 @@ export async function saveGlobalTasksAtomic(tasks) {
     const raw = snap.exists() ? snap.data().json : null;
     const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
     mergedDb = { ...current, __globalTasks: tasks };
+    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+  });
+  return mergedDb;
+}
+
+// Guarda una clave global del club (compartida por todos los equipos),
+// de forma atómica igual que saveGlobalTasksAtomic. Se usa, por ejemplo,
+// para __calentamientos.
+export async function saveGlobalKeyAtomic(key, value) {
+  const ref = doc(db, "cdmagdalena", "main");
+  let mergedDb;
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    const raw = snap.exists() ? snap.data().json : null;
+    const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
+    mergedDb = { ...current, [key]: value };
     transaction.set(ref, { json: JSON.stringify(mergedDb) });
   });
   return mergedDb;

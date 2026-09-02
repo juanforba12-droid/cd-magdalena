@@ -1,4 +1,4 @@
-import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
+import { loadData, saveData, saveTeamAtomic, saveGlobalTasksAtomic, saveGlobalKeyAtomic, loadSeasons, saveSeasons, subscribeToData, loadFichas, saveFicha, deleteFicha, registrarUsuario, loginUsuario, verificarCodigoRol, loadClubData, saveClubData, loadClubSeasons, saveClubSeasons, loginUsuarioClub, registrarUsuarioClub, loadEquipos, saveEquipos, loadUsuariosClub, actualizarRolUsuario, loadBancoJugadores, saveBancoJugadores, loadNoticias, guardarNoticia, borrarNoticia, loadResultadosPublicos, publicarPartidosEquipo } from "./firebase";
 import { CLUBS } from "./clubs";
 import ParteLesionesSection from "./ParteLesiones";
 import { activarPush, enviarAviso, cargarAvisos, cargarMisPreferencias, actualizarPreferencia } from "./push";
@@ -1497,7 +1497,7 @@ function Pizarra({ value, onChange, fieldType: fieldTypeProp, onFieldTypeChange 
 // ══════════════════════════════════════════════════════════════════════════════
 // TASK EDITOR MODAL
 // ══════════════════════════════════════════════════════════════════════════════
-function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
+function TaskEditorModal({ task, onSave, onClose, saveToLibrary, labelGuardar = "Guardar en entrenamiento" }) {
   const [nombre, setNombre] = useState(task?.nombre || "");
   const [minutos, setMinutos] = useState(task?.minutos || 10);
   const [descripcion, setDescripcion] = useState(task?.descripcion || "");
@@ -1576,7 +1576,7 @@ function TaskEditorModal({ task, onSave, onClose, saveToLibrary }) {
         </div>
         <div className="p-5 border-t border-zinc-800 flex gap-2 flex-wrap shrink-0"
           style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}>
-          <Btn onClick={() => handleSave(false)}>Guardar en entrenamiento</Btn>
+          <Btn onClick={() => handleSave(false)}>{labelGuardar}</Btn>
           {saveToLibrary && <Btn variant="secondary" onClick={() => handleSave(true)}>💾 Guardar también en biblioteca</Btn>}
           <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
         </div>
@@ -1599,6 +1599,17 @@ const TASK_CATEGORIES = [
   { id: "finalizacion", label: "🎯 Finalización", color: "pink" },
   { id: "porteria", label: "🧤 Portería", color: "cyan" },
 ];
+
+// Helpers de categoría a nivel de módulo: los usan tanto la biblioteca de
+// tareas como la sección de calentamiento.
+const catColor = (catId) => {
+  const c = TASK_CATEGORIES.find(c => c.id === catId);
+  return c ? c.color : "zinc";
+};
+const catLabel = (catId) => {
+  const c = TASK_CATEGORIES.find(c => c.id === catId);
+  return c ? c.label : "Sin categoría";
+};
 
 function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord }) {
   const [showEditor, setShowEditor] = useState(false);
@@ -1637,15 +1648,6 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
   const delGlobalTask = (id) => {
     if (!window.confirm("¿Eliminar tarea de la biblioteca global?")) return;
     onSaveGlobal((globalTasks||[]).filter(t => t.id !== id));
-  };
-
-  const catColor = (catId) => {
-    const c = TASK_CATEGORIES.find(c=>c.id===catId);
-    return c ? c.color : "zinc";
-  };
-  const catLabel = (catId) => {
-    const c = TASK_CATEGORIES.find(c=>c.id===catId);
-    return c ? c.label : "Sin categoría";
   };
 
   const activeTasks = libTab === "equipo" ? (tasks||[]).filter(t=>t!=null) : (globalTasks||[]).filter(t=>t!=null);
@@ -1762,6 +1764,119 @@ function TareasSection({ team, data, onSave, globalTasks, onSaveGlobal, isCoord 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION: Entrenamientos
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION: Calentamiento (compartido por grupo, F11 / F8)
+// ══════════════════════════════════════════════════════════════════════════════
+// Hay UN calentamiento por grupo, guardado a nivel de club (no por equipo):
+// lo crea/edita el coordinador una sola vez y lo ven todos los entrenadores
+// de ese grupo. Los de fútbol 8 solo ven el suyo y los de fútbol 11 el suyo,
+// porque la sección muestra el del grupo al que pertenece el equipo activo.
+// Se clasifica por el nombre del equipo (no por una lista fija) para que los
+// equipos nuevos (Infantil B, Benjamín B…) entren solos en su grupo.
+function grupoDeEquipo(nombre) {
+  const n = (nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (/escoleta|prebenjamin|benjamin|alevin/.test(n)) return "f8";
+  return "f11"; // infantil, cadete, juvenil, amateur y cualquier otro
+}
+
+function CalentamientoSection({ team, calentamientos, onSaveCalentamiento, isCoord }) {
+  const grupo = grupoDeEquipo(team);
+  const etiquetaGrupo = grupo === "f8" ? "Fútbol 8" : "Fútbol 11";
+  const cal = (calentamientos || {})[grupo] || null;
+  const [editando, setEditando] = useState(false);
+
+  const guardar = (t) => {
+    onSaveCalentamiento({ ...(calentamientos || {}), [grupo]: t });
+    setEditando(false);
+  };
+
+  const borrar = () => {
+    if (!window.confirm(`¿Eliminar el calentamiento de ${etiquetaGrupo}? Lo perderán todos los entrenadores del grupo.`)) return;
+    const copia = { ...(calentamientos || {}) };
+    delete copia[grupo];
+    onSaveCalentamiento(copia);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold text-white truncate">🔥 Calentamiento {etiquetaGrupo}</h2>
+          <p className="text-zinc-500 text-xs">
+            {isCoord
+              ? `Común para todos los equipos de ${etiquetaGrupo}. Lo que guardes aquí lo verán sus entrenadores.`
+              : `Calentamiento común de ${etiquetaGrupo}, definido por el coordinador.`}
+          </p>
+        </div>
+        {isCoord && (
+          <Btn onClick={() => setEditando(true)} className="shrink-0">
+            {cal ? "✏️ Editar" : "+ Crear"}
+          </Btn>
+        )}
+      </div>
+
+      {!cal && (
+        <Card>
+          <p className="text-zinc-400 text-sm">
+            {isCoord
+              ? `Todavía no hay calentamiento de ${etiquetaGrupo}. Pulsa "Crear" para definirlo.`
+              : `El coordinador todavía no ha definido el calentamiento de ${etiquetaGrupo}.`}
+          </p>
+        </Card>
+      )}
+
+      {cal && (
+        <Card className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white font-bold text-lg">{cal.nombre}</p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <Badge color="blue">⏱ {cal.minutos} min</Badge>
+                {cal.categoria && <Badge color={catColor(cal.categoria)}>{catLabel(cal.categoria)}</Badge>}
+              </div>
+            </div>
+            {isCoord && <Btn small variant="danger" onClick={borrar} className="shrink-0">🗑️</Btn>}
+          </div>
+
+          {cal.descripcion && <p className="text-zinc-300 text-sm whitespace-pre-wrap">{cal.descripcion}</p>}
+
+          {cal.dobleCampo ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {cal.pizarra?.length > 0 && (
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">{cal.etiqueta1 || "Campo 1"}</label>
+                  <Pizarra value={cal.pizarra} onChange={() => {}} fieldType={cal.fieldType} />
+                </div>
+              )}
+              {cal.pizarra2?.length > 0 && (
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">{cal.etiqueta2 || "Campo 2"}</label>
+                  <Pizarra value={cal.pizarra2} onChange={() => {}} fieldType={cal.fieldType2} />
+                </div>
+              )}
+            </div>
+          ) : cal.pizarra?.length > 0 && (
+            <div>
+              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-2">Pizarra</label>
+              <Pizarra value={cal.pizarra} onChange={() => {}} fieldType={cal.fieldType} />
+            </div>
+          )}
+        </Card>
+      )}
+
+      {editando && (
+        <TaskEditorModal
+          task={cal}
+          onSave={(t) => guardar(t)}
+          onClose={() => setEditando(false)}
+          saveToLibrary={false}
+          labelGuardar="Guardar calentamiento"
+        />
+      )}
+    </div>
+  );
+}
+
 function EntrenamientosSection({ team, data, onSave, isCoord }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -5006,6 +5121,53 @@ function dibujarBalon(ctx, b) {
   ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, Math.PI, Math.PI*3/2); ctx.closePath(); ctx.fill();
 }
 
+// Conos: elementos fijos del montaje del ejercicio. No se animan — se
+// dibujan igual en la posición inicial, en cada paso y en el vídeo/GIF.
+function dibujarConos(ctx, conos) {
+  (conos || []).forEach(c => {
+    const px = (c.x / 100) * FIELD_W;
+    const py = (c.y / 100) * FIELD_H;
+    const h = 14, w = 11;
+    // Sombra en el suelo
+    ctx.beginPath(); ctx.ellipse(px, py + 2, w * 0.7, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
+    // Cuerpo triangular
+    ctx.beginPath();
+    ctx.moveTo(px, py - h);
+    ctx.lineTo(px + w / 2, py + 2);
+    ctx.lineTo(px - w / 2, py + 2);
+    ctx.closePath();
+    ctx.fillStyle = c.color || "#f97316";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+    // Banda clara del cono
+    ctx.beginPath();
+    ctx.moveTo(px - w * 0.28, py - h * 0.32);
+    ctx.lineTo(px + w * 0.28, py - h * 0.32);
+    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2; ctx.stroke();
+  });
+}
+
+// Flechas dibujadas a mano por el entrenador (distintas de las flechas
+// automáticas que salen entre pasos). Sólidas y blancas para diferenciarlas.
+function dibujarFlechasFijas(ctx, flechas) {
+  (flechas || []).forEach(f => {
+    const x1 = (f.x1 / 100) * FIELD_W, y1 = (f.y1 / 100) * FIELD_H;
+    const x2 = (f.x2 / 100) * FIELD_W, y2 = (f.y2 / 100) * FIELD_H;
+    if (Math.abs(x1 - x2) < 1 && Math.abs(y1 - y2) < 1) return;
+    const color = f.color || "#facc15";
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.stroke(); ctx.lineCap = "butt";
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 13 * Math.cos(angle - 0.4), y2 - 13 * Math.sin(angle - 0.4));
+    ctx.lineTo(x2 - 13 * Math.cos(angle + 0.4), y2 - 13 * Math.sin(angle + 0.4));
+    ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+  });
+}
+
 function dibujarFlechaBalon(ctx, origen, destino) {
   if (!origen || !destino) return;
   const x1 = (origen.x / 100) * FIELD_W, y1 = (origen.y / 100) * FIELD_H;
@@ -5055,6 +5217,20 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
 
   const [rivales, setRivales] = useState(rivsDefault);
   const [balon, setBalon] = useState(balDefault);
+  // Conos y flechas: decorado fijo del ejercicio, igual en todos los pasos.
+  const [conos, setConos] = useState(tactica.conos || []);
+  const [flechas, setFlechas] = useState(tactica.flechas || []);
+  // null | "cono" | "flecha" — qué se añade al tocar el campo
+  const [modoAñadir, setModoAñadir] = useState(null);
+  const [flechaEnCurso, setFlechaEnCurso] = useState(null);
+
+  // Campo + decorado fijo. Se usa en TODOS los redibujados (edición,
+  // animación, GIF y vídeo) para que conos y flechas salgan siempre.
+  const dibujarBase = (ctx) => {
+    dibujarCampo(ctx);
+    dibujarFlechasFijas(ctx, flechas);
+    dibujarConos(ctx, conos);
+  };
   const [keyframes, setKeyframes] = useState(normalizarKeyframes(tactica.keyframes, rivsDefault, balDefault));
   const [dragging, setDragging] = useState(null);
   const [frameActivo, setFrameActivo] = useState(null);
@@ -5084,7 +5260,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    dibujarCampo(ctx);
+    dibujarBase(ctx);
     if (kfActivo) {
       const origenLocales = frameActivo === 0 ? jugadores : keyframes[frameActivo - 1].jugadores;
       const origenRivales = frameActivo === 0 ? rivales   : keyframes[frameActivo - 1].rivales;
@@ -5098,7 +5274,8 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     dibujarJugadores(ctx, posLocales);
     dibujarJugadores(ctx, posRivales);
     dibujarBalon(ctx, posBalon);
-  }, [jugadores, rivales, balon, keyframes, frameActivo]);
+    if (flechaEnCurso) dibujarFlechasFijas(ctx, [{ ...flechaEnCurso, color: "rgba(250,204,21,0.6)" }]);
+  }, [jugadores, rivales, balon, keyframes, frameActivo, conos, flechas, flechaEnCurso]);
 
   useEffect(() => {
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
@@ -5120,6 +5297,49 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     if (playing) return;
     const canvas = canvasRef.current;
     const pos = getPosEnCampo(e, canvas);
+
+    // Modo añadir cono: un toque lo coloca donde tocas
+    if (modoAñadir === "cono") {
+      e.preventDefault();
+      setConos(prev => [...prev, { id: `c${Date.now()}`, x: pos.x, y: pos.y, color: "#f97316" }]);
+      return;
+    }
+    // Modo añadir flecha: arrastra desde el origen hasta el destino
+    if (modoAñadir === "flecha") {
+      e.preventDefault();
+      setFlechaEnCurso({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
+      return;
+    }
+
+    // Arrastrar un cono ya colocado (solo si no estamos en modo eliminar)
+    if (!modoEliminar) {
+      const cono = [...conos].reverse().find(c => {
+        const dx = c.x - pos.x, dy = c.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < 5;
+      });
+      if (cono) { e.preventDefault(); setDragging({ id: cono.id, tipo: "cono" }); return; }
+    }
+
+    // Modo eliminar: también borra conos y flechas al tocarlos
+    if (modoEliminar === "decorado") {
+      e.preventDefault();
+      const cono = [...conos].reverse().find(c => {
+        const dx = c.x - pos.x, dy = c.y - pos.y;
+        return Math.sqrt(dx*dx + dy*dy) < 6;
+      });
+      if (cono) { setConos(prev => prev.filter(c => c.id !== cono.id)); return; }
+      // Distancia punto-segmento para acertar al tocar sobre una flecha
+      const flecha = [...flechas].reverse().find(f => {
+        const A = pos.x - f.x1, B = pos.y - f.y1, C = f.x2 - f.x1, D = f.y2 - f.y1;
+        const len = C*C + D*D;
+        let t = len ? (A*C + B*D) / len : 0;
+        t = Math.max(0, Math.min(1, t));
+        const dx = pos.x - (f.x1 + t*C), dy = pos.y - (f.y1 + t*D);
+        return Math.sqrt(dx*dx + dy*dy) < 4;
+      });
+      if (flecha) setFlechas(prev => prev.filter(f => f.id !== flecha.id));
+      return;
+    }
 
     // Modo eliminar: toca un jugador y lo elimina
     if (modoEliminar) {
@@ -5155,12 +5375,23 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
   };
 
   const onMouseMove = (e) => {
+    // Flecha en curso: el segundo punto sigue al dedo/ratón
+    if (flechaEnCurso) {
+      e.preventDefault();
+      const pos = getPosEnCampo(e, canvasRef.current);
+      setFlechaEnCurso(prev => prev && ({ ...prev, x2: Math.max(1, Math.min(99, pos.x)), y2: Math.max(1, Math.min(99, pos.y)) }));
+      return;
+    }
     if (!dragging) return;
     e.preventDefault();
     const canvas = canvasRef.current;
     const pos = getPosEnCampo(e, canvas);
     const nx = Math.max(2, Math.min(98, pos.x));
     const ny = Math.max(2, Math.min(98, pos.y));
+    if (dragging.tipo === "cono") {
+      setConos(prev => prev.map(c => c.id === dragging.id ? { ...c, x: nx, y: ny } : c));
+      return;
+    }
     if (dragging.tipo === "balon") {
       if (frameActivo !== null) {
         setKeyframes(prev => prev.map((kf, i) =>
@@ -5184,7 +5415,18 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
 
   const [modoEliminar, setModoEliminar] = useState(null); // null | "local" | "rival"
 
-  const onMouseUp = () => setDragging(null);
+  const onMouseUp = () => {
+    if (flechaEnCurso) {
+      const { x1, y1, x2, y2 } = flechaEnCurso;
+      const largo = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+      // Un toque suelto (sin arrastrar) no crea flecha: evita flechas
+      // invisibles de longitud casi cero al tocar el campo sin querer.
+      if (largo > 3) setFlechas(prev => [...prev, { id: `f${Date.now()}`, x1, y1, x2, y2, color: "#facc15" }]);
+      setFlechaEnCurso(null);
+      return;
+    }
+    setDragging(null);
+  };
 
   // ── Añadir / eliminar jugadores ──────────────────────────────────────────
   const añadirJugador = (tipo) => {
@@ -5315,7 +5557,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     const step = (timestamp) => {
       if (segIdx >= segmentos.length) {
         setPlaying(false);
-        dibujarCampo(ctx);
+        dibujarBase(ctx);
         dibujarJugadores(ctx, jugadores);
         dibujarJugadores(ctx, rivales);
         dibujarBalon(ctx, balon);
@@ -5335,7 +5577,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
         x: fromBal.x + (toBal.x - fromBal.x)*ease,
         y: fromBal.y + (toBal.y - fromBal.y)*ease
       };
-      dibujarCampo(ctx);
+      dibujarBase(ctx);
       dibujarJugadores(ctx, interp(fromJugs, toJugs));
       dibujarJugadores(ctx, interp(fromRivs, toRivs));
       dibujarBalon(ctx, interpBal);
@@ -5361,7 +5603,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setPlaying(false);
     const ctx = canvasRef.current.getContext("2d");
-    dibujarCampo(ctx);
+    dibujarBase(ctx);
     dibujarJugadores(ctx, jugadores);
     dibujarJugadores(ctx, rivales);
     dibujarBalon(ctx, balon);
@@ -5422,7 +5664,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
           x: fromBal.x + (toBal.x - fromBal.x)*ease,
           y: fromBal.y + (toBal.y - fromBal.y)*ease,
         };
-        dibujarCampo(ctx);
+        dibujarBase(ctx);
         dibujarJugadores(ctx, interpArr(fromJugs, toJugs, ease));
         dibujarJugadores(ctx, interpArr(fromRivs, toRivs, ease));
         dibujarBalon(ctx, interpBal);
@@ -5437,7 +5679,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
       // Mismo motivo que en el MP4: evitar el visor de archivos genérico de
       // iOS y mostrar el GIF dentro de la app con nuestros propios botones.
       setMediaVisor({ blob, blobUrl: url, nombre: `tactica_${nombreArchivo}.gif`, tipo: "gif" });
-      dibujarCampo(ctx);
+      dibujarBase(ctx);
       dibujarJugadores(ctx, jugadores);
       dibujarJugadores(ctx, rivales);
       dibujarBalon(ctx, balon);
@@ -5584,7 +5826,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     } finally {
       // Redibujar canvas visible en posición inicial
       const ctx = canvasRef.current.getContext("2d");
-      dibujarCampo(ctx);
+      dibujarBase(ctx);
       dibujarJugadores(ctx, jugadores);
       dibujarJugadores(ctx, rivales);
       dibujarBalon(ctx, balon);
@@ -5592,7 +5834,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
     }
   };
 
-  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes });
+  const guardar = () => onGuardar({ ...tactica, nombre, jugadores, rivales, balon, keyframes, conos, flechas });
 
   return (
     <div className="fixed inset-0 z-[70] bg-zinc-950 overflow-auto p-4 pb-10 space-y-4 md:static md:z-auto md:bg-transparent md:p-0 md:overflow-visible">
@@ -5606,7 +5848,9 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
             nombre !== tactica.nombre ||
             JSON.stringify(normJugs(jugadores)) !== JSON.stringify(normJugs(tactica.jugadores || [])) ||
             JSON.stringify(normJugs(rivales))   !== JSON.stringify(normJugs(tactica.rivales  || [])) ||
-            JSON.stringify(keyframes) !== JSON.stringify(tactica.keyframes || []);
+            JSON.stringify(keyframes) !== JSON.stringify(tactica.keyframes || []) ||
+            JSON.stringify(conos)    !== JSON.stringify(tactica.conos   || []) ||
+            JSON.stringify(flechas)  !== JSON.stringify(tactica.flechas || []);
           if (haycambios && !window.confirm("¿Salir sin guardar? Se perderán los cambios.")) return;
           onCancelar();
         }} className="text-zinc-400 hover:text-white text-sm">← Volver</button>
@@ -5635,7 +5879,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
       </Card>}
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="flex flex-col gap-3 w-full lg:w-64 lg:order-2">
+        <div className="flex flex-col gap-3 w-full lg:w-64 order-2">
 
           {!soloLectura && <Card>
             <p className="text-zinc-400 text-xs font-semibold mb-1">🔴 LOCAL</p>
@@ -5770,7 +6014,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
           </div>
         </div>
 
-        <div className="flex-1 lg:order-1 flex justify-center">
+        <div className="flex-1 order-1 flex flex-col items-center gap-2 w-full">
           <canvas
             ref={canvasRef}
             width={FIELD_W}
@@ -5780,8 +6024,8 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
               width: "100%",
               maxWidth: "380px",
               touchAction: soloLectura ? "auto" : "none",
-              cursor: soloLectura ? "default" : (modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab")),
-              outline: modoEliminar ? "2px solid #ef4444" : "none",
+              cursor: soloLectura ? "default" : (modoAñadir ? "crosshair" : (modoEliminar ? "crosshair" : (dragging ? "grabbing" : "grab"))),
+              outline: modoEliminar ? "2px solid #ef4444" : (modoAñadir ? "2px solid #f97316" : "none"),
             }}
             onMouseDown={soloLectura ? undefined : onMouseDown}
             onMouseMove={soloLectura ? undefined : onMouseMove}
@@ -5791,6 +6035,51 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
             onTouchMove={soloLectura ? undefined : onMouseMove}
             onTouchEnd={soloLectura ? undefined : onMouseUp}
           />
+
+          {/* Barra rápida pegada al campo: lo que más se usa, sin tener que
+              subir hasta los paneles de arriba. */}
+          {!soloLectura && (
+            <div className="w-full" style={{ maxWidth: "380px" }}>
+              <div className="flex gap-1.5 flex-wrap justify-center">
+                <button onClick={() => { setModoAñadir(prev => prev === "cono" ? null : "cono"); setModoEliminar(null); }}
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoAñadir === "cono" ? "bg-orange-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
+                  🔶 Cono
+                </button>
+                <button onClick={() => { setModoAñadir(prev => prev === "flecha" ? null : "flecha"); setModoEliminar(null); }}
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoAñadir === "flecha" ? "bg-yellow-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
+                  ➤ Flecha
+                </button>
+                {frameActivo === null && (
+                  <>
+                    <button onClick={() => { setModoAñadir(null); setModoEliminar(null); añadirJugador("local"); }}
+                      className="px-2.5 py-1.5 rounded text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-red-300 transition-all">
+                      + 🔴
+                    </button>
+                    <button onClick={() => { setModoAñadir(null); setModoEliminar(null); añadirJugador("rival"); }}
+                      className="px-2.5 py-1.5 rounded text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-blue-300 transition-all">
+                      + 🔵
+                    </button>
+                  </>
+                )}
+                <button onClick={() => { setModoEliminar(prev => prev === "decorado" ? null : "decorado"); setModoAñadir(null); }}
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoEliminar === "decorado" ? "bg-red-700 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
+                  🗑️ Borrar
+                </button>
+              </div>
+              {(modoAñadir || modoEliminar === "decorado") && (
+                <p className="text-center text-xs mt-1.5 text-zinc-400">
+                  {modoAñadir === "cono" && "Toca el campo para colocar un cono. Vuelve a pulsar 🔶 para salir."}
+                  {modoAñadir === "flecha" && "Arrastra sobre el campo para dibujar la flecha. Vuelve a pulsar ➤ para salir."}
+                  {modoEliminar === "decorado" && "Toca un cono o una flecha para borrarlo. Vuelve a pulsar 🗑️ para salir."}
+                </p>
+              )}
+              {(conos.length > 0 || flechas.length > 0) && (
+                <p className="text-center text-[11px] mt-1 text-zinc-600">
+                  {conos.length} cono{conos.length === 1 ? "" : "s"} · {flechas.length} flecha{flechas.length === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -5803,7 +6092,7 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
                 <button onClick={async () => {
                   const file = new File([mediaVisor.blob], mediaVisor.nombre, { type: mediaVisor.tipo === "gif" ? "image/gif" : "video/mp4" });
                   if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
-                    alert(`Este móvil no permite compartir archivos directamente.\n\nDescarga el ${mediaVisor.tipo === "gif" ? "GIF" : "vídeo"} y compártelo desde tu galería o gestor de archivos.`);
+                    alert(`Este dispositivo no permite compartir archivos directamente.\n\nUsa el botón "Descargar" y compártelo desde tu galería o gestor de archivos.`);
                     return;
                   }
                   try {
@@ -5813,6 +6102,14 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
                   📤 Compartir
                 </button>
               )}
+              {/* Siempre visible: en ordenador navigator.share no existe o no
+                  admite archivos, y sin esto no había forma de guardar el
+                  vídeo/GIF. El blob es del mismo origen, así que la descarga
+                  directa sí funciona aquí. */}
+              <a href={mediaVisor.blobUrl} download={mediaVisor.nombre}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold">
+                ⬇️ Descargar
+              </a>
               <button onClick={() => { URL.revokeObjectURL(mediaVisor.blobUrl); setMediaVisor(null); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold">
                 ← Volver
@@ -5941,7 +6238,9 @@ function ClasificacionSection({ team, data, db, isCoord }) {
 // SECTION: Gestión de temporadas (coordinadores only)
 // ══════════════════════════════════════════════════════════════════════════════
 function MejoresRivalesSection({ db, embed }) {
-  const TEAMS_LIST = Object.keys(db);
+  // Las claves que empiezan por "__" (__globalTasks, __calentamientos…) son
+  // datos del club, no equipos: si no se filtran aparecen como equipos falsos.
+  const TEAMS_LIST = Object.keys(db).filter(k => !k.startsWith("__"));
   const [filterTeam, setFilterTeam] = useState("all");
 
   // Recopilar todos los mejores rivales de todos los equipos
@@ -9624,6 +9923,7 @@ export default function App() {
   const [teamAccess, setTeamAccess] = useState(savedSession?.user?.equipo || null);
   const [teamPasswords, setTeamPasswords] = useState({});
   const [globalTasks, setGlobalTasks] = useState([]);
+  const [calentamientos, setCalentamientos] = useState({});
   const [coordProfile, setCoordProfile] = useState(savedSession?.user?.nombre || "");
   const [equiposDinamicos, setEquiposDinamicos] = useState([]);
   const [equipoAbierto, setEquipoAbierto] = useState(null);
@@ -9705,6 +10005,7 @@ export default function App() {
     { id: "parte", label: "Parte lesiones", icon: "🩹" },
     { id: "entrenamientos", label: "Entrenamientos", icon: "🏃" },
     { id: "tareas", label: "Tareas", icon: "🗂" },
+    { id: "calentamiento", label: "Calentamiento", icon: "🔥" },
     { id: "partidos", label: "Partidos", icon: "⚽" },
     { id: "clasificacion", label: "Clasificaciones", icon: "🏆" },
     { id: "asistencia", label: "Asistencia", icon: "📋" },
@@ -9719,6 +10020,7 @@ export default function App() {
       const dbData = d || initState();
       setDb(dbData);
       if (dbData.__globalTasks) setGlobalTasks(dbData.__globalTasks);
+      if (dbData.__calentamientos) setCalentamientos(dbData.__calentamientos);
       setSeasons(s || []);
       setLoading(false);
     });
@@ -9779,6 +10081,17 @@ export default function App() {
       if (mergedDb) setDb(mergedDb);
     } catch(e) {
       console.error('saveGlobalTasks failed:', e);
+    }
+  };
+
+  const saveCalentamientos = async (cals) => {
+    setCalentamientos(cals);
+    try {
+      const mergedDb = await saveGlobalKeyAtomic("__calentamientos", cals);
+      if (mergedDb) setDb(mergedDb);
+    } catch(e) {
+      console.error('saveCalentamientos failed:', e);
+      alert("No se ha podido guardar el calentamiento. Comprueba la conexión e inténtalo de nuevo.");
     }
   };
 
@@ -10076,6 +10389,9 @@ export default function App() {
             )}
             {activeSection === "asistencia" && (
               <AsistenciaSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} isCoord={isCoord} />
+            )}
+            {activeSection === "calentamiento" && (
+              <CalentamientoSection team={activeTeam} calentamientos={calentamientos} onSaveCalentamiento={saveCalentamientos} isCoord={isCoord} />
             )}
             {activeSection === "pruebas_fisicas" && (
               <PruebasFisicasSection team={activeTeam} data={teamData} onSave={d => updateTeamData(activeTeam, d)} />
