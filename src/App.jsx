@@ -5131,25 +5131,51 @@ function dibujarBalon(ctx, b) {
   const px = (b.x / 100) * FIELD_W;
   const py = (b.y / 100) * FIELD_H;
   const r = 11;
+  // El dibujo está calcado del balón que usa la pizarra de Tareas, que está
+  // definido en un lienzo de 24x24 con el balón centrado en (12,12) y radio 9.
+  // Con esta conversión reutilizamos esas mismas coordenadas tal cual.
+  const s = r / 9;
+  const X = (x) => px + (x - 12) * s;
+  const Y = (y) => py + (y - 12) * s;
+  const poly = (pts) => {
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(X(x), Y(y)) : ctx.lineTo(X(x), Y(y)));
+    ctx.closePath();
+    ctx.fill();
+  };
 
   // Sombra
   ctx.beginPath(); ctx.arc(px + 2, py + 2, r, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fill();
 
-  // Círculo blanco
+  // Esfera blanca
   ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = "white"; ctx.fill();
-  ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = "#161616"; ctx.lineWidth = 1.1 * s; ctx.stroke();
 
-  // Cruz central (estilo balón clásico, limpio en cualquier tamaño)
-  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
+  // Recortamos al círculo para que ningún parche se salga del balón
+  ctx.save();
+  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.clip();
 
-  // 4 cuartos sombreados alternos
-  ctx.fillStyle = "#222";
-  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, 0, Math.PI/2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r - 2, Math.PI, Math.PI*3/2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#161616";
+  // Pentágono central
+  poly([[12,9.2],[14.66,11.13],[13.65,14.27],[10.35,14.27],[9.34,11.13]]);
+
+  // Costuras hacia los pentágonos del borde
+  ctx.strokeStyle = "#161616"; ctx.lineWidth = Math.max(0.6, 0.9 * s);
+  [[12,10.55,12,3.6],[13.38,11.55,19.99,9.4],[12.85,13.17,16.94,18.8],
+   [11.15,13.17,7.06,18.8],[10.62,11.55,4.01,9.4]].forEach(([x1,y1,x2,y2]) => {
+    ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); ctx.stroke();
+  });
+
+  // Pentágonos del borde
+  poly([[12,3.05],[13.09,3.84],[12.68,5.13],[11.32,5.13],[10.91,3.84]]);
+  poly([[20.51,9.23],[20.1,10.52],[18.74,10.52],[18.33,9.23],[19.42,8.44]]);
+  poly([[17.26,19.24],[15.9,19.24],[15.49,17.95],[16.58,17.16],[17.67,17.95]]);
+  poly([[6.74,19.24],[6.33,17.95],[7.42,17.16],[8.51,17.95],[8.1,19.24]]);
+  poly([[3.49,9.23],[4.58,8.44],[5.67,9.23],[5.26,10.52],[3.9,10.52]]);
+
+  ctx.restore();
 }
 
 // Conos: elementos fijos del montaje del ejercicio. No se animan — se
@@ -6054,6 +6080,10 @@ function TacticaEditor({ tactica, onGuardar, onCancelar, soloLectura = false, au
           {!soloLectura && (
             <div className="w-full" style={{ maxWidth: "380px" }}>
               <div className="flex gap-1.5 flex-wrap justify-center">
+                <button onClick={() => { setModoAñadir(null); setModoEliminar(null); }}
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${!modoAñadir && !modoEliminar ? "bg-zinc-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
+                  ✋ Mover
+                </button>
                 <button onClick={() => { setModoAñadir(prev => prev === "cono" ? null : "cono"); setModoEliminar(null); }}
                   className={`px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${modoAñadir === "cono" ? "bg-orange-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
                   🔶 Cono
