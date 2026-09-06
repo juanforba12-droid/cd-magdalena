@@ -4050,8 +4050,16 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
 
   const openDetail = (m) => { setActiveMatch(m); setCronicaText(m.cronica || ""); setValoradoPor(m.valoradoPor || ""); setView("detail"); };
 
+  // Punto de partida para cualquier cambio en un partido. Coge los partidos
+  // guardados pero sustituye el que se está editando por la copia local, que
+  // siempre es la más reciente. Sin esto, dos clics seguidos parten los dos
+  // del mismo estado antiguo y el segundo borra el cambio del primero.
+  const matchesBase = () => (data.matches || []).map(m =>
+    (activeMatch && m.id === activeMatch.id) ? activeMatch : m
+  );
+
   const updateMatchField = (matchId, field, value) => {
-    const matches = (data.matches || []).map(m => m.id === matchId ? { ...m, [field]: value } : m);
+    const matches = matchesBase().map(m => m.id === matchId ? { ...m, [field]: value } : m);
     const updated = matches.find(m => m.id === matchId);
     setActiveMatch(updated);
     onSave({ ...data, matches });
@@ -4064,7 +4072,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       playerId: jugador.playerId, playerName: jugador.playerName, equipo: jugador.equipo,
       status: "no_conv", minutos: 0, goles: 0, asistencias: 0, nota: ""
     };
-    const matches = (data.matches || []).map(m => m.id !== matchId ? m : { ...m, convocatoria: [...(m.convocatoria || []), nuevo] });
+    const matches = matchesBase().map(m => m.id !== matchId ? m : { ...m, convocatoria: [...(m.convocatoria || []), nuevo] });
     const updated = matches.find(m => m.id === matchId);
     setActiveMatch(updated);
     onSave({ ...data, matches });
@@ -4072,7 +4080,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   };
 
   const quitarDeConvocatoria = (matchId, playerId, equipo) => {
-    const matches = (data.matches || []).map(m => m.id !== matchId ? m : {
+    const matches = matchesBase().map(m => m.id !== matchId ? m : {
       ...m,
       convocatoria: (m.convocatoria || []).filter(c => !(c.playerId === playerId && (c.equipo || team) === equipo))
     });
@@ -4082,7 +4090,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   };
 
   const updateConv = (matchId, playerId, field, value) => {
-    const matches = (data.matches || []).map(m => {
+    const matches = matchesBase().map(m => {
       if (m.id !== matchId) return m;
       return {
         ...m,
@@ -4099,7 +4107,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   // Igual que updateConv pero guarda en la valoración independiente del
   // coordinador (match.valoracionesCoordinador), sin tocar la del entrenador.
   const updateConvCoord = (matchId, playerId, field, value) => {
-    const matches = (data.matches || []).map(m => {
+    const matches = matchesBase().map(m => {
       if (m.id !== matchId) return m;
       const existentes = m.valoracionesCoordinador || [];
       const yaEsta = existentes.some(v => v.playerId === playerId);
@@ -4346,7 +4354,13 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   );
 
   if (view === "detail" && activeMatch) {
-    const match = (data.matches || []).find(m => m.id === activeMatch.id) || activeMatch;
+    // Se dibuja desde el estado local: todas las funciones que modifican el
+    // partido llaman a setActiveMatch, así que aquí siempre está lo último.
+    // Antes se leía de data.matches (lo ya guardado en la nube), y como cada
+    // clic escribe el documento entero del club, los botones de titular /
+    // suplente / no convocado no se marcaban hasta que Firestore respondía:
+    // parecía que no funcionaban y luego reaccionaban todos de golpe.
+    const match = activeMatch;
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
@@ -4396,7 +4410,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
                 guardarCampo={guardarCampo}
                 quitarDeConvocatoria={quitarDeConvocatoria}
                 onSetCapitan={() => {
-                  const matches2 = (data.matches||[]).map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
+                  const matches2 = matchesBase().map(m2 => m2.id !== match.id ? m2 : {...m2, capitan: m2.capitan === c.playerId ? null : c.playerId});
                   const upd = matches2.find(m2=>m2.id===match.id);
                   setActiveMatch(upd);
                   onSave({...data, matches: matches2});
