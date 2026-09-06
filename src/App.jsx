@@ -2706,11 +2706,16 @@ const CATEGORIA_SLOT = {
 };
 const POSICIONES_CATEGORIA = {
   por: ["Portero"],
-  def: ["Lateral Derecho", "Central", "Lateral Izquierdo", "Carrilero Derecho", "Carrilero Izquierdo"],
+  def: ["Lateral Derecho", "Central", "Lateral Izquierdo", "Carrilero Derecho", "Carrilero Izquierdo", "Defensa"],
   medio: ["Mediocentro", "Mediocentro Defensivo", "Mediocentro Ofensivo", "Interior Derecho", "Interior Izquierdo"],
   ataque: ["Extremo Derecho", "Extremo Izquierdo", "Delantero", "Falso Nueve"],
 };
 const NOMBRE_CATEGORIA = { por: "porteros", def: "defensas", medio: "centrocampistas", ataque: "delanteros" };
+
+// Posición de cabecera de un jugador, igual que se ve en la Plantilla.
+function posicionDeJugador(p) {
+  return p?.posicionPrincipal || (p?.positions || [])[0] || "";
+}
 
 function coincidePosicion(jugadorRaw, posicionObjetivo) {
   if (!posicionObjetivo) return false;
@@ -2790,15 +2795,21 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
 
   const mapJugador = (p, equipo) => ({
     playerId: p.id, playerName: p.name || "(sin nombre)", dorsal: p.dorsal || "", equipo,
+    posicion: posicionDeJugador(p),
     coincide: coincidePosicion(p, posicionObjetivo),
+    yaColocado: excluidos.has(`${equipo}::${p.id}`),
   });
 
   const propiosTodos = (ownPlayers || [])
-    .filter(p => !excluidos.has(`${team}::${p.id}`))
     .filter(p => !q || (p.name || "").toLowerCase().includes(q))
     .map(p => mapJugador(p, team));
-  const propiosCoinciden = propiosTodos.filter(j => j.coincide);
-  const propiosResto = propiosTodos.filter(j => !j.coincide);
+  const propiosLibres = propiosTodos.filter(j => !j.yaColocado);
+  const propiosCoinciden = propiosLibres.filter(j => j.coincide);
+  const propiosResto = propiosLibres.filter(j => !j.coincide);
+  // Los que ya están en el once o el banquillo: antes desaparecían sin más y
+  // parecía que faltaba media plantilla. Ahora se ven al final y se pueden
+  // elegir igual — al hacerlo se mueven desde donde estuvieran.
+  const propiosColocados = propiosTodos.filter(j => j.yaColocado);
 
   const otrosTodos = Object.entries(db || {})
     .filter(([k, v]) => k !== team && !k.startsWith("__") && v && Array.isArray(v.players))
@@ -2811,9 +2822,11 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
 
   const FilaJugador = ({ j }) => (
     <button key={j.equipo + j.playerId} onClick={() => onPick({ playerId: j.playerId, playerName: j.playerName, dorsal: j.dorsal, equipo: j.equipo })}
-      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-left">
-      <span className="text-zinc-300 font-black text-sm w-7 text-center">{j.dorsal || "-"}</span>
-      <span className="text-white text-sm flex-1">{j.playerName}</span>
+      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left ${j.yaColocado ? "bg-zinc-900 border-zinc-800 hover:bg-zinc-800" : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700"}`}>
+      <span className={`font-black text-sm w-7 text-center ${j.yaColocado ? "text-zinc-500" : "text-zinc-300"}`}>{j.dorsal || "-"}</span>
+      <span className={`text-sm flex-1 min-w-0 truncate ${j.yaColocado ? "text-zinc-400" : "text-white"}`}>{j.playerName}</span>
+      {j.posicion && <span className="text-zinc-500 text-[11px] shrink-0">{j.posicion}</span>}
+      {j.yaColocado && <span className="text-amber-500/80 text-[11px] shrink-0">ya alineado</span>}
       {j.equipo !== team && <Badge color="blue">{j.equipo}</Badge>}
     </button>
   );
@@ -2836,7 +2849,7 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
                 <div className="space-y-1">
                   <p className="text-[11px] text-red-400 font-semibold mb-1">⭐ {nombreCategoria} ({posicionObjetivo})</p>
                   {propiosCoinciden.map(j => <FilaJugador key={j.equipo + j.playerId} j={j} />)}
-                  {propiosCoinciden.length === 0 && <p className="text-zinc-600 text-xs">Nadie de esa línea en tu equipo.</p>}
+                  {propiosCoinciden.length === 0 && <p className="text-zinc-600 text-xs">Nadie libre de esa línea en tu equipo.</p>}
                 </div>
                 {propiosResto.length > 0 && (
                   <div className="space-y-1">
@@ -2847,8 +2860,14 @@ function JugadorPickerModal({ team, ownPlayers, db, excluidos, posicionObjetivo,
               </div>
             ) : (
               <div className="space-y-1">
-                {propiosTodos.map(j => <FilaJugador key={j.equipo + j.playerId} j={j} />)}
-                {propiosTodos.length === 0 && <p className="text-zinc-600 text-xs">Sin jugadores disponibles.</p>}
+                {propiosLibres.map(j => <FilaJugador key={j.equipo + j.playerId} j={j} />)}
+                {propiosLibres.length === 0 && <p className="text-zinc-600 text-xs">Sin jugadores libres.</p>}
+              </div>
+            )}
+            {propiosColocados.length > 0 && (
+              <div className="space-y-1 mt-3">
+                <p className="text-[11px] text-amber-600/90 font-semibold mb-1">Ya en el once o el banquillo ({propiosColocados.length}) — tócalos para moverlos aquí</p>
+                {propiosColocados.map(j => <FilaJugador key={j.equipo + j.playerId} j={j} />)}
               </div>
             )}
           </div>
@@ -2946,8 +2965,27 @@ function AlineacionSection({ team, data, db, onSave, rivalPreseleccionado, onBac
 
   const onPick = (jugador) => {
     if (!picker) return;
-    if (picker.destino === "slot") guardar({ posiciones: setSlot(posiciones, picker.slotId, jugador) });
-    else guardar({ suplentes: [...suplentes, jugador] });
+    const clave = keyOf(jugador);
+    // El jugador puede venir del banquillo o de otra posición (el selector
+    // ahora también los ofrece). En ese caso hay que sacarlo de donde estaba,
+    // o quedaría duplicado en dos sitios a la vez.
+    const suplentesLimpios = suplentes.filter(s => keyOf(s) !== clave);
+    let posicionesLimpias = posiciones;
+    Object.entries(posiciones).forEach(([sid, j]) => {
+      if (j && keyOf(j) === clave) posicionesLimpias = setSlot(posicionesLimpias, sid, null);
+    });
+
+    if (picker.destino === "slot") {
+      guardar({
+        posiciones: setSlot(posicionesLimpias, picker.slotId, jugador),
+        suplentes: suplentesLimpios,
+      });
+    } else {
+      guardar({
+        posiciones: posicionesLimpias,
+        suplentes: [...suplentesLimpios, jugador],
+      });
+    }
     setPicker(null);
   };
 
