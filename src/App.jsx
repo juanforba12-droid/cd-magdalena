@@ -3494,7 +3494,7 @@ const convocatoriaOficial = (match) => {
 // un guardado en Firestore, que es lo que hacía que ir metiendo goles fuera
 // lento. Además son inputs de texto con teclado numérico (inputMode), no
 // inputs "number" nativos, así que no tienen las flechitas de subir/bajar.
-function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarCampo, quitarDeConvocatoria, onSetCapitan }) {
+function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarCampo, quitarDeConvocatoria, onSetCapitan, dorsal }) {
   const [minutos, setMinutos] = useState(String(activo.minutos ?? 0));
   const [goles, setGoles] = useState(String(activo.goles ?? 0));
   const [asistencias, setAsistencias] = useState(String(activo.asistencias ?? 0));
@@ -3508,6 +3508,9 @@ function ConvocatoriaJugadorCard({ c, team, match, activo, statusLabel, guardarC
   return (
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="w-7 h-7 rounded-full bg-zinc-700 text-zinc-200 flex items-center justify-center font-black text-xs shrink-0">
+          {dorsal || "—"}
+        </span>
         <span className="text-white font-semibold flex-1">{c.playerName}</span>
         {c.equipo && c.equipo !== team && <Badge color="blue">{c.equipo}</Badge>}
         {["titular", "suplente", "no_conv"].map(s => (
@@ -4139,6 +4142,18 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     if (team) publicarPartidosEquipo("cdmagdalena", team, restantes).catch(() => {});
   };
 
+  // El dorsal no se guarda en la convocatoria: se busca en la plantilla en el
+  // momento de pintar. Así sale aunque el partido se creara antes de ponerle
+  // dorsal al jugador, y se actualiza solo si luego se lo cambias.
+  const dorsalDeConvocado = (c) => {
+    const equipoDelJugador = c.equipo || team;
+    const plantilla = equipoDelJugador === team
+      ? (data.players || [])
+      : ((db || {})[equipoDelJugador]?.players || []);
+    const p = plantilla.find(x => x && x.id === c.playerId);
+    return p?.dorsal || "";
+  };
+
   const openDetail = (m) => { setActiveMatch(m); setCronicaText(m.cronica || ""); setValoradoPor(m.valoradoPor || ""); setView("detail"); };
 
   // Punto de partida para cualquier cambio en un partido. Coge los partidos
@@ -4225,6 +4240,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
     const jugaronRows = convocatoriaOficial(match)
       .filter(c => c.status === "titular" || c.status === "suplente")
       .map(c => `<tr>
+        <td><span class="dorsal-chip">${esc(dorsalDeConvocado(c) || "—")}</span></td>
         <td>${esc(c.playerName)}</td>
         <td><span class="role-chip">${c.status === "titular" ? "Titular" : "Suplente"}</span></td>
         <td>${c.minutos || 0}'</td>
@@ -4296,6 +4312,8 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
       table.roster tbody td{ padding:9px 14px; font-size:12.5px; border-top:1px solid var(--line); }
       table.roster tbody tr:nth-child(even){ background:#FBFAF7; }
       .role-chip{ font-size:10px; font-weight:700; color:var(--red); background:rgba(200,16,46,.08); padding:2px 8px; border-radius:9px; }
+      .dorsal-chip{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+        background:var(--pitch); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:12px; }
       .nota-chip{ display:inline-flex; align-items:center; justify-content:center; min-width:26px; padding:2px 6px; border-radius:6px;
         background:var(--ink); color:#fff; font-family:'Barlow Condensed',Arial,sans-serif; font-weight:800; font-size:12px; }
 
@@ -4345,7 +4363,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
         ${match.valoradoPor ? `<div class="autor">Valoración de <b>${esc(match.valoradoPor)}</b></div>` : ""}
 
         ${jugaronRows ? `<div class="section-title">Jugadores</div>
-        <table class="roster"><thead><tr><th>Nombre</th><th>Rol</th><th>Min.</th><th>Goles</th><th>Asist.</th><th>Nota</th></tr></thead><tbody>${jugaronRows}</tbody></table>` : ""}
+        <table class="roster"><thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Min.</th><th>Goles</th><th>Asist.</th><th>Nota</th></tr></thead><tbody>${jugaronRows}</tbody></table>` : ""}
 
         ${destacadosRivalRows ? `<div class="section-title">Destacados de ${esc(match.rival)}</div>
         <div class="rival-destacados">${destacadosRivalRows}</div>` : ""}
@@ -4496,6 +4514,7 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
                 c={c}
                 team={team}
                 match={match}
+                dorsal={dorsalDeConvocado(c)}
                 activo={activo}
                 statusLabel={statusLabel}
                 guardarCampo={guardarCampo}
