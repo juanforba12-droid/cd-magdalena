@@ -1983,15 +1983,41 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
     });
   };
 
+  // Marca inmediata: guardar en Firestore reescribe el documento entero del
+  // club y tarda, así que se pinta desde aquí y el guardado va por detrás.
+  const [attOptimista, setAttOptimista] = useState({});
+  const attKey = (sessionId, playerId) => `${sessionId}::${playerId}`;
+  const estadoAsistencia = (sessionId, playerId) => {
+    const k = attKey(sessionId, playerId);
+    if (k in attOptimista) return attOptimista[k]?.status;
+    return (data.attendance || []).find(a => a.sessionId === sessionId && a.playerId === playerId)?.status;
+  };
+
+  // Reconstruye la lista completa aplicando TODO lo marcado en esta sesión
+  // sobre lo guardado. Así, si marcas dos jugadores seguidos antes de que la
+  // nube responda, el segundo guardado sigue incluyendo al primero.
+  const construirAsistencia = (optimista) => {
+    let att = [...(data.attendance || [])];
+    Object.entries(optimista).forEach(([k, val]) => {
+      const sep = k.lastIndexOf("::");
+      const sid = k.slice(0, sep);
+      const pid = k.slice(sep + 2);
+      att = att.filter(a => !(a.sessionId === sid && String(a.playerId) === pid));
+      if (val) att.push({ sessionId: sid, playerId: val.playerId, playerName: val.playerName, status: val.status, fecha: val.fecha });
+    });
+    return att;
+  };
+
   const setAttRecord = (sessionId, playerId, playerName, status, sessionFecha) => {
-    const att = [...(data.attendance || [])].filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
-    att.push({ sessionId, playerId, playerName, status, fecha: sessionFecha });
-    onSave({ ...data, attendance: att });
+    const nuevo = { ...attOptimista, [attKey(sessionId, playerId)]: { playerId, playerName, status, fecha: sessionFecha } };
+    setAttOptimista(nuevo);
+    onSave({ ...data, attendance: construirAsistencia(nuevo) });
   };
 
   const delAttRecord = (sessionId, playerId) => {
-    const att = (data.attendance || []).filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
-    onSave({ ...data, attendance: att });
+    const nuevo = { ...attOptimista, [attKey(sessionId, playerId)]: null };
+    setAttOptimista(nuevo);
+    onSave({ ...data, attendance: construirAsistencia(nuevo) });
   };
 
   const statusOpts = [
@@ -2561,7 +2587,8 @@ function EntrenamientosSection({ team, data, onSave, isCoord }) {
               {players.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores en la plantilla.</p>}
               {players.map(p => {
                 const sessionId = `t_${attTraining.id}`;
-                const rec = (data.attendance || []).find(a => a.sessionId === sessionId && a.playerId === p.id);
+                const estado = estadoAsistencia(sessionId, p.id);
+                const rec = estado ? { status: estado } : null;
                 return (
                   <div key={p.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-4 py-3">
                     <span className="text-white text-sm font-semibold flex-1">{p.name}</span>
@@ -4006,15 +4033,41 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
   const [cronicaText, setCronicaText] = useState("");
   const [valoradoPor, setValoradoPor] = useState("");
 
+  // Marca inmediata: guardar en Firestore reescribe el documento entero del
+  // club y tarda, así que se pinta desde aquí y el guardado va por detrás.
+  const [attOptimista, setAttOptimista] = useState({});
+  const attKey = (sessionId, playerId) => `${sessionId}::${playerId}`;
+  const estadoAsistencia = (sessionId, playerId) => {
+    const k = attKey(sessionId, playerId);
+    if (k in attOptimista) return attOptimista[k]?.status;
+    return (data.attendance || []).find(a => a.sessionId === sessionId && a.playerId === playerId)?.status;
+  };
+
+  // Reconstruye la lista completa aplicando TODO lo marcado en esta sesión
+  // sobre lo guardado. Así, si marcas dos jugadores seguidos antes de que la
+  // nube responda, el segundo guardado sigue incluyendo al primero.
+  const construirAsistencia = (optimista) => {
+    let att = [...(data.attendance || [])];
+    Object.entries(optimista).forEach(([k, val]) => {
+      const sep = k.lastIndexOf("::");
+      const sid = k.slice(0, sep);
+      const pid = k.slice(sep + 2);
+      att = att.filter(a => !(a.sessionId === sid && String(a.playerId) === pid));
+      if (val) att.push({ sessionId: sid, playerId: val.playerId, playerName: val.playerName, status: val.status, fecha: val.fecha });
+    });
+    return att;
+  };
+
   const setAttRecord = (sessionId, playerId, playerName, status, sessionFecha) => {
-    const att = [...(data.attendance || [])].filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
-    att.push({ sessionId, playerId, playerName, status, fecha: sessionFecha });
-    onSave({ ...data, attendance: att });
+    const nuevo = { ...attOptimista, [attKey(sessionId, playerId)]: { playerId, playerName, status, fecha: sessionFecha } };
+    setAttOptimista(nuevo);
+    onSave({ ...data, attendance: construirAsistencia(nuevo) });
   };
 
   const delAttRecord = (sessionId, playerId) => {
-    const att = (data.attendance || []).filter(a => !(a.sessionId === sessionId && a.playerId === playerId));
-    onSave({ ...data, attendance: att });
+    const nuevo = { ...attOptimista, [attKey(sessionId, playerId)]: null };
+    setAttOptimista(nuevo);
+    onSave({ ...data, attendance: construirAsistencia(nuevo) });
   };
 
   const attStatusOpts = [
@@ -4630,7 +4683,8 @@ function PartidosSection({ team, data, onSave, isCoord, db }) {
               {asistentes.length === 0 && <p className="text-zinc-500 text-sm">No hay jugadores convocados.</p>}
               {asistentes.map(p => {
                 const sessionId = `m_${match.id}`;
-                const rec = (data.attendance || []).find(a => a.sessionId === sessionId && a.playerId === p.id);
+                const estado = estadoAsistencia(sessionId, p.id);
+                const rec = estado ? { status: estado } : null;
                 return (
                   <div key={p.id} className="flex flex-wrap items-center gap-2 bg-zinc-800 rounded-lg px-4 py-3">
                     <span className="text-white text-sm font-semibold flex-1">{p.name}</span>
@@ -6894,16 +6948,38 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
       });
   };
 
+  // Marca inmediata, igual que en la asistencia de jugadores.
+  const [attOptimista, setAttOptimista] = useState({});
+  const attKey = (sessionId, coachId) => `${selectedTeam}::${sessionId}::${coachId}`;
+  const estadoAsistencia = (sessionId, coachId) => {
+    const k = attKey(sessionId, coachId);
+    if (k in attOptimista) return attOptimista[k]?.status;
+    return (teamData.coachAttendance || []).find(a => a.sessionId === sessionId && a.coachId === coachId)?.status;
+  };
+
+  const construirAsistenciaCoach = (optimista) => {
+    let att = [...(teamData.coachAttendance || [])];
+    Object.entries(optimista).forEach(([k, val]) => {
+      const partes = k.split("::");
+      if (partes[0] !== selectedTeam) return;
+      const sid = partes.slice(1, -1).join("::");
+      const cid = partes[partes.length - 1];
+      att = att.filter(a => !(a.sessionId === sid && String(a.coachId) === cid));
+      if (val) att.push({ sessionId: sid, coachId: val.coachId, status: val.status, fecha: val.fecha });
+    });
+    return att;
+  };
+
   const setAttRecord = (sessionId, coachId, status, fecha) => {
-    const coachAtt = teamData.coachAttendance || [];
-    const filtered = coachAtt.filter(a => !(a.sessionId === sessionId && a.coachId === coachId));
-    filtered.push({ sessionId, coachId, status, fecha });
-    onSaveTeam(selectedTeam, { ...teamData, coachAttendance: filtered });
+    const nuevo = { ...attOptimista, [attKey(sessionId, coachId)]: { coachId, status, fecha } };
+    setAttOptimista(nuevo);
+    onSaveTeam(selectedTeam, { ...teamData, coachAttendance: construirAsistenciaCoach(nuevo) });
   };
 
   const delAttRecord = (sessionId, coachId) => {
-    const coachAtt = (teamData.coachAttendance || []).filter(a => !(a.sessionId === sessionId && a.coachId === coachId));
-    onSaveTeam(selectedTeam, { ...teamData, coachAttendance: coachAtt });
+    const nuevo = { ...attOptimista, [attKey(sessionId, coachId)]: null };
+    setAttOptimista(nuevo);
+    onSaveTeam(selectedTeam, { ...teamData, coachAttendance: construirAsistenciaCoach(nuevo) });
   };
 
   const getCoachAttStats = (coachId) => {
@@ -7051,7 +7127,8 @@ function EntrenadoresSection({ db, onSaveTeam, coordProfile, teams = TEAMS }) {
               <div className="space-y-3">
                 {sessions.length === 0 && <p className="text-zinc-500 text-sm">No hay sesiones registradas.</p>}
                 {sessions.map(s => {
-                  const rec = (teamData.coachAttendance || []).find(a => a.sessionId === s.id && a.coachId === attCoach.id);
+                  const estadoCoach = estadoAsistencia(s.id, attCoach.id);
+                  const rec = estadoCoach ? { status: estadoCoach } : null;
                   return (
                     <Card key={s.id} className="flex flex-wrap items-center gap-3">
                       <div className="flex-1 min-w-0">
