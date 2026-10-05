@@ -27,6 +27,16 @@ function cleanLoaded(obj) {
   return result;
 }
 
+// Firestore rechaza cualquier documento de más de 1 MiB. Como todo el club vive
+// en un único documento, avisamos con un mensaje claro (con el tamaño real) en
+// vez de dejar que el guardado falle en silencio y la tarea "desaparezca".
+function comprobarTamano(json) {
+  const bytes = new TextEncoder().encode(json).length;
+  if (bytes > 1048576) {
+    throw new Error("Los datos del club ocupan " + Math.round(bytes / 1024) + " KB y superan el límite de 1024 KB de Firestore, por eso no se puede guardar. Hay que repartir los datos en varios documentos.");
+  }
+}
+
 export async function loadData() {
   try {
     const snap = await getDoc(doc(db, "cdmagdalena", "main"));
@@ -71,7 +81,9 @@ export async function saveTeamAtomic(team, newTeamData, cleanFn) {
     const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
     const cleanedTeam = cleanFn ? cleanFn(newTeamData) : newTeamData;
     mergedDb = { ...current, [team]: cleanedTeam };
-    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+    const json = JSON.stringify(mergedDb);
+    comprobarTamano(json);
+    transaction.set(ref, { json });
   });
   return mergedDb;
 }
@@ -86,7 +98,9 @@ export async function saveGlobalTasksAtomic(tasks) {
     const raw = snap.exists() ? snap.data().json : null;
     const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
     mergedDb = { ...current, __globalTasks: tasks };
-    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+    const json = JSON.stringify(mergedDb);
+    comprobarTamano(json);
+    transaction.set(ref, { json });
   });
   return mergedDb;
 }
@@ -102,7 +116,9 @@ export async function saveGlobalKeyAtomic(key, value) {
     const raw = snap.exists() ? snap.data().json : null;
     const current = raw ? cleanLoaded(JSON.parse(raw)) : {};
     mergedDb = { ...current, [key]: value };
-    transaction.set(ref, { json: JSON.stringify(mergedDb) });
+    const json = JSON.stringify(mergedDb);
+    comprobarTamano(json);
+    transaction.set(ref, { json });
   });
   return mergedDb;
 }

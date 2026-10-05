@@ -10255,35 +10255,61 @@ export default function App() {
         pizarra2: limpiarPizarra(task.pizarra2)
       }))
     });
-    try {
-      const mergedDb = await saveTeamAtomic(team, newData, cleanTeam);
-      if (mergedDb) setDb(mergedDb);
-    } catch(e) {
-      console.error('updateTeamData failed:', e);
-    } finally {
-      setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
+    // Nunca guardar bajo un equipo vacío o "null": ese era el origen de datos
+    // que "desaparecían" (se archivaban bajo una clave fantasma).
+    if (!team || team === "null" || team === "undefined") {
+      console.error('updateTeamData: equipo no válido', team);
+      alert("No se ha podido guardar: no hay ningún equipo seleccionado. Elige un equipo y vuelve a intentarlo.");
+      if (window._setSaving) window._setSaving(false);
+      return;
     }
+    // 1) Se ve al instante en pantalla, sin esperar a Firebase. Así dos toques
+    //    seguidos (pasar lista) parten siempre del dato más reciente y no se pisan.
+    setDb(prev => ({ ...(prev || {}), [team]: cleanTeam(newData) }));
+    // 2) El guardado en Firebase va en cola: uno detrás de otro, nunca a la vez.
+    const guardar = async () => {
+      try {
+        await saveTeamAtomic(team, newData, cleanTeam);
+      } catch(e) {
+        console.error('updateTeamData failed:', e);
+        alert("⚠️ NO se ha guardado el último cambio.\n\n" + (e && e.message ? e.message : "Error desconocido") + "\n\nSe recargarán los datos del servidor.");
+        try { const fresh = await loadData(); if (fresh) setDb(fresh); } catch(_) {}
+      } finally {
+        setTimeout(() => { if (window._setSaving) window._setSaving(false); }, 2000);
+      }
+    };
+    window._colaGuardado = (window._colaGuardado || Promise.resolve()).then(guardar);
+    return window._colaGuardado;
   };
 
   const saveGlobalTasks = async (tasks) => {
     setGlobalTasks(tasks);
-    try {
-      const mergedDb = await saveGlobalTasksAtomic(tasks);
-      if (mergedDb) setDb(mergedDb);
-    } catch(e) {
-      console.error('saveGlobalTasks failed:', e);
-    }
+    setDb(prev => ({ ...(prev || {}), __globalTasks: tasks }));
+    const guardar = async () => {
+      try {
+        await saveGlobalTasksAtomic(tasks);
+      } catch(e) {
+        console.error('saveGlobalTasks failed:', e);
+        alert("⚠️ NO se ha guardado la tarea.\n\n" + (e && e.message ? e.message : "Error desconocido"));
+      }
+    };
+    window._colaGuardado = (window._colaGuardado || Promise.resolve()).then(guardar);
+    return window._colaGuardado;
   };
 
   const saveCalentamientos = async (cals) => {
     setCalentamientos(cals);
-    try {
-      const mergedDb = await saveGlobalKeyAtomic("__calentamientos", cals);
-      if (mergedDb) setDb(mergedDb);
-    } catch(e) {
-      console.error('saveCalentamientos failed:', e);
-      alert("No se ha podido guardar el calentamiento. Comprueba la conexión e inténtalo de nuevo.");
-    }
+    setDb(prev => ({ ...(prev || {}), __calentamientos: cals }));
+    const guardar = async () => {
+      try {
+        await saveGlobalKeyAtomic("__calentamientos", cals);
+      } catch(e) {
+        console.error('saveCalentamientos failed:', e);
+        alert("No se ha podido guardar el calentamiento. " + (e && e.message ? e.message : "Comprueba la conexión e inténtalo de nuevo."));
+      }
+    };
+    window._colaGuardado = (window._colaGuardado || Promise.resolve()).then(guardar);
+    return window._colaGuardado;
   };
 
   const savePasswords = async (newPwds) => {
